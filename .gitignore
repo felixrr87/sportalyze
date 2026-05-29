@@ -1,0 +1,32 @@
+# Entorno Python
+.env
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.Python
+
+# Base de datos local
+*.db
+*.sqlite
+
+# Outputs
+*.png
+*.pdf
+reports/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Mac
+.DS_Store
+.DS_Store?
+._*
+
+# IDEs
+.vscode/
+.idea/
+
+# Carpetas vacías innecesarias
+{backend/
+{frontend,backend,assets,data}/
