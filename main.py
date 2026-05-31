@@ -455,20 +455,39 @@ async def get_custom_shotmap(
         random.seed(hash(player_name) % 1000)
         # Generate realistic shot positions
         simulated_shots = []
+        # Distribute shots realistically across penalty area
+        # StatsBomb coordinates: pitch is 120x80, half is 60-120 x 0-80
+        shot_zones = [
+            # (x_center, y_center, x_std, y_std, weight)
+            (108, 40, 4, 6, 0.35),   # Centre penalty area
+            (105, 30, 5, 5, 0.15),   # Left side
+            (105, 50, 5, 5, 0.15),   # Right side
+            (98, 40, 6, 8, 0.20),    # Edge of box
+            (88, 40, 8, 12, 0.15),   # Long shots
+        ]
         for i in range(shots):
             is_goal = i < goals
-            # Shots concentrated around penalty area
-            x = random.gauss(88, 8)
-            y = random.gauss(34, 12)
-            x = max(60, min(100, x))
-            y = max(15, min(85, y))
+            # Pick zone by weight
+            weights = [z[4] for z in shot_zones]
+            total_w = sum(weights)
+            r_val = random.random() * total_w
+            cumw = 0
+            zone = shot_zones[0]
+            for z in shot_zones:
+                cumw += z[4]
+                if r_val <= cumw:
+                    zone = z
+                    break
+            x = max(80, min(119, random.gauss(zone[0], zone[2])))
+            y = max(5, min(75, random.gauss(zone[1], zone[3])))
+            xg_val = random.uniform(0.08, 0.65) if is_goal else random.uniform(0.02, 0.25)
             simulated_shots.append({
                 "x": x, "y": y,
-                "xG": random.uniform(0.05, 0.6) if is_goal else random.uniform(0.02, 0.3),
-                "result": "Goal" if is_goal else random.choice(["SavedShot","MissedShots","BlockedShot"]),
+                "xG": xg_val,
+                "result": "Goal" if is_goal else random.choice(["SavedShot","SavedShot","MissedShots","BlockedShot"]),
                 "player": player_name,
-                "situation": random.choice(["OpenPlay","SetPiece","FromCorner"]),
-                "shot_type": random.choice(["RightFoot","LeftFoot","Head"]),
+                "situation": random.choice(["OpenPlay","OpenPlay","OpenPlay","SetPiece","FromCorner"]),
+                "shot_type": random.choice(["RightFoot","RightFoot","LeftFoot","Head"]),
             })
         from backend.viz.shotmap import generar_shotmap
         img = generar_shotmap(
