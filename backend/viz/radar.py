@@ -201,71 +201,136 @@ def generar_radar_simple(
     position: str = "FW",
 ) -> str:
     """
-    Radar simple con matplotlib puro — fallback si PyPizza falla.
-    Sin dependencia de set_rorigin.
+    Radar simple premium con matplotlib puro.
+    Muestra percentiles como área coloreada + valor real como etiqueta.
     """
-    import io, base64, numpy as np
+    import io, base64
+    import numpy as np
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyArrowPatch
 
     metrics_cfg = {
-        "FW": (["Goles","xG","Asist","npxG","G+A/90","Disparos"], ["goals","xG","assists","npxG","goals","shots"]),
-        "MF": (["Goles","Asist","xA","xGChain","Pases Clave","G+A/90"], ["goals","assists","xA","xGChain","key_passes","goals"]),
-        "DF": (["Goles","Asist","Min","xGChain","xGBuildup","Recuper"], ["goals","assists","minutes","xGChain","xGBuildup","goals"]),
-        "GK": (["Min","Rating","Goles","Asist","xG","G+A/90"], ["minutes","rating","goals","assists","xG","goals"]),
+        "FW": (["Goles","xG","Asist","npxG","G+A/90","Disparos"],
+               ["goals","xG","assists","npxG","goals","shots"]),
+        "MF": (["Goles","Asist","xGChain","Pases Clave","G+A/90","xG"],
+               ["goals","assists","xGChain","key_passes","goals","xG"]),
+        "DF": (["Goles","Asist","Minutos","xGChain","xGBuildup","G+A/90"],
+               ["goals","assists","minutes","xGChain","xGBuildup","goals"]),
+        "GK": (["Minutos","Rating","Goles","Asist","xG","G+A/90"],
+               ["minutes","rating","goals","assists","xG","goals"]),
     }
     labels, keys = metrics_cfg.get(position, metrics_cfg["FW"])
     N = len(labels)
 
-    same_pos = [p for p in all_players if p.get("position","") == position] or all_players
-    values, percentiles = [], []
+    # Jugadores misma posición para percentiles
+    same_pos = [p for p in all_players if p.get("position","") == position]
+    if len(same_pos) < 3:
+        same_pos = all_players
+
+    raw_vals = []
+    percentiles = []
     for key in keys:
         pv = float(player_data.get(key, 0) or 0)
         all_vals = [float(p.get(key, 0) or 0) for p in same_pos]
         pct = sum(1 for v in all_vals if v <= pv) / max(len(all_vals), 1) * 100
         percentiles.append(round(pct, 1))
-        values.append(pv)
+        raw_vals.append(round(pv, 1))
 
-    angles = [n / float(N) * 2 * np.pi for n in range(N)]
+    # Ángulos
+    angles = np.linspace(0, 2 * np.pi, N, endpoint=False).tolist()
     angles += angles[:1]
-    pcts = [p/100 for p in percentiles]
-    pcts += pcts[:1]
+    pcts_norm = [p / 100.0 for p in percentiles] + [percentiles[0] / 100.0]
 
-    fig, ax = plt.subplots(1, 1, figsize=(8, 8), subplot_kw=dict(polar=True),
-                           facecolor=VIZ_COLORS["bg"])
-    ax.set_facecolor(VIZ_COLORS["bg"])
+    # Colores por posición
+    colors = {
+        "FW": ["#0ea5e9","#0ea5e9","#10b981","#10b981","#f59e0b","#f97316"],
+        "MF": ["#0ea5e9","#10b981","#8b5cf6","#8b5cf6","#f59e0b","#0ea5e9"],
+        "DF": ["#0ea5e9","#10b981","#0ea5e9","#8b5cf6","#8b5cf6","#f59e0b"],
+        "GK": ["#0ea5e9","#f59e0b","#0ea5e9","#10b981","#8b5cf6","#f59e0b"],
+    }
+    seg_colors = colors.get(position, colors["FW"])
+
+    bg = VIZ_COLORS["bg"]
+    fig = plt.figure(figsize=(9, 9), facecolor=bg)
+    ax = fig.add_subplot(111, polar=True, facecolor=bg)
+
     ax.set_theta_offset(np.pi / 2)
     ax.set_theta_direction(-1)
-    ax.set_ylim(0, 1)
+    ax.set_ylim(0, 1.15)
     ax.set_yticks([0.25, 0.5, 0.75, 1.0])
-    ax.set_yticklabels(["25","50","75","100"], color=VIZ_COLORS["text_dim"], size=8)
+    ax.set_yticklabels(["25", "50", "75", "100"],
+                       color="#4a5568", fontsize=8, fontweight="bold")
+    ax.yaxis.set_tick_params(pad=30)
     ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(labels, color="#FFFFFF", size=11)
-    ax.grid(color="#1a2a3a", linewidth=0.5)
-    ax.spines["polar"].set_visible(False)
+    ax.set_xticklabels(labels, color="#e2e8f0", fontsize=12, fontweight="bold")
+    ax.tick_params(axis='x', pad=15)
+    ax.grid(color="#1e3a4a", linewidth=0.8, linestyle="--", alpha=0.6)
+    ax.spines["polar"].set_color("#1e3a4a")
+    ax.spines["polar"].set_linewidth(1.5)
 
-    score_color = VIZ_COLORS["electric"]
-    ax.plot(angles, pcts, color=score_color, linewidth=2, linestyle="solid")
-    ax.fill(angles, pcts, color=score_color, alpha=0.2)
+    # Fondo radial suave
+    for r in [0.25, 0.5, 0.75, 1.0]:
+        ax.plot(angles, [r] * len(angles), color="#1e3a4a",
+                linewidth=0.5, alpha=0.4)
 
-    # Add value labels
-    for i, (angle, pct, val) in enumerate(zip(angles[:-1], percentiles, values)):
-        ax.annotate(f"{val}", xy=(angle, pct/100+0.08),
-                    ha="center", va="center", color="#FFFFFF", fontsize=9,
-                    bbox=dict(boxstyle="round,pad=0.2", facecolor=score_color, alpha=0.6, edgecolor="none"))
+    # Área principal — relleno con gradiente simulado
+    ax.fill(angles[:-1] + angles[:1], pcts_norm,
+            color="#0ea5e9", alpha=0.15, zorder=2)
 
+    # Líneas de segmento coloreadas
+    for i in range(N):
+        a1, a2 = angles[i], angles[(i+1) % N]
+        r1, r2 = pcts_norm[i], pcts_norm[(i+1) % N]
+        ax.plot([a1, a2], [r1, r2],
+                color=seg_colors[i], linewidth=2.5,
+                solid_capstyle='round', zorder=3)
+        # Punto en el vértice
+        ax.scatter([a1], [r1], s=60,
+                   color=seg_colors[i], zorder=4,
+                   edgecolors="white", linewidths=1.2)
+
+    # Etiquetas de percentil (en el borde del área)
+    for i, (angle, pct, raw) in enumerate(zip(angles[:-1], percentiles, raw_vals)):
+        r_label = pcts_norm[i] + 0.12
+        r_label = min(r_label, 1.12)
+        # Etiqueta percentil
+        ax.annotate(
+            f"{int(pct)}",
+            xy=(angle, r_label),
+            ha="center", va="center",
+            fontsize=9, fontweight="bold",
+            color=seg_colors[i],
+            bbox=dict(
+                boxstyle="round,pad=0.25",
+                facecolor=bg,
+                edgecolor=seg_colors[i],
+                linewidth=1.2,
+                alpha=0.9
+            ),
+            zorder=5
+        )
+
+    # Título
     name = player_data.get("name", "Jugador")
     team = player_data.get("team", "")
-    fig.text(0.5, 0.97, name, size=16, ha="center", color="#FFFFFF", fontweight="bold")
-    fig.text(0.5, 0.94, f"{team} · {position} · Percentiles vs {position} de la liga",
-             size=10, ha="center", color=VIZ_COLORS["text_dim"])
-    fig.text(0.99, 0.01, "SPORTALYZE", size=8, ha="right", color="#484f58")
+    fig.text(0.5, 0.97, name, size=18, ha="center",
+             color="#FFFFFF", fontweight="bold",
+             fontfamily="DejaVu Sans")
+    fig.text(0.5, 0.94,
+             f"{team}  ·  {position}  ·  Percentiles vs {position} en la liga",
+             size=10, ha="center", color="#7a9bbf")
 
-    plt.tight_layout(pad=1.5)
+    # Leyenda rápida abajo
+    fig.text(0.5, 0.02,
+             "Número = percentil (100 = mejor de la liga)  ·  SPORTALYZE",
+             size=8, ha="center", color="#484f58")
+
+    plt.tight_layout(pad=2.0)
     buf = io.BytesIO()
     plt.savefig(buf, format="png", dpi=150, bbox_inches="tight",
-                facecolor=VIZ_COLORS["bg"], transparent=False)
+                facecolor=bg, transparent=False)
     plt.close(fig)
     buf.seek(0)
     return f"data:image/png;base64,{base64.b64encode(buf.read()).decode()}"

@@ -470,17 +470,19 @@ async def get_custom_shotmap(
         simulated_shots = []
         # Distribute shots realistically across penalty area
         # StatsBomb coordinates: pitch is 120x80, half is 60-120 x 0-80
+        # StatsBomb coordinates: pitch 120x80, attacking half x=60-120, y=0-80
         shot_zones = [
             # (x_center, y_center, x_std, y_std, weight)
-            (108, 40, 4, 6, 0.35),   # Centre penalty area
-            (105, 30, 5, 5, 0.15),   # Left side
-            (105, 50, 5, 5, 0.15),   # Right side
-            (98, 40, 6, 8, 0.20),    # Edge of box
-            (88, 40, 8, 12, 0.15),   # Long shots
+            (108, 40, 4, 8, 0.30),   # Centre 6-yard box
+            (105, 28, 4, 4, 0.15),   # Left penalty area
+            (105, 52, 4, 4, 0.15),   # Right penalty area
+            (100, 40, 5, 8, 0.20),   # Centre penalty spot area
+            (92, 40, 6, 10, 0.12),   # Edge of box centre
+            (88, 22, 5, 5, 0.04),    # Left edge
+            (88, 58, 5, 5, 0.04),    # Right edge
         ]
         for i in range(shots):
             is_goal = i < goals
-            # Pick zone by weight
             weights = [z[4] for z in shot_zones]
             total_w = sum(weights)
             r_val = random.random() * total_w
@@ -491,9 +493,9 @@ async def get_custom_shotmap(
                 if r_val <= cumw:
                     zone = z
                     break
-            x = max(80, min(119, random.gauss(zone[0], zone[2])))
+            x = max(75, min(119, random.gauss(zone[0], zone[2])))
             y = max(5, min(75, random.gauss(zone[1], zone[3])))
-            xg_val = random.uniform(0.08, 0.65) if is_goal else random.uniform(0.02, 0.25)
+            xg_val = random.uniform(0.12, 0.75) if is_goal else random.uniform(0.02, 0.30)
             simulated_shots.append({
                 "x": x, "y": y,
                 "xG": xg_val,
