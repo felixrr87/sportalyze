@@ -355,35 +355,130 @@ async def get_player_radar(
     position: str = Query(None),
 ):
     """Radar PyPizza del jugador — imagen PNG en base64"""
-    players = await get_league_players(competition_code.upper(), season)
-    target = next((p for p in players if str(p.get("player_id")) == str(player_id)), None)
-    if not target:
-        raise HTTPException(status_code=404, detail="Jugador no encontrado")
+    try:
+        players = await get_league_players(competition_code.upper(), season)
+        target = next((p for p in players if str(p.get("player_id")) == str(player_id)), None)
+        if not target:
+            raise HTTPException(status_code=404, detail="Jugador no encontrado")
+        pos = position or target.get("position", "FW")
+        from backend.viz.radar import generar_radar_pizza
+        img = generar_radar_pizza(
+            player_data=target,
+            all_players=players,
+            position=pos[:2].upper(),
+        )
+        if not img:
+            raise HTTPException(status_code=500, detail="Error generando radar")
+        return {"image": img, "player": target["name"]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
-    pos = position or target.get("position", "FW")
-    from backend.viz.radar import generar_radar_pizza
-    img = generar_radar_pizza(
-        player_data=target,
-        all_players=players,
-        position=pos[:2].upper(),
-    )
-    return {"image": img, "player": target["name"]}
+
+@app.get("/api/viz/radar-custom")
+async def get_custom_radar(
+    name: str = Query(...),
+    goals: float = Query(0),
+    assists: float = Query(0),
+    xG: float = Query(0),
+    minutes: int = Query(0),
+    rating: float = Query(80),
+    position: str = Query("FW"),
+    team: str = Query(""),
+    competition_code: str = Query("PL"),
+    season: int = Query(2024),
+):
+    """Radar PyPizza con datos directos — para jugadores locales del frontend"""
+    try:
+        player_data = {
+            "name": name, "goals": goals, "assists": assists,
+            "xG": xG, "xA": assists * 0.8, "npxG": xG * 0.95,
+            "minutes": minutes, "rating": rating, "team": team,
+            "shots": int(goals * 3.5), "key_passes": int(assists * 2),
+            "xGChain": xG * 1.3, "xGBuildup": xG * 0.5,
+            "position": position,
+        }
+        # Get league players for percentile comparison
+        try:
+            all_players = await get_league_players(competition_code.upper(), season)
+        except:
+            all_players = [player_data]
+
+        from backend.viz.radar import generar_radar_pizza
+        img = generar_radar_pizza(
+            player_data=player_data,
+            all_players=all_players,
+            position=position[:2].upper(),
+            titulo_principal=name,
+            titulo_secundario=f"{team} · {position} · Temporada {season}/{str(season+1)[-2:]}",
+        )
+        if not img:
+            raise HTTPException(status_code=500, detail="Error generando radar")
+        return {"image": img, "player": name}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
 @app.get("/api/viz/shotmap/{player_id}")
 async def get_shotmap(player_id: str, season_filter: str = Query(None)):
-    """Shot map del jugador — imagen PNG en base64"""
-    shots = await get_player_shots(player_id)
-    if season_filter:
-        shots = [s for s in shots if s.get("season") == season_filter]
+    """Shot map del jugador desde Understat — imagen PNG en base64"""
+    try:
+        shots = await get_player_shots(player_id)
+        if season_filter:
+            shots = [s for s in shots if s.get("season") == season_filter]
+        if not shots:
+            raise HTTPException(status_code=404, detail="Sin datos de disparos")
+        player_name = shots[0].get("player", "Jugador") if shots else "Jugador"
+        from backend.viz.shotmap import generar_shotmap
+        img = generar_shotmap(shots, title=f"Shot Map — {player_name}")
+        return {"image": img, "total_shots": len(shots)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
-    if not shots:
-        raise HTTPException(status_code=404, detail="Sin datos de disparos")
 
-    player_name = shots[0].get("player", "Jugador") if shots else "Jugador"
-    from backend.viz.shotmap import generar_shotmap
-    img = generar_shotmap(shots, title=f"Shot Map — {player_name}")
-    return {"image": img, "total_shots": len(shots)}
+@app.get("/api/viz/shotmap-custom")
+async def get_custom_shotmap(
+    player_name: str = Query("Jugador"),
+    goals: int = Query(10),
+    shots: int = Query(50),
+    xG: float = Query(8.5),
+    team_color: str = Query("0ea5e9"),
+):
+    """Shot map simulado — cuando no hay datos de Understat"""
+    try:
+        import random
+        random.seed(hash(player_name) % 1000)
+        # Generate realistic shot positions
+        simulated_shots = []
+        for i in range(shots):
+            is_goal = i < goals
+            # Shots concentrated around penalty area
+            x = random.gauss(88, 8)
+            y = random.gauss(34, 12)
+            x = max(60, min(100, x))
+            y = max(15, min(85, y))
+            simulated_shots.append({
+                "x": x, "y": y,
+                "xG": random.uniform(0.05, 0.6) if is_goal else random.uniform(0.02, 0.3),
+                "result": "Goal" if is_goal else random.choice(["SavedShot","MissedShots","BlockedShot"]),
+                "player": player_name,
+                "situation": random.choice(["OpenPlay","SetPiece","FromCorner"]),
+                "shot_type": random.choice(["RightFoot","LeftFoot","Head"]),
+            })
+        from backend.viz.shotmap import generar_shotmap
+        img = generar_shotmap(
+            simulated_shots,
+            title=f"Shot Map — {player_name}",
+            team_color=f"#{team_color}",
+        )
+        return {"image": img, "total_shots": shots, "simulated": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
 # ════════════════════════════════════════════════════════

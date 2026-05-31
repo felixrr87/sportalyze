@@ -24,6 +24,7 @@ understatapi>=0.7.0
 
 # Visualizaciones
 matplotlib>=3.8.0
+mplsoccer>=1.3.0
 Pillow>=10.0.0
 
 # Cache y DB
