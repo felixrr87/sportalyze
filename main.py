@@ -405,17 +405,30 @@ async def get_custom_radar(
         except:
             all_players = [player_data]
 
-        from backend.viz.radar import generar_radar_pizza
-        img = generar_radar_pizza(
-            player_data=player_data,
-            all_players=all_players,
-            position=position[:2].upper(),
-            titulo_principal=name,
-            titulo_secundario=f"{team} · {position} · Temporada {season}/{str(season+1)[-2:]}",
-        )
+        from backend.viz.radar import generar_radar_pizza, generar_radar_simple
+        img = None
+        # Try PyPizza first, fallback to simple radar
+        try:
+            img = generar_radar_pizza(
+                player_data=player_data,
+                all_players=all_players,
+                position=position[:2].upper(),
+                titulo_principal=name,
+                titulo_secundario=f"{team} · {position} · Temporada {season}/{str(season+1)[-2:]}",
+            )
+        except Exception as pizza_err:
+            logger.warning(f"PyPizza failed ({pizza_err}), using simple radar")
+        
+        if not img:
+            img = generar_radar_simple(
+                player_data=player_data,
+                all_players=all_players,
+                position=position[:2].upper(),
+            )
+        
         if not img:
             raise HTTPException(status_code=500, detail="Error generando radar")
-        return {"image": img, "player": name}
+        return {"image": img, "player": name, "type": "radar"}
     except HTTPException:
         raise
     except Exception as e:
