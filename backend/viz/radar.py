@@ -242,7 +242,7 @@ def generar_radar_simple(
     ax.set_yticklabels(["25","50","75","100"], color=VIZ_COLORS["text_dim"], size=8)
     ax.set_xticks(angles[:-1])
     ax.set_xticklabels(labels, color="#FFFFFF", size=11)
-    ax.grid(color="rgba(255,255,255,0.1)", linewidth=0.5)
+    ax.grid(color="#1a2a3a", linewidth=0.5)
     ax.spines["polar"].set_visible(False)
 
     score_color = VIZ_COLORS["electric"]
