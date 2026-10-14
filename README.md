@@ -43,8 +43,8 @@ API Docs: **http://localhost:8000/docs**
 1. Sube el proyecto a GitHub
 2. Ve a [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub**
 3. Selecciona tu repositorio
-4. En **Variables** añade: `FOOTBALL_API_KEY=18f8f363554247f69bba9b7a9d049da8`
-5. Railway despliega automáticamente — en 2 minutos tienes URL pública
+4. En **Variables** añade: `FOOTBALL_API_KEY=tu_clave_de_football-data.org`
+   5. Railway despliega automáticamente — en 2 minutos tienes URL pública
 
 ---
 
