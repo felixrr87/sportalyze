@@ -1,0 +1,500 @@
+<title>Gáname</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Marcador de estadio de noche: un tablero oscuro, el campo como única
+   superficie luminosa, y el oro reservado para el veredicto. */
+:root{
+  color-scheme: dark;
+  --bg:#080D18; --panel:#111A2B; --panel2:#19243A; --borde:#25334C;
+  --ink:#EAEEF5; --dim:#8D99AF; --tenue:#5B687E;
+  --oro:#E3B341; --cian:#35BFD0; --rojo:#FF5668; --verde:#3FD99A;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:var(--body); font-size:16px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.env{max-width:760px; margin:0 auto; padding-inline:20px; padding-block:40px 72px}
+h1,h2,h3{font-family:var(--display); font-weight:700; line-height:.95;
+  text-wrap:balance; margin:0; letter-spacing:.005em}
+h1{font-size:clamp(68px,19vw,124px); text-transform:uppercase}
+h2{font-size:clamp(30px,7vw,42px); text-transform:uppercase}
+h3{font-size:20px; text-transform:uppercase; letter-spacing:.04em}
+p{margin:0}
+.ceja{font-family:var(--mono); font-size:11.5px; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--cian)}
+.entradilla{font-size:19px; color:var(--dim); max-width:46ch}
+.entradilla b{color:var(--ink); font-weight:600}
+.num{font-variant-numeric:tabular-nums}
+hr{border:0; border-top:1px solid var(--borde); margin:0}
+
+/* ── el juego ───────────────────────────────────────────── */
+.juego{margin-top:34px; background:var(--panel); border:1px solid var(--borde);
+  border-radius:14px; padding:20px 18px 22px}
+.barra{display:flex; align-items:center; justify-content:space-between; gap:14px;
+  margin-bottom:16px}
+.cuenta{font-family:var(--mono); font-size:11.5px; letter-spacing:.1em;
+  color:var(--dim); text-transform:uppercase; white-space:nowrap}
+.puntos{display:flex; gap:4px; flex-wrap:nowrap; min-width:0}
+.pt{width:10px; height:10px; flex:0 0 auto; border-radius:50%; background:var(--panel2);
+  border:1px solid var(--borde)}
+.pt.bien{background:var(--verde); border-color:var(--verde)}
+.pt.mal{background:var(--rojo); border-color:var(--rojo)}
+.pt.ahora{box-shadow:0 0 0 3px rgba(53,191,208,.25); border-color:var(--cian)}
+
+.pregunta{font-family:var(--display); font-size:26px; text-transform:uppercase;
+  text-align:center; margin-bottom:14px; letter-spacing:.01em}
+.par{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.tiro{background:var(--panel2); border:2px solid var(--borde); border-radius:11px;
+  padding:9px 9px 11px; cursor:pointer; text-align:left; color:inherit;
+  font:inherit; transition:border-color .15s, transform .1s; min-width:0}
+.tiro:hover:not(:disabled){border-color:var(--cian)}
+.tiro:active:not(:disabled){transform:scale(.985)}
+.tiro:disabled{cursor:default}
+.tiro:focus-visible{outline:2px solid var(--cian); outline-offset:2px}
+.tiro.gol{border-color:var(--verde)}
+.tiro.fallo{border-color:var(--rojo); opacity:.72}
+.tiro .eti{font-family:var(--mono); font-size:10.5px; letter-spacing:.14em;
+  color:var(--tenue); text-transform:uppercase; display:block; margin-bottom:6px}
+.tiro svg{display:block; width:100%; height:auto; max-width:100%}
+.ficha{margin-top:8px; font-family:var(--mono); font-size:11.5px; color:var(--dim);
+  display:flex; justify-content:space-between; gap:6px}
+.veredicto{margin-top:9px; font-family:var(--display); font-size:21px;
+  text-transform:uppercase; letter-spacing:.02em}
+.veredicto.gol{color:var(--verde)} .veredicto.fallo{color:var(--rojo)}
+.modelop{font-family:var(--mono); font-size:12px; color:var(--tenue); margin-top:2px}
+
+.tras{margin-top:16px; display:flex; flex-direction:column; gap:12px}
+.dice{background:var(--panel2); border-left:3px solid var(--oro);
+  border-radius:0 8px 8px 0; padding:11px 14px; font-size:15px; color:var(--dim)}
+.dice b{color:var(--ink); font-weight:600}
+.btn{font-family:var(--display); font-size:21px; text-transform:uppercase;
+  letter-spacing:.06em; background:var(--oro); color:#10151F; border:0;
+  border-radius:9px; padding:13px 22px; cursor:pointer; width:100%}
+.btn:hover{filter:brightness(1.08)} .btn:focus-visible{outline:2px solid var(--cian); outline-offset:3px}
+.btn.sec{background:transparent; color:var(--dim); border:1px solid var(--borde)}
+
+/* ── resultado ──────────────────────────────────────────── */
+.marcador{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:18px 0}
+.celda{background:var(--panel2); border:1px solid var(--borde); border-radius:10px;
+  padding:14px 10px; text-align:center}
+.celda.tu{border-color:var(--oro)}
+.celda .q{font-family:var(--mono); font-size:10.5px; letter-spacing:.12em;
+  color:var(--tenue); text-transform:uppercase}
+.celda .v{font-family:var(--display); font-size:46px; line-height:1; margin-top:5px}
+.celda.tu .v{color:var(--oro)}
+
+/* ── el mapa ────────────────────────────────────────────── */
+.mapa{position:relative; background:#0B1220; border:1px solid var(--borde);
+  border-radius:12px; overflow:hidden; touch-action:manipulation}
+.mapa canvas,.mapa svg{display:block; width:100%; height:auto}
+.mapa svg{position:absolute; inset:0}
+.lectura{display:grid; grid-template-columns:repeat(4,1fr); gap:1px;
+  background:var(--borde); border:1px solid var(--borde); border-top:0;
+  border-radius:0 0 12px 12px; overflow:hidden; margin-top:-1px}
+.lectura div{background:var(--panel); padding:11px 8px; text-align:center}
+.lectura .q{font-family:var(--mono); font-size:10px; letter-spacing:.1em;
+  color:var(--tenue); text-transform:uppercase}
+.lectura .v{font-family:var(--display); font-size:27px; line-height:1.1; margin-top:3px}
+.leyenda{display:flex; align-items:center; gap:9px; margin-top:11px;
+  font-family:var(--mono); font-size:11px; color:var(--tenue)}
+.rampa{flex:1; height:8px; border-radius:4px; min-width:0;
+  background:linear-gradient(90deg,#16304d,#1d6f8a,#35bfd0,#e3b341,#fff2cf)}
+
+/* ── tabla de calibración ───────────────────────────────── */
+.envtab{overflow-x:auto; margin-top:16px}
+table{border-collapse:collapse; width:100%; font-family:var(--mono);
+  font-size:13px; min-width:340px}
+th,td{padding:8px 10px; text-align:right; border-bottom:1px solid var(--borde)}
+th{color:var(--tenue); font-weight:400; font-size:10.5px; letter-spacing:.1em;
+  text-transform:uppercase; white-space:nowrap}
+td:first-child,th:first-child{text-align:left}
+.dif{color:var(--verde)}
+
+.sec{margin-top:60px; display:flex; flex-direction:column; gap:16px}
+.nota{font-size:15px; color:var(--dim)}
+.nota b{color:var(--ink); font-weight:600}
+.lim{display:flex; flex-direction:column; gap:12px; margin-top:4px}
+.lim li{list-style:none; padding-left:20px; position:relative; color:var(--dim); font-size:15px}
+.lim li::before{content:"—"; position:absolute; left:0; color:var(--rojo)}
+.pie{margin-top:64px; padding-top:22px; border-top:1px solid var(--borde);
+  font-family:var(--mono); font-size:12.5px; color:var(--tenue); line-height:1.9}
+.pie a{color:var(--cian); text-decoration:none; border-bottom:1px solid rgba(53,191,208,.35)}
+.pie a:hover{color:var(--ink)}
+@media (max-width:420px){
+  .pregunta{font-size:22px}
+  .par{gap:9px}
+  .celda .v{font-size:38px}
+  .lectura{grid-template-columns:repeat(2,1fr)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+
+<div class="env">
+
+  <p class="ceja">Sportalyze · 29.224 tiros · datos abiertos</p>
+  <h1>Gáname</h1>
+  <p class="entradilla" style="margin-top:14px">
+    Dos tiros reales. <b>Uno acabó en gol y el otro no.</b> Elige cuál entró.
+    Diez veces. Mi modelo acierta siete.
+  </p>
+
+  <!-- ── EL JUEGO ──────────────────────────────────────── -->
+  <section class="juego" id="juego" aria-live="polite">
+    <div class="barra">
+      <span class="cuenta" id="cuenta">Pareja 1 de 10</span>
+      <div class="puntos" id="puntos"></div>
+    </div>
+    <p class="pregunta" id="pregunta">¿Cuál de los dos acabó en gol?</p>
+    <div class="par" id="par"></div>
+    <div class="tras" id="tras" hidden>
+      <div class="dice" id="dice"></div>
+      <button class="btn" id="seguir">Siguiente</button>
+    </div>
+  </section>
+
+  <!-- ── RESULTADO ─────────────────────────────────────── -->
+  <section class="sec" id="resultado" hidden>
+    <hr>
+    <h2 id="titulo-res">El marcador</h2>
+    <div class="marcador">
+      <div class="celda tu"><div class="q">Tú</div><div class="v num" id="r-tu">0</div></div>
+      <div class="celda"><div class="q">El modelo</div><div class="v num" id="r-mod">0</div></div>
+      <div class="celda"><div class="q">A cara o cruz</div><div class="v num">5</div></div>
+    </div>
+    <p class="nota" id="texto-res"></p>
+    <p class="nota">
+      Sobre <b class="num" id="n-parejas"></b> de parejas posibles —todos los goles
+      contra todos los fallos— el modelo acierta el <b class="num" id="auc"></b>.
+      Ese número tiene nombre, <b>AUC</b>, y sirve para comparar este modelo con
+      cualquier otro del mundo. Diez parejas no miden nada: tu resultado puede
+      bailar tres puntos sólo por el sorteo.
+    </p>
+    <button class="btn sec" id="otra">Jugar otra vez</button>
+  </section>
+
+  <!-- ── EL MAPA ───────────────────────────────────────── -->
+  <section class="sec">
+    <hr>
+    <p class="ceja">El modelo, abierto</p>
+    <h2>Toca el campo</h2>
+    <p class="nota">
+      Esto no es un dibujo: es el modelo contestando. Toca cualquier punto y te
+      dice qué probabilidad de gol tiene un tiro desde ahí y cuántos tiros reales
+      hay detrás de esa respuesta. Donde está oscuro <b>no hay con qué medir</b>,
+      y por eso no se pinta nada.
+    </p>
+    <div>
+      <div class="mapa" id="mapa">
+        <canvas id="lienzo" width="680" height="390"></canvas>
+        <svg viewBox="0 0 68 39" id="lineas" aria-hidden="true"></svg>
+      </div>
+      <div class="lectura">
+        <div><div class="q">Probabilidad</div><div class="v num" id="l-p" style="color:var(--oro)">—</div></div>
+        <div><div class="q">Tiros detrás</div><div class="v num" id="l-n">—</div></div>
+        <div><div class="q">Distancia</div><div class="v num" id="l-d">—</div></div>
+        <div><div class="q">Portería a la vista</div><div class="v num" id="l-a">—</div></div>
+      </div>
+      <div class="leyenda"><span>0 %</span><span class="rampa"></span><span id="leytope">52 %</span></div>
+    </div>
+  </section>
+
+  <!-- ── LA PRUEBA ─────────────────────────────────────── -->
+  <section class="sec">
+    <hr>
+    <p class="ceja">La prueba</p>
+    <h2>Cuando dice 20 %, entra el 20 %</h2>
+    <p class="nota">
+      Un modelo puede ordenar bien los tiros y aun así mentir en el número. Esto
+      es lo que hay que enseñar y casi nunca se enseña: parto los 29.224 tiros en
+      diez grupos según lo que el modelo les daba, y comparo con lo que pasó de
+      verdad. La peor fila se desvía <b class="num" id="peor"></b>.
+    </p>
+    <div class="envtab">
+      <table>
+        <thead><tr><th>Grupo</th><th>Dice</th><th>Pasa</th><th>Diferencia</th><th>Tiros</th></tr></thead>
+        <tbody id="tcal"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── LÍMITES ───────────────────────────────────────── -->
+  <section class="sec">
+    <hr>
+    <p class="ceja">Lo que no sabe</p>
+    <h2>Dónde se rompe</h2>
+    <ul class="lim">
+      <li>Sólo sabe <b>desde dónde</b> se tiró. No sabe si fue con la cabeza, si
+        venía de un contraataque, ni si había un defensa delante. Por eso acierta
+        el 73,9 % de las parejas y no el 85 %.</li>
+      <li>No distingue a Messi de un central. El mismo punto da el mismo número
+        para los dos, y eso es falso.</li>
+      <li>Penaltis fuera. Meterlos infla el modelo con un tiro que no se parece a
+        ningún otro.</li>
+      <li>Donde el campo está oscuro hay menos de 40 tiros equivalentes detrás.
+        Podría pintarlo igual y quedaría más bonito. Sería inventado.</li>
+    </ul>
+    <p class="nota">
+      El código, los datos y las comprobaciones están en la carpeta de esta pieza.
+      Si quieres el modelo, se pide y se pasa.
+    </p>
+  </section>
+
+  <div class="pie">
+    Félix Ramírez · Sportalyze<br>
+    Datos: StatsBomb open data · 1.680 partidos · penaltis excluidos<br>
+    <a href="https://www.linkedin.com/in/felix-ramirez-tech" target="_blank" rel="noopener">linkedin.com/in/felix-ramirez-tech</a>
+  </div>
+</div>
+
+<script>
+const D = __DATOS__;
+
+/* ── geometría real del campo ─────────────────────────────
+   105 x 68 m. La vista es el último tercio, con la portería arriba.
+   pantalla_x = y   (0..68)      pantalla_y = 105 - x   (0..39)      */
+const GX = 105, GY = 34, POSTE = 7.32 / 2, VX = 68, VY = 39;
+const px = t => t.y, py = t => 105 - t.x;
+
+function distancia(x, y){ return Math.hypot(GX - x, GY - y); }
+function angulo(x, y){                      // grados de portería a la vista
+  const dx = Math.abs(GX - x), dy = Math.abs(y - GY);
+  const v = Math.atan2(7.32 * dx, dx*dx + dy*dy - POSTE*POSTE);
+  return (v < 0 ? v + Math.PI : v) * 180 / Math.PI;
+}
+
+/* las líneas del campo, a escala, en el marco de 68 x 39 */
+function lineas(){
+  const L = c => `stroke="${c}" fill="none" vector-effect="non-scaling-stroke"`;
+  const t = 'stroke-width="1.1"', f = 'stroke-width="2.4"';
+  let s = '';
+  s += `<line x1="0" y1="0.1" x2="68" y2="0.1" ${L('#2E4160')} ${t}/>`;
+  s += `<rect x="13.84" y="0" width="40.32" height="16.5" ${L('#2E4160')} ${t}/>`;
+  s += `<rect x="24.84" y="0" width="18.32" height="5.5" ${L('#2E4160')} ${t}/>`;
+  s += `<circle cx="34" cy="11" r="0.35" fill="#2E4160"/>`;
+  // arco del área: sólo el trozo que queda fuera
+  const a = Math.acos((16.5 - 11) / 9.15);
+  const x1 = 34 - 9.15*Math.sin(a), x2 = 34 + 9.15*Math.sin(a);
+  s += `<path d="M ${x1.toFixed(2)} 16.5 A 9.15 9.15 0 0 0 ${x2.toFixed(2)} 16.5" ${L('#2E4160')} ${t}/>`;
+  s += `<line x1="${34-POSTE}" y1="0.1" x2="${34+POSTE}" y2="0.1" ${L('#7C8CA6')} ${f}/>`;
+  return s;
+}
+
+/* una tarjeta de tiro */
+function campito(t, marca){
+  const cx = px(t).toFixed(2), cy = py(t).toFixed(2);
+  return `<svg viewBox="0 0 ${VX} ${VY}" role="img" aria-label="tiro a ${t.d} metros">
+    <rect width="${VX}" height="${VY}" fill="#0B1220"/>${lineas()}
+    <circle cx="${cx}" cy="${cy}" r="2.6" fill="${marca}" opacity=".16"/>
+    <circle cx="${cx}" cy="${cy}" r="1.25" fill="${marca}"/>
+  </svg>`;
+}
+
+/* ── el juego ─────────────────────────────────────────── */
+const P = D.parejas;
+let i = 0, aciertos = 0, hist = [], bloqueado = false;
+const $ = id => document.getElementById(id);
+
+function puntos(){
+  $('puntos').innerHTML = P.map((_, k) =>
+    `<span class="pt ${hist[k] === true ? 'bien' : hist[k] === false ? 'mal' : ''}${k === i && hist[k] === undefined ? ' ahora' : ''}"></span>`
+  ).join('');
+}
+
+function pinta(){
+  bloqueado = false;
+  $('cuenta').textContent = `Pareja ${i + 1} de 10`;
+  $('pregunta').textContent = '¿Cuál de los dos acabó en gol?';
+  $('tras').hidden = true;
+  puntos();
+  $('par').innerHTML = P[i].map((t, k) => `
+    <button class="tiro" data-k="${k}">
+      <span class="eti">${k === 0 ? 'Izquierda' : 'Derecha'}</span>
+      ${campito(t, '#35BFD0')}
+      <span class="ficha"><span>${t.d.toFixed(1).replace('.', ',')} m</span><span>${Math.round(t.ang)}°</span></span>
+    </button>`).join('');
+  $('par').querySelectorAll('.tiro').forEach(b =>
+    b.addEventListener('click', () => elegir(+b.dataset.k)));
+}
+
+function elegir(k){
+  if (bloqueado) return;
+  bloqueado = true;
+  const par = P[i], bien = par[k].gol;
+  hist[i] = bien;
+  if (bien) aciertos++;
+
+  $('par').innerHTML = par.map((t, j) => `
+    <div class="tiro ${t.gol ? 'gol' : 'fallo'}" aria-disabled="true">
+      <span class="eti">${j === 0 ? 'Izquierda' : 'Derecha'}${j === k ? ' · tu elección' : ''}</span>
+      ${campito(t, t.gol ? '#3FD99A' : '#FF5668')}
+      <span class="ficha"><span>${t.d.toFixed(1).replace('.', ',')} m</span><span>${Math.round(t.ang)}°</span></span>
+      <div class="veredicto ${t.gol ? 'gol' : 'fallo'}">${t.gol ? 'Gol' : 'No entró'}</div>
+      <div class="modelop">el modelo le daba ${(t.p * 100).toFixed(1).replace('.', ',')} %</div>
+    </div>`).join('');
+
+  const pg = par.find(t => t.gol).p, pf = par.find(t => !t.gol).p;
+  const modOk = pg > pf;
+  const d = Math.abs(pg - pf) * 100;
+  let txt;
+  if (d < 1.5) txt = `<b>Esta era imposible.</b> El modelo les daba casi lo mismo
+      (${d.toFixed(1).replace('.', ',')} puntos de diferencia), así que aquí también
+      estaba tirando una moneda al aire.`;
+  else if (bien && !modOk) txt = `<b>Le has ganado al modelo.</b> Él habría elegido el otro.`;
+  else if (!bien && !modOk) txt = `El modelo también se equivocó en ésta. Le daba más
+      probabilidad al que no entró.`;
+  else if (bien) txt = `<b>Bien.</b> El modelo coincide contigo: ${d.toFixed(0)} puntos
+      de diferencia entre los dos.`;
+  else txt = `El modelo sí acertó ésta: le daba ${d.toFixed(0)} puntos más al que entró.`;
+  $('dice').innerHTML = txt;
+  $('pregunta').textContent = bien ? 'Acertaste' : 'Fallaste';
+  $('seguir').textContent = i === P.length - 1 ? 'Ver el marcador' : 'Siguiente';
+  $('tras').hidden = false;
+  puntos();
+  guarda();
+}
+
+$('seguir').addEventListener('click', () => {
+  i++;
+  if (i < P.length){ pinta(); guarda(); }
+  else final();
+});
+
+function final(){
+  $('juego').hidden = true;
+  $('resultado').hidden = false;
+  $('r-tu').textContent = aciertos;
+  $('r-mod').textContent = D.aciertos_modelo;
+  const t = $('texto-res');
+  if (aciertos > D.aciertos_modelo)
+    t.innerHTML = `<b>Le has ganado.</b> Y no es ninguna humillación para el modelo:
+      él sólo sabe desde dónde se tiró, y tú puedes ver la misma pantalla y pensar.
+      Con diez parejas ganar es perfectamente posible por azar.`;
+  else if (aciertos === D.aciertos_modelo)
+    t.innerHTML = `<b>Empate.</b> Es el resultado más común, y dice algo incómodo:
+      casi todo lo que decide si un tiro entra no se ve en el sitio desde el que
+      se tira.`;
+  else
+    t.innerHTML = `<b>Esta vez gana el modelo</b>, aunque lo único que sabe es desde
+      qué punto del campo salió el tiro. Si te ha costado, es por la razón buena:
+      la mayoría de los tiros de fútbol son mucho menos probables de lo que
+      parecen desde el sofá.`;
+  $('resultado').scrollIntoView({ behavior:'smooth', block:'start' });
+  guarda();
+}
+
+$('otra').addEventListener('click', () => {
+  i = 0; aciertos = 0; hist = [];
+  $('resultado').hidden = true; $('juego').hidden = false;
+  pinta(); guarda();
+  $('juego').scrollIntoView({ behavior:'smooth', block:'center' });
+});
+
+/* ── el mapa ──────────────────────────────────────────── */
+const R = D.rejilla;
+const TOPE = (() => { let m = 0; for (const f of R.p) for (const v of f) if (v !== null && v > m) m = v; return m; })();
+$('leytope').textContent = Math.round(TOPE * 100) + ' %';
+$('lineas').innerHTML = lineas();
+
+function color(p){
+  const paradas = [[0,22,48,80],[.08,29,111,138],[.20,53,191,208],[.35,227,179,65],[.52,255,242,207]];
+  const u = Math.min(p, .52);
+  for (let k = 0; k < paradas.length - 1; k++){
+    const [a, ar, ag, ab] = paradas[k], [b, br, bg, bb] = paradas[k+1];
+    if (u <= b){ const f = (u - a) / (b - a);
+      return [ar + (br-ar)*f, ag + (bg-ag)*f, ab + (bb-ab)*f]; }
+  }
+  return [255, 242, 207];
+}
+
+(function pintaMapa(){
+  const off = document.createElement('canvas');
+  off.width = R.ny; off.height = R.nx;              // ancho = eje y del campo
+  const oc = off.getContext('2d'), img = oc.createImageData(R.ny, R.nx);
+  for (let fila = 0; fila < R.nx; fila++){
+    const j = R.nx - 1 - fila;                      // fila 0 = portería
+    for (let col = 0; col < R.ny; col++){
+      const v = R.p[col][j], o = (fila * R.ny + col) * 4;
+      if (v === null){ img.data[o+3] = 0; continue; }
+      const [r, g, b] = color(v);
+      img.data[o] = r; img.data[o+1] = g; img.data[o+2] = b;
+      img.data[o+3] = 232;
+    }
+  }
+  oc.putImageData(img, 0, 0);
+  const c = $('lienzo'), ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.clearRect(0, 0, c.width, c.height);
+  ctx.drawImage(off, 0, 0, c.width, c.height);
+})();
+
+function lee(ev){
+  const r = $('mapa').getBoundingClientRect();
+  const p = ev.touches ? ev.touches[0] : ev;
+  const sx = (p.clientX - r.left) / r.width * VX;       // = y del campo
+  const sy = (p.clientY - r.top) / r.height * VY;       // = 105 - x
+  const cy = Math.min(Math.max(sx, 0), 68);
+  const cx = Math.min(Math.max(105 - sy, 66), 105);
+  const j = Math.round((cx - R.x0) / R.paso), col = Math.round((cy - R.y0) / R.paso);
+  const v = (R.p[col] || [])[j], n = (R.n[col] || [])[j];
+  $('l-d').textContent = distancia(cx, cy).toFixed(1).replace('.', ',') + ' m';
+  $('l-a').textContent = Math.round(angulo(cx, cy)) + '°';
+  if (v === undefined || v === null){
+    $('l-p').textContent = '—'; $('l-n').textContent = n === undefined ? '—' : n;
+    $('l-p').title = 'sin datos suficientes';
+  } else {
+    $('l-p').textContent = (v * 100).toFixed(1).replace('.', ',') + ' %';
+    $('l-n').textContent = n.toLocaleString('es-ES');
+  }
+  marca(sx, sy);
+}
+function marca(sx, sy){
+  $('lineas').innerHTML = lineas() +
+    `<circle cx="${sx.toFixed(2)}" cy="${sy.toFixed(2)}" r="2.2" fill="none"
+       stroke="#fff" stroke-width="0.9" vector-effect="non-scaling-stroke"/>
+     <circle cx="${sx.toFixed(2)}" cy="${sy.toFixed(2)}" r="0.5" fill="#fff"/>`;
+}
+['click', 'touchstart', 'mousemove'].forEach(e =>
+  $('mapa').addEventListener(e, ev => { if (e !== 'mousemove' || ev.buttons || window.matchMedia('(hover:hover)').matches) lee(ev); },
+    { passive: true }));
+
+/* ── cifras del texto ─────────────────────────────────── */
+$('auc').textContent = (D.auc * 100).toFixed(1).replace('.', ',') + ' %';
+$('n-parejas').textContent =
+  (D.goles_totales * (D.tiros_totales - D.goles_totales)).toLocaleString('es-ES');
+const peor = Math.max(...D.calibracion.map(c => Math.abs(c.dice - c.pasa)));
+$('peor').textContent = peor.toFixed(1).replace('.', ',') + ' puntos';
+$('tcal').innerHTML = D.calibracion.map((c, k) => {
+  const d = (c.pasa - c.dice);
+  return `<tr><td>${k + 1}</td>
+    <td>${c.dice.toFixed(1).replace('.', ',')} %</td>
+    <td>${c.pasa.toFixed(1).replace('.', ',')} %</td>
+    <td class="dif">${d >= 0 ? '+' : '−'}${Math.abs(d).toFixed(1).replace('.', ',')}</td>
+    <td>${c.n.toLocaleString('es-ES')}</td></tr>`;
+}).join('');
+
+/* ── arranque, con estado que sobrevive a una republicación ── */
+function guarda(){ try{ window.claude?.hot?.snapshot({ i, aciertos, hist }); }catch(e){} }
+function arranca(s){
+  if (s && Array.isArray(s.hist) && s.i < P.length){
+    i = s.i | 0; aciertos = s.aciertos | 0; hist = s.hist;
+  }
+  pinta();
+  lee({ clientX: 0, clientY: 0, __semilla: 1 });   // deja la lectura en blanco
+  $('l-p').textContent = '—'; $('l-n').textContent = '—';
+  $('l-d').textContent = '—'; $('l-a').textContent = '—';
+  $('lineas').innerHTML = lineas();
+}
+try{
+  window.claude?.hot?.ready
+    ? window.claude.hot.ready(d => arranca(d))
+    : arranca(window.claude?.hot?.data);
+}catch(e){ arranca(); }
+</script>
