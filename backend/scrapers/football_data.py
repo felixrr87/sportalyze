@@ -8,13 +8,104 @@
 import httpx
 import asyncio
 import logging
+from datetime import date
 from cachetools import TTLCache
 from backend.config import FOOTBALL_API_KEY, FOOTBALL_API_BASE, CACHE_TTL, LEAGUES
 
 logger = logging.getLogger(__name__)
 
-# Caché en memoria — evita repetir peticiones
-_cache = TTLCache(maxsize=200, ttl=CACHE_TTL)
+# ── CACHÉ, Y POR QUÉ IMPORTA TANTO ──────────────────────────────
+#
+# El plan gratuito de football-data.org son DIEZ peticiones por
+# minuto. Y abrir la ficha de un equipo gasta DOS (el perfil y sus
+# últimos partidos). O sea: cinco equipos y se acabó el minuto.
+#
+# Eso pasaba de verdad: pinchabas seis equipos seguidos y a partir del
+# quinto dejaban de cargar, sin más explicación.
+#
+# Con una caché única de una hora para todo no basta, porque cada
+# equipo nuevo es una petición nueva. La solución es guardar cada cosa
+# el tiempo que de verdad le corresponde:
+#
+#   la plantilla de un equipo    cambia en el mercado de fichajes
+#   la clasificación             cambia cuando acaba una jornada
+#   los partidos de hoy          cambian durante el partido
+#
+# Guardar la plantilla del Arsenal una hora y volver a pedirla es
+# tirar una petición de las diez. Guardarla un día no.
+_VIDAS = (
+    ("/teams/", "/matches", 1800),      # partidos de un equipo: 30 min
+    ("/teams/", None, 86400),           # perfil y plantilla: 1 día
+    ("/competitions/", "/standings", 600),   # clasificación: 10 min
+    ("/competitions/", "/scorers", 3600),    # goleadores: 1 hora
+    ("/matches", None, 300),            # partidos de hoy: 5 min
+)
+
+
+def vida(endpoint: str) -> int:
+    """Cuántos segundos vale la pena guardar esta respuesta."""
+    for empieza, contiene, segundos in _VIDAS:
+        if endpoint.startswith(empieza) and (contiene is None or contiene in endpoint):
+            return segundos
+    return CACHE_TTL
+
+
+# Una caché por duración, porque TTLCache sólo admite una vida por
+# instancia. Son cuatro o cinco, no hace falta nada más complicado.
+_caches = {}
+
+
+def _caja(endpoint: str) -> TTLCache:
+    t = vida(endpoint)
+    if t not in _caches:
+        _caches[t] = TTLCache(maxsize=500, ttl=t)
+    return _caches[t]
+
+
+class LimiteAlcanzado(Exception):
+    """La API ha dicho que no por exceso de peticiones.
+
+    Tiene su propia clase para que arriba se pueda distinguir de un
+    fallo de verdad y contarle al usuario que sólo hay que esperar.
+    """
+
+
+def edad(nacimiento: str, hoy: date = None) -> int:
+    """Años cumplidos a partir de una fecha 'AAAA-MM-DD'.
+
+    Años CUMPLIDOS, no la resta de años: alguien nacido el 31 de
+    diciembre de 2000 no tiene 25 años el 1 de enero de 2025.
+    Devuelve None si no hay fecha o viene rota, para que quien use
+    esto decida qué hacer en vez de comerse un cero.
+    """
+    if not nacimiento:
+        return None
+    try:
+        a, m, d = (int(x) for x in nacimiento[:10].split("-"))
+    except (ValueError, TypeError):
+        return None
+    h = hoy or date.today()
+    años = h.year - a
+    if (h.month, h.day) < (m, d):
+        años -= 1
+    return años if 14 <= años <= 50 else None
+
+
+def resumen_edades(edades: list) -> dict:
+    """Media, extremos y cuántos han contado.
+
+    `con_fecha` NO es decoración: si de 25 jugadores sólo 11 traen
+    fecha, la media es de once y hay que poder saberlo.
+    """
+    if not edades:
+        return {"media": None, "mas_joven": None, "mas_veterano": None,
+                "con_fecha": 0}
+    return {
+        "media":        round(sum(edades) / len(edades), 1),
+        "mas_joven":    min(edades),
+        "mas_veterano": max(edades),
+        "con_fecha":    len(edades),
+    }
 
 
 class FootballDataClient:
@@ -29,10 +120,10 @@ class FootballDataClient:
 
     async def _get(self, endpoint: str) -> dict:
         """Petición GET con caché y manejo de errores"""
-        cache_key = endpoint
-        if cache_key in _cache:
-            logger.debug(f"Cache hit: {endpoint}")
-            return _cache[cache_key]
+        caja = _caja(endpoint)
+        if endpoint in caja:
+            logger.debug("Cache hit (%ds): %s", vida(endpoint), endpoint)
+            return caja[endpoint]
 
         url = f"{self.base}{endpoint}"
         try:
@@ -40,11 +131,13 @@ class FootballDataClient:
                 r = await client.get(url, headers=self.headers)
                 r.raise_for_status()
                 data = r.json()
-                _cache[cache_key] = data
+                caja[endpoint] = data
                 return data
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 429:
-                raise Exception("⏳ Límite de peticiones alcanzado (10/min). Espera un momento.")
+                raise LimiteAlcanzado(
+                    "El plan gratuito permite 10 consultas por minuto y se ha "
+                    "llegado al tope. Espera un minuto y vuelve a intentarlo.")
             elif e.response.status_code == 403:
                 raise Exception("🔑 API key inválida. Verifica tu clave en football-data.org")
             raise Exception(f"Error API {e.response.status_code}: {e.response.text[:200]}")
@@ -169,18 +262,24 @@ class FootballDataClient:
     # ── Equipos ───────────────────────────────────────────────
 
     async def get_team(self, team_id: int) -> dict:
-        """Información completa de un equipo"""
+        """Información completa de un equipo, con la edad de la plantilla."""
         data = await self._get(f"/teams/{team_id}")
         squad = []
+        edades = []
         for p in data.get("squad", []):
+            e = edad(p.get("dateOfBirth", ""))
+            if e is not None:
+                edades.append(e)
             squad.append({
                 "id":           p["id"],
                 "name":         p["name"],
                 "position":     p.get("position", "Unknown"),
                 "date_of_birth":p.get("dateOfBirth", ""),
                 "nationality":  p.get("nationality", ""),
+                "age":          e,
             })
         return {
+            "edades":      resumen_edades(edades),
             "id":          data["id"],
             "name":        data["name"],
             "short_name":  data.get("shortName", data["name"]),
