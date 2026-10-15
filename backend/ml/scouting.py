@@ -161,6 +161,38 @@ def find_similar_players(target_player: dict, all_players: list, position: str, 
     return result
 
 
+# Understat NO devuelve "FW". Devuelve cadenas como "F S", "F M S",
+# "D F M": las letras son las posiciones en las que ha jugado y la S
+# significa que además ha entrado como suplente.
+#
+# El filtro de aquí comparaba p["position"] == "FW" y coincidía con
+# CERO de los 447 jugadores de la Premier. El scouting llevaba desde
+# siempre devolviendo la lista vacía por esto.
+_LETRA_A_PUESTO = {"GK": "GK", "F": "FW", "M": "MF", "D": "DF"}
+
+
+def puesto(cadena: str) -> str:
+    """De la cadena de Understat al puesto: 'F M S' -> 'FW'.
+
+    SE QUEDA CON LA PRIMERA LETRA, que es la posición principal.
+    Comprobado contra jugadores conocidos de la Premier:
+
+        Salah   'F M'     -> FW
+        Haaland 'F'       -> FW
+        Saka    'F M S'   -> FW
+        Rice    'M S'     -> MF
+        Palmer  'M S'     -> MF
+
+    Un jugador que aparece como 'D M' se cuenta de defensa. Es
+    discutible y por eso está escrito aquí, no escondido en una línea.
+    """
+    letras = (cadena or "").upper().split()
+    for l in letras:
+        if l in _LETRA_A_PUESTO:
+            return _LETRA_A_PUESTO[l]
+    return ""
+
+
 def run_scouting_pipeline(
     players: list,
     position: str,
@@ -169,21 +201,45 @@ def run_scouting_pipeline(
     league: str = "all",
 ) -> dict:
     """
-    Pipeline completo de scouting — exactamente lo que hace tu notebook.
-    1. Filtrar por posición, edad, minutos
+    Pipeline completo de scouting.
+    1. Filtrar por posición y minutos
     2. Calcular score ML por jugador
     3. K-Means clustering
     4. Devolver resultados ordenados
+
+    SOBRE LA EDAD: Understat no da la edad de los jugadores. Antes el
+    filtro usaba 99 por defecto y descartaba a todo el mundo en
+    silencio. Ahora, si no hay edades, el filtro NO se aplica y se
+    dice en la respuesta. Ignorar un parámetro sin avisar es mentir.
     """
-    # Filtrar
-    filtered = [p for p in players
-                if p.get("position", "") == position
-                and (p.get("age", 99) or 99) <= max_age
-                and (p.get("time", 0) or 0) >= min_minutes
-                and (league == "all" or p.get("league", "") == league)]
+    avisos = []
+
+    hay_edades = any(p.get("age") for p in players)
+    if not hay_edades and max_age is not None:
+        avisos.append(
+            "La fuente no trae la edad de los jugadores, así que el "
+            "filtro de edad máxima (%d) NO se ha aplicado." % max_age)
+
+    filtered = []
+    for p in players:
+        if puesto(p.get("position", "")) != position.upper()[:2]:
+            continue
+        if hay_edades and (p.get("age") or 99) > max_age:
+            continue
+        if (p.get("time", 0) or 0) < min_minutes:
+            continue
+        if league != "all" and p.get("league", "") != league:
+            continue
+        filtered.append(p)
 
     if not filtered:
-        return {"players": [], "summary": {}, "top_prospects": []}
+        return {
+            "players": [], "summary": {}, "top_prospects": [],
+            "avisos": avisos + [
+                "Ningún jugador cumple los filtros. Revisa el puesto "
+                "(%s), los minutos mínimos (%d) o la temporada."
+                % (position, min_minutes)],
+        }
 
     # Calcular scores
     for p in filtered:
@@ -217,4 +273,5 @@ def run_scouting_pipeline(
         "players":       filtered,
         "summary":       summary,
         "top_prospects": top_prospects,
+        "avisos":        avisos,
     }
