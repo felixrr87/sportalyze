@@ -193,3 +193,84 @@ def test_ningun_valor_por_defecto_incumple_su_propio_limite():
 def test_health_responde_siempre(cliente):
     r = cliente.get("/health")
     assert r.status_code == 200 and r.json()["status"] == "ok"
+
+
+# ── 4 · el scouting: dos filtros que descartaban a todo el mundo ──
+#
+# Con Understat ya funcionando, /api/scouting SEGUÍA devolviendo
+# {"players": []} con un 200. Por dos motivos independientes:
+#
+#   1. Understat no devuelve "FW". Devuelve "F S", "F M S", "D F M".
+#      El filtro comparaba position == "FW" y coincidía con CERO de
+#      los 447 jugadores de la Premier.
+#   2. Understat no trae la edad. El filtro usaba 99 por defecto y
+#      descartaba a todos contra un máximo de 25.
+#
+# Las posiciones de aquí abajo están copiadas de una respuesta real.
+
+from backend.ml.scouting import puesto, run_scouting_pipeline  # noqa: E402
+
+POSICIONES_REALES = {
+    "F M": "FW", "F": "FW", "F S": "FW", "F M S": "FW",
+    "M": "MF", "M S": "MF",
+    "D": "DF", "D S": "DF", "D M": "DF", "D M S": "DF", "D F M": "DF",
+    "GK": "GK", "": "", "S": "",
+}
+
+
+def test_las_posiciones_de_understat_se_traducen():
+    malos = {c: puesto(c) for c, e in POSICIONES_REALES.items() if puesto(c) != e}
+    assert not malos, "posiciones mal traducidas: %r" % malos
+
+
+def test_ningun_jugador_real_vale_FW_tal_cual():
+    """El error original: comparar con 'FW' no casa con nada."""
+    assert all(c != "FW" for c in POSICIONES_REALES if c)
+
+
+def _plantilla():
+    """Jugadores con la forma real: con posición de Understat y SIN edad."""
+    return [
+        {"name": "Delantero Uno", "position": "F M", "time": 3000,
+         "goals": 20, "xG": 18.0, "assists": 5, "xA": 4.0, "shots": 90,
+         "key_passes": 40, "npg": 18, "npxG": 16.0, "xG_per90": 0.54,
+         "xA_per90": 0.12, "xGChain": 22.0, "xGBuildup": 6.0, "games": 34},
+        {"name": "Delantero Dos", "position": "F S", "time": 1200,
+         "goals": 6, "xG": 7.5, "assists": 2, "xA": 2.5, "shots": 40,
+         "key_passes": 18, "npg": 6, "npxG": 7.0, "xG_per90": 0.56,
+         "xA_per90": 0.19, "xGChain": 9.0, "xGBuildup": 3.0, "games": 25},
+        {"name": "Medio Uno", "position": "M S", "time": 2500,
+         "goals": 4, "xG": 3.5, "assists": 9, "xA": 8.0, "shots": 30,
+         "key_passes": 70, "npg": 4, "npxG": 3.5, "xG_per90": 0.13,
+         "xA_per90": 0.29, "xGChain": 14.0, "xGBuildup": 9.0, "games": 30},
+    ]
+
+
+def test_el_scouting_encuentra_delanteros():
+    """LA PRUEBA QUE IMPORTA: antes salían cero."""
+    r = run_scouting_pipeline(_plantilla(), position="FW", min_minutes=500)
+    nombres = [p["name"] for p in r["players"]]
+    assert len(nombres) == 2, "esperaba 2 delanteros y salen %d: %r" % (
+        len(nombres), nombres)
+    assert "Medio Uno" not in nombres, "se ha colado un centrocampista"
+
+
+def test_sin_edades_el_filtro_de_edad_no_borra_a_todos():
+    """Antes, max_age=25 sin dato de edad dejaba la lista vacía."""
+    r = run_scouting_pipeline(_plantilla(), position="FW", max_age=25,
+                              min_minutes=500)
+    assert len(r["players"]) == 2
+
+
+def test_y_avisa_de_que_no_ha_aplicado_la_edad():
+    """Ignorar un parámetro en silencio es mentir."""
+    r = run_scouting_pipeline(_plantilla(), position="FW", max_age=21,
+                              min_minutes=500)
+    texto = " ".join(r.get("avisos", []))
+    assert "edad" in texto.lower(), "no avisa de que se salta el filtro: %r" % r.get("avisos")
+
+
+def test_si_no_hay_nadie_lo_explica():
+    r = run_scouting_pipeline(_plantilla(), position="GK", min_minutes=500)
+    assert r["players"] == []
+    assert r.get("avisos"), "lista vacía sin explicar por qué"
