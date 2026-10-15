@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pathlib import Path
 from backend.config import PORT, ENV, LEAGUES
+from backend.errors import FuenteNoDisponible
 
 # ── Logging ───────────────────────────────────────────────
 logging.basicConfig(
@@ -192,7 +193,10 @@ async def get_league_players_stats(
     season: int = Query(2024, description="2024 = temporada 2024/25"),
     position: str = Query(None),
     min_minutes: int = Query(200, ge=0),
-    max_age: int = Query(99, ge=15, le=50),
+    # Antes: Query(99, ge=15, le=50). El valor por defecto incumplía su
+    # propio máximo, así que llamar a la ruta sin parámetros devolvía un
+    # 422 contra sus propias reglas. 50 es "sin filtro de edad" de hecho.
+    max_age: int = Query(50, ge=15, le=50),
     limit: int = Query(100, ge=10, le=500),
 ):
     """
@@ -201,7 +205,7 @@ async def get_league_players_stats(
     """
     try:
         players = await get_league_players(competition_code.upper(), season)
-    except Exception as e:
+    except FuenteNoDisponible as e:
         raise HTTPException(status_code=503, detail=str(e))
 
     # Filtros
@@ -309,7 +313,9 @@ async def run_scouting(
     """
     try:
         players = await get_league_players(competition_code.upper(), season)
-    except Exception as e:
+    except FuenteNoDisponible as e:
+        # 503, nunca 200 con la lista vacía: "no he podido mirar" no es
+        # lo mismo que "he mirado y no hay nadie".
         raise HTTPException(status_code=503, detail=str(e))
 
     result = run_scouting_pipeline(
