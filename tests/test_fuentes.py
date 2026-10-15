@@ -274,3 +274,43 @@ def test_si_no_hay_nadie_lo_explica():
     r = run_scouting_pipeline(_plantilla(), position="GK", min_minutes=500)
     assert r["players"] == []
     assert r.get("avisos"), "lista vacía sin explicar por qué"
+
+
+# ── 5 · la edad de la plantilla ──────────────────────────────────
+# football-data sí trae la fecha de nacimiento de cada jugador, así
+# que la media de edad del equipo se puede calcular. Comprobado con
+# el Arsenal: 25 jugadores, media 25,7, del 16 al 32.
+
+from datetime import date  # noqa: E402
+
+from backend.scrapers.football_data import edad, resumen_edades  # noqa: E402
+
+HOY = date(2026, 10, 16)
+
+
+def test_la_edad_son_anos_cumplidos():
+    """Restar los años a secas da un año de más casi medio año."""
+    assert edad("2000-12-31", HOY) == 25     # aún no los ha cumplido
+    assert edad("2000-10-16", HOY) == 26     # justo hoy
+    assert edad("2000-10-17", HOY) == 25     # mañana
+
+
+def test_sin_fecha_devuelve_nada_y_no_un_cero():
+    for malo in ("", None, "malo", "0000-00-00"):
+        assert edad(malo, HOY) is None
+
+
+def test_las_edades_imposibles_se_descartan():
+    assert edad("1960-01-01", HOY) is None   # 66 años
+    assert edad("2015-01-01", HOY) is None   # 11 años
+
+
+def test_el_resumen_dice_sobre_cuantos_ha_contado():
+    r = resumen_edades([20, 25, 30])
+    assert r == {"media": 25.0, "mas_joven": 20, "mas_veterano": 30,
+                 "con_fecha": 3}
+
+
+def test_una_plantilla_sin_fechas_no_inventa_una_media():
+    r = resumen_edades([])
+    assert r["media"] is None and r["con_fecha"] == 0
