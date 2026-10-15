@@ -108,6 +108,13 @@ body {
 .firma span { font-size:9.5px; letter-spacing:1.6px; text-transform:uppercase;
   color:var(--text3) }
 
+
+/* La edad de la plantilla. El title dice sobre cuántos se ha hecho la
+   media: si faltan fechas, el número vale menos y hay que poder verlo. */
+.chip-edad { background:rgba(227,179,65,.13) !important;
+  border:1px solid rgba(227,179,65,.34); color:#E3B341 !important;
+  font-weight:600; cursor:help }
+
 .sidebar-footer { padding:12px; border-top:1px solid var(--border) }
 .status-badge {
   display:flex; align-items:center; gap:7px;
@@ -1291,6 +1298,7 @@ async function openTeam(teamId, teamName, fromPage) {
             <span class="team-meta-item">📅 Fundado: ${t.founded || '—'}</span>
             <span class="team-meta-item">🎨 ${t.club_colors || '—'}</span>
             <span class="team-meta-item">👥 ${squad.length} jugadores</span>
+            ${t.edades && t.edades.media ? `<span class="team-meta-item chip-edad" title="Media de los ${t.edades.con_fecha} jugadores con fecha de nacimiento${t.edades.con_fecha < squad.length ? ' (de ' + squad.length + ' de la plantilla)' : ''}">🎂 ${String(t.edades.media).replace('.', ',')} años de media · del ${t.edades.mas_joven} al ${t.edades.mas_veterano}</span>` : ''}
           </div>
           <div style="display:flex;gap:5px;margin-top:10px">
             ${form.map(r => `<span class="form-badge form-${r}">${r}</span>`).join('')}
