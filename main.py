@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pathlib import Path
 from backend.config import PORT, ENV, LEAGUES
 from backend.errors import FuenteNoDisponible
+from backend.scrapers.football_data import LimiteAlcanzado
 
 # ── Logging ───────────────────────────────────────────────
 logging.basicConfig(
@@ -145,10 +146,26 @@ async def get_team(team_id: int):
     """Perfil completo del equipo con plantilla"""
     try:
         team = await football_client.get_team(team_id)
-        recent = await football_client.get_team_matches(team_id, limit=10)
-        return {**team, "recent_matches": recent}
+    except LimiteAlcanzado as e:
+        # 429 y no 503: "espera un minuto" no es lo mismo que "roto".
+        raise HTTPException(status_code=429, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+    # Los partidos recientes son un extra. Si no caben en la cuota, se
+    # devuelve el equipo igual con un aviso, en vez de tirar la ficha
+    # entera por algo secundario.
+    aviso = None
+    try:
+        recent = await football_client.get_team_matches(team_id, limit=10)
+    except LimiteAlcanzado as e:
+        recent, aviso = [], str(e)
+    except Exception:
+        recent, aviso = [], "No se han podido cargar los últimos partidos."
+    salida = {**team, "recent_matches": recent}
+    if aviso:
+        salida["aviso"] = aviso
+    return salida
 
 
 @app.get("/api/teams/{team_id}/matches")
