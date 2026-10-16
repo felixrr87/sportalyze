@@ -477,66 +477,24 @@ async def get_shotmap(player_id: str, season_filter: str = Query(None)):
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
-@app.get("/api/viz/shotmap-custom")
-async def get_custom_shotmap(
-    player_name: str = Query("Jugador"),
-    goals: int = Query(10),
-    shots: int = Query(50),
-    xG: float = Query(8.5),
-    team_color: str = Query("0ea5e9"),
-):
-    """Shot map simulado — cuando no hay datos de Understat"""
-    try:
-        import random
-        random.seed(hash(player_name) % 1000)
-        # Generate realistic shot positions
-        simulated_shots = []
-        # Distribute shots realistically across penalty area
-        # StatsBomb coordinates: pitch is 120x80, half is 60-120 x 0-80
-        # StatsBomb coordinates: pitch 120x80, attacking half x=60-120, y=0-80
-        shot_zones = [
-            # (x_center, y_center, x_std, y_std, weight)
-            (108, 40, 4, 8, 0.30),   # Centre 6-yard box
-            (105, 28, 4, 4, 0.15),   # Left penalty area
-            (105, 52, 4, 4, 0.15),   # Right penalty area
-            (100, 40, 5, 8, 0.20),   # Centre penalty spot area
-            (92, 40, 6, 10, 0.12),   # Edge of box centre
-            (88, 22, 5, 5, 0.04),    # Left edge
-            (88, 58, 5, 5, 0.04),    # Right edge
-        ]
-        for i in range(shots):
-            is_goal = i < goals
-            weights = [z[4] for z in shot_zones]
-            total_w = sum(weights)
-            r_val = random.random() * total_w
-            cumw = 0
-            zone = shot_zones[0]
-            for z in shot_zones:
-                cumw += z[4]
-                if r_val <= cumw:
-                    zone = z
-                    break
-            x = max(75, min(119, random.gauss(zone[0], zone[2])))
-            y = max(5, min(75, random.gauss(zone[1], zone[3])))
-            xg_val = random.uniform(0.12, 0.75) if is_goal else random.uniform(0.02, 0.30)
-            simulated_shots.append({
-                "x": x, "y": y,
-                "xG": xg_val,
-                "result": "Goal" if is_goal else random.choice(["SavedShot","SavedShot","MissedShots","BlockedShot"]),
-                "player": player_name,
-                "situation": random.choice(["OpenPlay","OpenPlay","OpenPlay","SetPiece","FromCorner"]),
-                "shot_type": random.choice(["RightFoot","RightFoot","LeftFoot","Head"]),
-            })
-        from backend.viz.shotmap import generar_shotmap
-        img = generar_shotmap(
-            simulated_shots,
-            title=f"Shot Map — {player_name}",
-            team_color=f"#{team_color}",
-        )
-        return {"image": img, "total_shots": shots, "simulated": True}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
+# ── LA RUTA QUE SE INVENTABA LOS TIROS, Y POR QUÉ YA NO ESTÁ ──
+#
+# Aquí vivía una ruta llamada "shotmap-custom". Le dabas un nombre,
+# unos goles y unos tiros, y GENERABA las posiciones con random.gauss,
+# el xG con random.uniform y hasta si el disparo había sido con la
+# derecha o de cabeza con random.choice. Devolvía un PNG idéntico al
+# de un mapa de tiro de verdad.
+#
+# El frontend no la llamaba, pero estaba viva en la API pública:
+# cualquiera podía pedirla y recibir un mapa inventado con pinta de
+# real, sin nada en la imagen que lo advirtiera.
+#
+# Un mapa de tiro con posiciones inventadas no es una aproximación.
+# Es una mentira con forma de gráfico. Si no hay datos del jugador,
+# la respuesta correcta es decir que no hay datos.
+#
+# El mapa de verdad sigue donde estaba: lee los disparos reales de
+# Understat y devuelve 404 si no los encuentra.
 
 # ════════════════════════════════════════════════════════
 # FRONTEND — Servir el HTML
