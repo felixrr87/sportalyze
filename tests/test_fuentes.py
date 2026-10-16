@@ -314,3 +314,35 @@ def test_el_resumen_dice_sobre_cuantos_ha_contado():
 def test_una_plantilla_sin_fechas_no_inventa_una_media():
     r = resumen_edades([])
     assert r["media"] is None and r["con_fecha"] == 0
+
+
+# ── 6 · ninguna ruta puede inventarse los datos ──────────────────
+#
+# Había una ruta, /api/viz/shotmap-custom, que generaba las posiciones
+# de los disparos con random.gauss, el xG con random.uniform y el pie
+# con el que se remataba con random.choice. Devolvía un PNG igual que
+# el de un mapa de tiro real, sin nada que avisara.
+#
+# El frontend no la usaba, pero estaba publicada. Estas pruebas están
+# para que no vuelva ni ella ni ninguna parecida.
+
+def test_no_existe_la_ruta_que_inventaba_tiros():
+    rutas = [getattr(r, "path", "") for r in main.app.routes]
+    assert "/api/viz/shotmap-custom" not in rutas
+
+
+def test_main_no_genera_datos_al_azar():
+    """`random` no pinta nada en una API que sirve datos medidos."""
+    fuente = open(main.__file__, encoding="utf-8").read()
+    # se ignoran los comentarios: ahí sí se explica lo que pasó
+    codigo = "\n".join(l for l in fuente.split("\n")
+                       if not l.strip().startswith("#"))
+    for prohibido in ("random.gauss", "random.uniform", "random.choice",
+                      "import random", "simulated_shots"):
+        assert prohibido not in codigo, (
+            "main.py vuelve a generar datos: %r" % prohibido)
+
+
+def test_el_mapa_de_tiro_real_sigue_existiendo():
+    rutas = [getattr(r, "path", "") for r in main.app.routes]
+    assert "/api/viz/shotmap/{player_id}" in rutas
