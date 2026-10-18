@@ -346,3 +346,33 @@ def test_main_no_genera_datos_al_azar():
 def test_el_mapa_de_tiro_real_sigue_existiendo():
     rutas = [getattr(r, "path", "") for r in main.app.routes]
     assert "/api/viz/shotmap/{player_id}" in rutas
+
+
+def test_los_nombres_de_liga_son_los_que_entiende_understatapi():
+    """Comparado contra la lista de la PROPIA librería, no contra una
+    copia escrita a mano aquí.
+
+    Aquí ponía "La_liga" y understatapi espera "La_Liga". Una letra, y
+    con ella toda la parte de jugadores de La Liga —cartas, scouting,
+    comparador, watchlist— devolvía error. Sólo la de La Liga: las
+    otras cinco iban bien, así que probando por encima no se veía.
+
+    Si la librería cambia sus nombres o alguien añade una liga mal
+    escrita, esto salta aquí y no en producción.
+    """
+    from understatapi.endpoints.base import BaseEndpoint
+
+    from backend.scrapers.understat import UNDERSTAT_LEAGUES
+
+    validas = set(BaseEndpoint.leagues)
+    malas = {c: n for c, n in UNDERSTAT_LEAGUES.items() if n not in validas}
+    assert not malas, (
+        f"understatapi no conoce estos nombres: {malas}. "
+        f"Los que acepta son: {sorted(validas)}")
+
+
+def test_la_liga_esta_mapeada():
+    """La que más se va a mirar desde España. Que no se caiga del
+    diccionario en un refactor."""
+    from backend.scrapers.understat import UNDERSTAT_LEAGUES
+    assert UNDERSTAT_LEAGUES["PD"] == "La_Liga"
