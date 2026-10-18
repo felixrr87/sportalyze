@@ -52,6 +52,9 @@ from backend.scrapers.understat import (
 )
 from backend.ml import informe_liga as inf_liga
 from backend.ml.emparejar import emparejar_con_motivo
+from backend.ml.emparejar_jugadores import (
+    MOTIVOS as MOTIVOS_JUGADOR, emparejar_jugador,
+)
 from backend.scrapers.transfermarkt import (
     get_player_injuries, build_injury_features,
 )
@@ -541,6 +544,89 @@ async def get_player_shot_map(
         "temporada": nombre_temporada(season),
         "total_carrera": len(todos),
         "por_temporada": por_temporada,
+    }
+
+
+# ════════════════════════════════════════════════════════
+# RUTAS — LA PLANTILLA, CRUZADA CON SUS CIFRAS
+# ════════════════════════════════════════════════════════
+#
+# La plantilla sale de football-data: nombre, fecha de nacimiento,
+# nacionalidad y puesto. Las cifras salen de Understat. Cada fuente
+# tiene justo lo que a la otra le falta, y hasta ahora no se hablaban:
+# al pinchar un jugador de la plantilla salía un "próximamente".
+#
+# Cruzarlas arregla dos cosas de una vez: la ficha se abre desde la
+# plantilla, y aparece la EDAD, que es lo que Understat no publica y
+# por lo que el filtro de edad del scouting no podía existir.
+
+
+@app.get("/api/plantilla/{competition_code}/{team_id}")
+async def plantilla_con_cifras(competition_code: str, team_id: int,
+                               season: int = Query(None)):
+    """La plantilla de un equipo con las cifras de cada jugador.
+
+    A cada jugador se le pega su registro de Understat si se puede
+    emparejar con seguridad. Si no se puede, va con su motivo: un
+    jugador sin cifras se dice, un jugador con las cifras de otro no
+    se nota.
+    """
+    try:
+        equipo = await football_client.get_team(team_id)
+    except LimiteAlcanzado as e:
+        raise HTTPException(status_code=429, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    plantilla = equipo.get("squad") or []
+
+    # Understat es un extra: si se cae, la plantilla sale igual sin
+    # cifras. Media respuesta buena vale más que un error entero.
+    aviso, de_understat = None, []
+    try:
+        de_understat = await get_league_players(competition_code.upper(), season)
+    except FuenteNoDisponible as e:
+        aviso = f"No he podido traer las cifras de Understat: {e}"
+
+    # Sólo los de ESTE equipo: emparejar contra toda la liga multiplica
+    # por veinte las posibilidades de confundir dos apellidos iguales.
+    nombre_corto = _normaliza(equipo.get("name", ""))
+    suyos = [p for p in de_understat
+             if _normaliza(p.get("team", "")) == nombre_corto]
+
+    salida, con_cifras, motivos = [], 0, {}
+    for j in plantilla:
+        ficha = dict(j)
+        encontrado, motivo = emparejar_jugador(
+            j.get("name"), suyos, clave=lambda x: x.get("name", ""))
+        if encontrado:
+            con_cifras += 1
+            ficha["understat"] = encontrado
+            ficha["player_id"] = encontrado.get("player_id")
+        else:
+            ficha["understat"] = None
+            ficha["sin_cifras"] = motivo
+            ficha["sin_cifras_detalle"] = MOTIVOS_JUGADOR.get(motivo, "")
+            motivos[motivo] = motivos.get(motivo, 0) + 1
+        salida.append(ficha)
+
+    if not suyos and not aviso:
+        aviso = (f"Understat no tiene a ningún jugador de {equipo.get('name')} "
+                 f"en esta liga. Puede que el equipo esté escrito de otra "
+                 f"forma en las dos fuentes, o que no sea una liga que "
+                 f"Understat cubra.")
+
+    return {
+        "equipo": equipo.get("name"),
+        "team_id": team_id,
+        "competicion": competition_code.upper(),
+        "season": season or temporada_actual(),
+        "temporada": nombre_temporada(season or temporada_actual()),
+        "plantilla": salida,
+        "con_cifras": con_cifras,
+        "sin_cifras": len(salida) - con_cifras,
+        "motivos": motivos,
+        "aviso": aviso,
     }
 
 

@@ -1732,9 +1732,24 @@ async function openTeam(teamId, teamName, fromPage) {
   $('teamContent').innerHTML = '<div class="ld"><div class="sp"></div>Cargando perfil del equipo…</div>';
 
   try {
-    const teamData = await apiFetch(`/api/teams/${teamId}`);
+    // La plantilla CRUZADA con Understat, no la pelada: así cada
+    // jugador trae sus cifras y se le puede abrir la ficha. La liga
+    // sale del selector de clasificación, que es de donde se entra.
+    const ligaEq = ($('sL') && $('sL').value) || 'PD';
+    const [teamData, cruce] = await Promise.all([
+      apiFetch(`/api/teams/${teamId}`),
+      fetch(`${API}/api/plantilla/${ligaEq}/${teamId}`)
+        .then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
 
     const t = teamData;
+    PLANTILLA_CRUCE = {};
+    if (cruce) {
+      (cruce.plantilla || []).forEach(j => { PLANTILLA_CRUCE[j.id] = j; });
+      PLANTILLA_INFO = cruce;
+    } else {
+      PLANTILLA_INFO = null;
+    }
     $('teamTitle').textContent = t.name || teamName;
     $('teamSub').textContent = `${t.venue || ''} · Fundado: ${t.founded || '—'} · ${t.club_colors || ''}`;
     if (t.crest) $('teamCrestHeader').src = t.crest;
@@ -1832,6 +1847,19 @@ async function openTeam(teamId, teamName, fromPage) {
       <!-- Squad by position -->
       <div class="card">
         <div class="ch"><div class="ct">👥 Plantilla completa</div><span class="bge b-blue">${squad.length} jugadores</span></div>
+        ${PLANTILLA_INFO ? `<div style="padding:0 16px 10px;color:var(--text3);
+          font-size:11.5px;line-height:1.6;max-width:70ch">
+          Pincha a cualquiera para ver su ficha.
+          <b>${PLANTILLA_INFO.con_cifras}</b> de ${squad.length} tienen cifras de
+          Understat en ${esc(PLANTILLA_INFO.temporada)}; los otros
+          ${PLANTILLA_INFO.sin_cifras} salen en gris, casi siempre porque no han
+          jugado ni un minuto en liga. La plantilla y la edad son de
+          football-data; las cifras, de Understat: se cruzan por nombre, y
+          cuando dos jugadores comparten apellido —este equipo puede tener dos—
+          antes se deja sin cifras que arriesgarse a enseñar las del otro.
+          ${PLANTILLA_INFO.aviso ? '<br><span style="color:var(--gold)">⚠ ' +
+            esc(PLANTILLA_INFO.aviso) + '</span>' : ''}
+        </div>` : ''}
         ${['GK','DF','MF','FW'].map(grp => groups[grp].length ? `
           <div style="margin-bottom:20px">
             <div style="font-family:var(--fh);font-size:12px;font-weight:700;color:var(--text2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">${groupLabels[grp]} (${groups[grp].length})</div>
@@ -1839,7 +1867,13 @@ async function openTeam(teamId, teamName, fromPage) {
               ${groups[grp].map(p => {
                 const age = getAge(p.date_of_birth);
                 const posShort = POS_MAP[p.position] || grp;
-                return `<div class="player-card-mini" onclick="alert('Perfil de jugador próximamente: ${p.name}')">
+                const cr = PLANTILLA_CRUCE[p.id];
+                const tiene = cr && cr.understat;
+                return `<div class="player-card-mini"
+                  onclick="abrirFichaDePlantilla('${p.id}')"
+                  style="cursor:pointer;${tiene ? '' : 'opacity:.62'}"
+                  title="${tiene ? 'Ver su ficha con sus cifras de esta temporada'
+                    : esc(cr && cr.sin_cifras_detalle || 'Sin cifras de Understat')}">
                   <div class="player-avatar">${getInitials(p.name)}</div>
                   <div style="flex:1;min-width:0">
                     <div class="player-name-mini">${p.name}</div>
@@ -1847,6 +1881,10 @@ async function openTeam(teamId, teamName, fromPage) {
                       <span class="player-pos-badge pos-${grp}">${posShort}</span>
                       <span style="font-size:10px;color:var(--text2)">${age !== '—' ? age+'a' : ''}</span>
                       <span style="font-size:11px">${p.nationality||''}</span>
+                      ${tiene ? `<span style="font-size:9.5px;color:var(--electric);
+                        font-family:var(--fm)" title="minutos jugados en liga esta temporada">${
+                        cr.understat.time}′</span>`
+                        : '<span style="font-size:9.5px;color:var(--text3)">sin datos</span>'}
                     </div>
                   </div>
                 </div>`;
@@ -3091,7 +3129,9 @@ async function abrirFicha(p) {
             <div style="color:var(--text2);font-size:13px;margin-top:2px">
               ${esc(p.team || '')} · ${esc(p.league || '')} ·
               ${esc(puestoLargo(p.position || p.pos))} ·
-              ${p.time} min en ${p.games} partidos</div>
+              ${p.time} min en ${p.games} partidos${p.edad
+                ? ` · <span title="De football-data: Understat no publica la edad">${p.edad} años</span>` : ''}${
+                p.nacionalidad ? ' · ' + esc(p.nacionalidad) : ''}</div>
           </div>
           <button onclick="cerrarFicha()" style="background:none;border:1px solid var(--border2);
             color:var(--text2);border-radius:8px;padding:5px 11px;cursor:pointer;
@@ -3161,9 +3201,15 @@ async function abrirFicha(p) {
 
         <div style="padding:12px 20px 18px;border-top:1px solid var(--border);
           color:var(--text3);font-size:11.5px;line-height:1.6">
-          Datos de Understat, temporada ${esc(TEMPORADA || '—')}. No hay edad, ni valor
-          de mercado, ni datos defensivos: esta fuente no los publica, y un hueco
-          sin explicar es peor que no ponerlo.
+          Las cifras de juego son de Understat, temporada ${esc(TEMPORADA || '—')}.
+          ${p.edad ? `La edad y la nacionalidad son de football-data, que publica
+            las plantillas: Understat no las trae, y por eso hubo que cruzar las
+            dos fuentes por nombre.` : `Aquí no sale la edad porque esta pantalla
+            no ha pasado por la plantilla del equipo, que es de donde sale: entra
+            por Equipos y pincha al jugador para verla.`}
+          Lo que no hay en ninguna de las dos: valor de mercado y datos
+          defensivos — entradas, intercepciones, despejes, duelos. No está vacío
+          porque falte por hacer: es que estas fuentes no lo publican.
         </div>
       </div>
     </div>`);
@@ -3586,6 +3632,78 @@ function abrirFichaDesdeCarta(id) {
 // red de pases y a veces no es un informe del que nadie se fía.
 
 const PART = { abierto: null, cache: {} };
+
+// La plantilla del equipo que se está mirando, ya cruzada con
+// Understat, indexada por el id de football-data.
+let PLANTILLA_CRUCE = {};
+let PLANTILLA_INFO = null;
+
+// ── pinchar un jugador de la plantilla ────────────────────
+//
+// Aquí ponía un alert con "Perfil de jugador próximamente". La ficha
+// existía desde hace rato; lo que faltaba era saber QUIÉN es ese
+// jugador en Understat, porque la plantilla viene de football-data y
+// los identificadores no tienen nada que ver.
+function abrirFichaDePlantilla(id) {
+  const j = PLANTILLA_CRUCE[id];
+  if (!j) return;
+  if (!j.understat) {
+    // Sin cifras no hay ficha, pero sí hay algo que decir: quién es,
+    // qué edad tiene, y POR QUÉ no hay cifras.
+    return fichaSinCifras(j);
+  }
+  const u = j.understat;
+  abrirFicha({
+    name: j.name || u.name, team: PLANTILLA_INFO && PLANTILLA_INFO.equipo,
+    league: PLANTILLA_INFO && PLANTILLA_INFO.competicion,
+    position: u.position, player_id: u.player_id,
+    time: u.time, games: u.games, goals: u.goals, assists: u.assists,
+    shots: u.shots, key_passes: u.key_passes, xG: u.xG, xA: u.xA,
+    npxG: u.npxG, score: u.score,
+    percentiles: u.percentiles || {}, por_90: u.por_90 || {},
+    // Lo que Understat NO tiene y football-data sí:
+    edad: j.age, nacimiento: j.date_of_birth, nacionalidad: j.nationality,
+    puesto_oficial: j.position,
+  });
+}
+
+function fichaSinCifras(j) {
+  cerrarFicha();
+  const edad = j.age ? `${j.age} años` : '';
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="fichaJug" onclick="if(event.target===this)cerrarFicha()" style="
+      position:fixed;inset:0;z-index:200;background:rgba(3,8,16,.82);
+      display:flex;align-items:flex-start;justify-content:center;
+      padding:24px 16px;overflow:auto;backdrop-filter:blur(3px)">
+      <div style="background:var(--bg2);border:1px solid var(--border2);
+        border-radius:16px;max-width:620px;width:100%;overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;
+          gap:14px;padding:18px 20px;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-family:var(--fh);font-size:22px;font-weight:800">${esc(j.name)}</div>
+            <div style="color:var(--text2);font-size:13px;margin-top:2px">
+              ${esc(puestoLargo(j.position))}${edad ? ' · ' + edad : ''}
+              ${j.nationality ? ' · ' + esc(j.nationality) : ''}</div>
+          </div>
+          <button onclick="cerrarFicha()" style="background:none;border:1px solid var(--border2);
+            color:var(--text2);border-radius:8px;padding:5px 11px;cursor:pointer;
+            font-family:inherit;font-size:13px">Cerrar</button>
+        </div>
+        <div style="padding:18px 20px;color:var(--text2);font-size:13px;line-height:1.65">
+          <b style="color:var(--gold)">No tengo cifras suyas de esta temporada.</b><br>
+          ${esc(j.sin_cifras_detalle || 'No he podido emparejarlo con Understat.')}
+          <div style="margin-top:14px;color:var(--text3);font-size:11.5px;line-height:1.6">
+            Lo que sí sé de él sale de football-data, que publica la plantilla:
+            nombre, puesto, nacionalidad y fecha de nacimiento
+            ${j.date_of_birth ? '(' + esc(j.date_of_birth) + ')' : ''}. Las cifras
+            de juego son de Understat, que es otra fuente distinta, y ahí no
+            aparece. Prefiero decírtelo a enseñarte una ficha vacía o, peor, la
+            de otro jugador que se apellide igual.
+          </div>
+        </div>
+      </div>
+    </div>`);
+}
 
 // Los partidos que hay ahora mismo en pantalla. La fila sólo lleva su
 // número, así que ningún nombre con comillas puede romper nada.
