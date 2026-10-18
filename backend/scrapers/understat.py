@@ -33,9 +33,23 @@ logger = logging.getLogger(__name__)
 _cache = TTLCache(maxsize=300, ttl=CACHE_TTL)
 
 # Mapa de códigos de liga
+# Los nombres de liga que entiende understatapi. NO son los que uno
+# escribiría: la librería los compara con una lista suya, carácter a
+# carácter y distinguiendo mayúsculas.
+#
+# Aquí ponía "La_liga" con ele minúscula y la librería espera
+# "La_Liga". Una letra. Con eso, TODA la parte de jugadores de La Liga
+# —cartas, scouting, comparador, watchlist— devolvía un error, y sólo
+# la de La Liga: las otras cinco funcionaban. Es el fallo que no se ve
+# probando "la aplicación" por encima, porque hay que mirar
+# precisamente esa liga.
+#
+# Hay una prueba que compara este diccionario contra la lista de la
+# propia librería, así que si cambia de nombres o alguien añade una
+# liga mal escrita, salta sin necesidad de red.
 UNDERSTAT_LEAGUES = {
     "PL":  "EPL",
-    "PD":  "La_liga",
+    "PD":  "La_Liga",
     "BL1": "Bundesliga",
     "SA":  "Serie_A",
     "FL1": "Ligue_1",
