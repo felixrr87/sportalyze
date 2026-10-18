@@ -1,8 +1,14 @@
 # backend/scrapers/football_data.py
 # ============================================================
 # Conector a football-data.org API v4
-# Tu API key: 18f8f363554247f69bba9b7a9d049da8
-# Límite: 10 req/min en tier gratuito
+#
+# LA CLAVE NO VA AQUÍ. Va en la variable de entorno FOOTBALL_API_KEY.
+# Estuvo escrita en este comentario, en un repositorio público, y sigue
+# en el historial de commits: borrarla de aquí no la borra de ahí. La
+# única forma de cerrar el agujero es revocarla en football-data.org y
+# sacar una nueva.
+#
+# Límite del plan gratuito: 10 peticiones por minuto.
 # ============================================================
 
 import httpx
@@ -38,6 +44,7 @@ _VIDAS = (
     ("/teams/", None, 86400),           # perfil y plantilla: 1 día
     ("/competitions/", "/standings", 600),   # clasificación: 10 min
     ("/competitions/", "/scorers", 3600),    # goleadores: 1 hora
+    ("/competitions/", "/matches", 600),     # temporada entera: 10 min
     ("/matches", None, 300),            # partidos de hoy: 5 min
 )
 
@@ -258,6 +265,22 @@ class FootballDataClient:
                 "score_away": m["score"]["fullTime"].get("away"),
             })
         return result
+
+    async def get_competition_season(self, competition_code: str) -> list:
+        """TODOS los partidos de la temporada, sin recortar y en crudo.
+
+        Es lo que necesita el simulador: el calendario completo, jugado
+        y por jugar. get_competition_matches no sirve porque recorta a
+        los últimos `limit` y les da la vuelta.
+
+        Devuelve la lista tal como llega de la API (matchday, utcDate,
+        status, homeTeam, awayTeam, score) y es el simulador el que la
+        traduce. Así, si football-data cambia algo, se ve en un sitio.
+
+        Una llamada, 380 partidos. Guardada diez minutos.
+        """
+        data = await self._get(f"/competitions/{competition_code}/matches")
+        return data.get("matches", [])
 
     # ── Equipos ───────────────────────────────────────────────
 
