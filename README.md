@@ -24,7 +24,8 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# Edita .env — ya tiene tu API key de football-data.org
+# Edita .env y pon tu clave de football-data.org
+# (saca una gratis en football-data.org/client/register)
 ```
 
 ### Paso 3 — Arrancar
@@ -64,6 +65,29 @@ API Docs: **http://localhost:8000/docs**
 | `GET /api/scouting/PL?position=FW` | Scouting ML |
 | `GET /api/viz/radar/PL/123` | Radar PyPizza (PNG) |
 | `GET /api/viz/shotmap/123` | Shot Map (PNG) |
+| `GET /api/simulador/PD` | El Simulador: rangos de posición final |
+
+### El Simulador
+
+Una sola llamada trae el calendario entero de la liga —jugado y por
+jugar—, ajusta la fuerza de ataque y defensa de cada equipo y simula
+10.000 veces lo que queda. Devuelve, por equipo, el rango de posiciones
+en el que acaba en 8 de cada 10 simulaciones, más el 1X2 de los
+próximos partidos.
+
+Se **niega** a contestar cuando los datos no permiten simular
+honestamente, y dice por qué en `motivo`:
+
+| `motivo` | Qué ha pasado |
+|---|---|
+| `datos_desfasados` | Hay partidos jugados y la fuente aún no da su resultado |
+| `calendario_incompleto` | No ha llegado la temporada entera |
+| `demasiado_pronto` | Tan poco jugado que el resultado no diría nada |
+| `limite_alcanzado` | Gastadas las 10 peticiones del minuto (HTTP 429) |
+| `fuente_caida` | football-data no ha contestado |
+
+Devolver un número en cualquiera de esos casos sería peor que no
+devolver ninguno: parecería de hoy sin serlo.
 
 ---
 

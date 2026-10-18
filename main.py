@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pathlib import Path
+from cachetools import TTLCache
 from backend.config import PORT, ENV, LEAGUES
 from backend.errors import FuenteNoDisponible
 from backend.scrapers.football_data import LimiteAlcanzado
@@ -50,6 +51,7 @@ from backend.scrapers.transfermarkt import (
     get_player_injuries, build_injury_features,
 )
 from backend.ml.scouting import run_scouting_pipeline, find_similar_players
+from backend.ml import simulador as sim
 from backend.ml.injury_prediction import build_player_risk_features, calculate_injury_risk
 
 
@@ -198,6 +200,66 @@ async def get_top_scorers(
         return {"scorers": scorers, "total": len(scorers)}
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+
+# ════════════════════════════════════════════════════════
+# RUTAS — EL SIMULADOR
+# ════════════════════════════════════════════════════════
+
+# Simular diez mil temporadas cuesta un segundo y medio de CPU. La
+# caché del cliente guarda los PARTIDOS diez minutos; esta guarda la
+# SIMULACIÓN el mismo rato, para no repetir el cálculo en cada visita.
+_simulaciones = TTLCache(maxsize=8, ttl=600)
+
+
+@app.get("/api/simulador/{competition_code}")
+async def get_simulador(competition_code: str):
+    """Rangos de posición final: ajusta fuerzas y simula lo que queda.
+
+    Una sola llamada a football-data trae el calendario entero, jugado y
+    por jugar. El motor está en backend/ml/simulador.py.
+
+    Esta ruta se NIEGA a contestar cuando los datos no permiten simular
+    honestamente, y dice por qué en `motivo`:
+
+      calendario_incompleto  la fuente no ha dado la temporada entera
+      datos_desfasados       hay partidos jugados sin resultado todavía
+      demasiado_pronto       hay tan poco jugado que no diría nada
+      fuente_caida           football-data no ha contestado
+      limite_alcanzado       se han gastado las 10 peticiones del minuto
+
+    Devolver un número en cualquiera de esos casos sería peor que no
+    devolver ninguno: parecería de hoy sin serlo.
+    """
+    codigo = competition_code.upper()
+    if codigo in _simulaciones:
+        return _simulaciones[codigo]
+
+    try:
+        crudos = await football_client.get_competition_season(codigo)
+    except LimiteAlcanzado as e:
+        raise HTTPException(status_code=429, detail={
+            "motivo": "limite_alcanzado", "detalle": str(e)})
+    except Exception as e:
+        raise HTTPException(status_code=503, detail={
+            "motivo": "fuente_caida", "detalle": str(e)})
+
+    nombre = LEAGUES.get(codigo, {}).get("name", codigo)
+    try:
+        # En un hilo: son 1,5 s de numpy y si no bloquean el servidor.
+        edicion = await asyncio.to_thread(sim.edicion, crudos, codigo, nombre)
+    except sim.CalendarioIncompleto as e:
+        raise HTTPException(status_code=503, detail={
+            "motivo": "calendario_incompleto", "detalle": str(e)})
+    except sim.DatosDesfasados as e:
+        raise HTTPException(status_code=503, detail={
+            "motivo": "datos_desfasados", "detalle": str(e)})
+    except sim.DemasiadoPronto as e:
+        raise HTTPException(status_code=503, detail={
+            "motivo": "demasiado_pronto", "detalle": str(e)})
+
+    _simulaciones[codigo] = edicion
+    return edicion
 
 
 # ════════════════════════════════════════════════════════
