@@ -478,6 +478,10 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
       <svg fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
       Clasificaciones
     </a>
+    <a class="ni" onclick="nav('simulador')">
+      <svg fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6 19V9"/><path d="M11 19V5"/><path d="M16 19v-7"/><path d="M21 19v-4"/></svg>
+      El Simulador
+    </a>
     <a class="ni" onclick="nav('matches')">
       <svg fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
       Partidos
@@ -813,6 +817,90 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
   </div>
 </div>
 
+<div class="page" id="page-simulador">
+  <div class="page-header">
+    <div class="header-row">
+      <div><div class="ptitle">El Simulador</div>
+        <div class="psub" id="simSub">10.000 temporadas simuladas desde donde va la liga hoy</div></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="simLiga" style="width:auto"></select>
+        <span class="bge b-green" style="padding:5px 12px;font-size:11px">Modelo propio</span>
+      </div>
+    </div>
+  </div>
+  <div class="cont">
+
+    <!-- De dónde salen estos números. Va arriba y no en letra pequeña
+         al final: un rango de posiciones sin fecha ni fuente no se
+         puede comprobar, y todo lo que sale de aquí tiene que poder
+         comprobarlo cualquiera. -->
+    <div class="card" id="simFicha" style="margin-bottom:16px;display:none">
+      <div class="ch"><div class="ct">De dónde sale esto</div>
+        <span class="bge b-blue" style="font-size:10px">football-data.org</span></div>
+      <div id="simProc" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--border);border-top:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
+      <div id="simAviso" style="display:none;padding:11px 16px;background:rgba(227,179,65,.09);border-bottom:1px solid var(--border);color:#e3b341;font-size:12.5px;line-height:1.5"></div>
+    </div>
+
+    <div id="simEstado" style="display:none" class="card">
+      <div style="padding:30px 20px;text-align:center">
+        <div id="simEstadoTit" style="font-size:15px;font-weight:650;margin-bottom:8px"></div>
+        <div id="simEstadoTxt" style="color:var(--text2);font-size:13px;line-height:1.65;max-width:58ch;margin:0 auto"></div>
+      </div>
+    </div>
+
+    <div class="card" id="simTablaCard" style="margin-bottom:16px;display:none">
+      <div class="ch"><div class="ct">Dónde va a acabar cada uno</div>
+        <span id="simAnchura" class="bge b-blue" style="font-size:10px"></span></div>
+      <div style="padding:14px 16px 2px;color:var(--text2);font-size:13px;line-height:1.6;max-width:72ch">
+        La barra es el <b>rango del 80 %</b>: en 8 de cada 10 temporadas simuladas el equipo
+        acaba dentro de ella. La muesca clara es la mediana. Un rango ancho no es el modelo
+        dudando por gusto — es que quedan muchas jornadas.
+      </div>
+      <div style="overflow-x:auto;padding:10px 16px 16px">
+        <table id="simTabla" style="border-collapse:collapse;width:100%;font-family:var(--fm);font-size:12.5px;min-width:620px"></table>
+      </div>
+    </div>
+
+    <div class="card" id="simProxCard" style="margin-bottom:16px;display:none">
+      <div class="ch"><div class="ct">Lo próximo que se juega</div>
+        <span class="bge b-blue" style="font-size:10px">1 · X · 2</span></div>
+      <div style="padding:14px 16px 2px;color:var(--text2);font-size:13px;line-height:1.6;max-width:72ch">
+        Ordenados por <b>fecha</b>, no por jornada: con un partido aplazado de por medio, «la
+        próxima jornada» no es lo próximo que se juega. Cada uno lleva la suya al lado.
+      </div>
+      <div style="overflow-x:auto;padding:10px 16px 16px">
+        <table id="simProx" style="border-collapse:collapse;width:100%;font-family:var(--fm);font-size:12.5px;min-width:560px"></table>
+      </div>
+    </div>
+
+    <div class="card" id="simComoCard" style="display:none">
+      <div class="ch"><div class="ct">Cómo funciona, y qué no sabe</div></div>
+      <div style="padding:14px 16px 18px;color:var(--text2);font-size:13px;line-height:1.7;max-width:76ch">
+        Los goles de cada equipo se modelan como dos Poisson independientes, con una fuerza de
+        ataque y una de defensa por equipo más la ventaja de jugar en casa. Las fuerzas se
+        ajustan por máxima verosimilitud con penalización, y después se simula
+        <b id="simNsim">10.000</b> veces lo que queda de temporada. Los partidos ya jugados no
+        se simulan: sus puntos son los de verdad.
+        <br><br>
+        Al simular se tiran <b>dos dados, no uno</b>. El del partido: aun sabiendo lo bueno que
+        es cada equipo, un partido concreto es aleatorio. Y el de la fuerza: no sabemos
+        exactamente lo bueno que es cada equipo. La primera versión sólo tiraba el primero y le
+        daba al líder con pleno de victorias un 96,5 % de título — mirando cuatro ligas, 14
+        equipos han empezado ganando sus 7 primeros partidos y <b>nueve</b> acabaron campeones,
+        no trece y medio.
+        <br><br>
+        <span style="color:var(--text3)">Lo que no sabe, y es mucho: no conoce a los equipos
+        —ni presupuesto, ni plantilla, ni lo que hicieron el año pasado—, no sabe de lesiones ni
+        de Champions entre semana, y no usa xG. Sólo resultados de esta temporada. Es a
+        propósito: la pregunta es qué se puede saber con la misma información que tiene la
+        clasificación. El desempate usa diferencia de goles, no el enfrentamiento directo que
+        aplica LaLiga.</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 </main>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -820,9 +908,30 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
 'use strict';
 
 // ── Config ────────────────────────────────────────────────
-let API = localStorage.getItem('sp_api') || (location.protocol.startsWith('http') ? location.origin : 'http://localhost:8000');
-const WL = () => JSON.parse(localStorage.getItem('sp_wl') || '[]');
-const sWL = w => localStorage.setItem('sp_wl', JSON.stringify(w));
+// ── localStorage, con red debajo ──────────────────────────
+//
+// Esto era `localStorage.getItem('sp_api')` a pelo, en la primera línea
+// del script. Y acceder a localStorage NO siempre devuelve null: en
+// ventana privada, con las cookies de sitio bloqueadas o dentro de un
+// iframe de origen opaco, LANZA una excepción. Al estar en el nivel de
+// arriba, esa excepción se llevaba por delante el resto del script y la
+// página entera se quedaba en blanco, sin un error que lo explicara.
+//
+// Lo encontró el comprobador de maqueta al cargar el index en un DOM
+// sin origen: "localStorage is not available for opaque origins", y
+// detrás "Cannot access '$' before initialization". El segundo error
+// era el síntoma; el primero, la causa.
+//
+// Ahora la página funciona igual sin almacenamiento: lo único que se
+// pierde es recordar la dirección de la API entre visitas.
+const guarda = {
+  leer(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  escribir(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } },
+};
+
+let API = guarda.leer('sp_api') || (location.protocol.startsWith('http') ? location.origin : 'http://localhost:8000');
+const WL = () => { try { return JSON.parse(guarda.leer('sp_wl') || '[]'); } catch (e) { return []; } };
+const sWL = w => guarda.escribir('sp_wl', JSON.stringify(w));
 const $ = id => document.getElementById(id);
 const C = {};
 
@@ -1077,7 +1186,7 @@ function nav(page) {
     matches: loadMatches, scorers: loadScorers,
     players: renderCards, scouting: runScouting,
     compare: initCmp, watchlist: renderWL, config: renderCfg,
-    relieve: loadRelieve
+    relieve: loadRelieve, simulador: loadSimulador
   };
   actions[page]?.();
 }
@@ -1406,7 +1515,7 @@ function clrWL() { sWL([]); renderWL(); }
 // ── CONFIG ────────────────────────────────────────────────
 function saveBackendUrl() {
   API = $('backendUrl').value.trim().replace(/\/$/, '');
-  localStorage.setItem('sp_api', API);
+  guarda.escribir('sp_api', API);
   $('urlTestResult').innerHTML = '<div class="al ali">🔄 Probando conexión…</div>';
   fetch(API + '/health').then(r=>r.json()).then(d=>{
     $('urlTestResult').innerHTML=`<div class="al als">✅ Conectado — API key: ${d.api_key_configured?'✓':'✗'} · Env: ${d.env}</div>`;
@@ -1632,6 +1741,221 @@ document.addEventListener('DOMContentLoaded', () => {
   // Start on landing
   nav('landing');
 });
+
+// ══════════════════════════════════════════════════════════
+// EL SIMULADOR
+// ══════════════════════════════════════════════════════════
+//
+// Pinta lo que devuelve /api/simulador/{liga}: los rangos de posición
+// final de los 20 equipos y el 1X2 de los próximos partidos.
+//
+// Esta pantalla NO calcula nada. Todo el modelo está en el servidor
+// (backend/ml/simulador.py) y aquí sólo se dibuja, a propósito: si el
+// cálculo estuviera partido en dos sitios, un día dejarían de decir lo
+// mismo y nadie se enteraría.
+//
+// Lo que sí hace, y es la mitad del trabajo, es contar cuándo NO hay
+// resultado. La ruta se niega a simular si la fuente va con retraso, si
+// el calendario viene a medias o si hay tan poco jugado que no diría
+// nada, y cada uno de esos casos tiene aquí su explicación en cristiano.
+// Un simulador que siempre da un número es un adorno.
+
+// Escapar antes de meter nada en innerHTML. Los nombres de equipo los
+// da football-data, no un usuario, pero un apóstrofo mal puesto en
+// "Hertha BSC" no tiene que poder romper la tabla.
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const SIM = {};                 // ediciones ya traídas, por liga
+const SIM_LIGAS = ['PD', 'PL', 'BL1', 'SA', 'FL1'];
+
+// Los motivos que puede devolver la ruta, cada uno con lo que hay que
+// decirle a quien está mirando. El texto exacto del servidor se añade
+// debajo: aquí va el por qué, allí el detalle.
+const SIM_MOTIVOS = {
+  datos_desfasados: ['La fuente va con retraso',
+    'Hay partidos que ya se jugaron y football-data todavía no ha publicado su ' +
+    'resultado. Con la clasificación atrasada los rangos saldrían mal y parecerían ' +
+    'de hoy, así que no se da ninguno.'],
+  calendario_incompleto: ['El calendario ha llegado a medias',
+    'Para simular hace falta la temporada entera: los partidos jugados y los que ' +
+    'faltan. Lo que ha llegado no cuadra, y simular sobre un calendario incompleto ' +
+    'daría posiciones finales inventadas.'],
+  demasiado_pronto: ['Todavía es muy pronto',
+    'Con tan pocas jornadas jugadas el modelo daría números bonitos y nada más. ' +
+    'Vuelve cuando la liga lleve unas cuantas jornadas.'],
+  limite_alcanzado: ['Se han gastado las peticiones del minuto',
+    'El plan gratuito de football-data son diez peticiones por minuto. Espera un ' +
+    'minuto y vuelve a entrar.'],
+  fuente_caida: ['football-data no ha contestado',
+    'No es que no haya datos: es que no se sabe. Puede ser la conexión, puede ser ' +
+    'que falte la clave de la API.'],
+};
+
+function simEstado(titulo, texto, detalle) {
+  ['simFicha', 'simTablaCard', 'simProxCard', 'simComoCard']
+    .forEach(id => { const n = $(id); if (n) n.style.display = 'none'; });
+  $('simEstado').style.display = '';
+  $('simEstadoTit').textContent = titulo;
+  $('simEstadoTxt').innerHTML = esc(texto) +
+    (detalle ? `<br><br><span style="color:var(--text3);font-family:var(--fm);font-size:11.5px">${esc(detalle)}</span>` : '');
+}
+
+async function loadSimulador() {
+  const sel = $('simLiga');
+  if (!sel.options.length) {
+    sel.innerHTML = SIM_LIGAS.map(c =>
+      `<option value="${c}">${(LEAGUES[c] || {}).flag || ''} ${(LEAGUES[c] || {}).name || c}</option>`).join('');
+    sel.onchange = loadSimulador;
+  }
+  const liga = sel.value || 'PD';
+
+  if (SIM[liga]) { simPinta(SIM[liga]); return; }
+
+  simEstado('Simulando…', 'Diez mil temporadas tardan un par de segundos.');
+
+  let r, cuerpo;
+  try {
+    r = await fetch(`${API}/api/simulador/${liga}`);
+    cuerpo = await r.json();
+  } catch (e) {
+    const [t, x] = SIM_MOTIVOS.fuente_caida;
+    simEstado(t, x, e.message);
+    return;
+  }
+
+  if (!r.ok) {
+    // El detalle puede venir como objeto {motivo, detalle} o como texto
+    const d = cuerpo && cuerpo.detail;
+    const motivo = (d && d.motivo) || (r.status === 429 ? 'limite_alcanzado' : 'fuente_caida');
+    const detalle = (d && d.detalle) || (typeof d === 'string' ? d : '') || `HTTP ${r.status}`;
+    const [t, x] = SIM_MOTIVOS[motivo] || SIM_MOTIVOS.fuente_caida;
+    simEstado(t, x, detalle);
+    return;
+  }
+
+  SIM[liga] = cuerpo;
+  simPinta(cuerpo);
+}
+
+function simPinta(ed) {
+  $('simEstado').style.display = 'none';
+  ['simFicha', 'simTablaCard', 'simProxCard', 'simComoCard']
+    .forEach(id => { const n = $(id); if (n) n.style.display = ''; });
+
+  const nEq = ed.equipos;
+  $('simSub').textContent =
+    `Jornada ${ed.jornada} · ${nmil(ed.modelo.simulaciones)} temporadas simuladas desde donde va la liga hoy`;
+  $('simNsim').textContent = nmil(ed.modelo.simulaciones);
+  $('simAnchura').textContent = `rango medio: ${ed.anchura_media_rango80} puestos`;
+
+  // ── de dónde sale ──
+  const fichas = [
+    ['Jornada', ed.jornada],
+    ['Partidos jugados', `${ed.partidos_jugados} de ${ed.partidos_calendario}`],
+    ['Último resultado', simFecha(ed.ultima_fecha)],
+    ['Simulaciones', nmil(ed.modelo.simulaciones)],
+    ['Semilla', ed.modelo.semilla],
+    ['Calculado', simFecha(ed.calculado)],
+  ];
+  $('simProc').innerHTML = fichas.map(([k, v]) => `
+    <div style="background:var(--bg2);padding:10px 13px">
+      <div style="font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--text3)">${esc(k)}</div>
+      <div style="font-family:var(--fm);font-size:14px;font-weight:650;margin-top:2px">${esc(String(v))}</div>
+    </div>`).join('');
+
+  const av = $('simAviso');
+  if (ed.salud && ed.salud.aviso) {
+    av.style.display = ''; av.textContent = '⚠  ' + ed.salud.aviso;
+  } else if (ed.salud && ed.salud.aplazados) {
+    av.style.display = '';
+    av.textContent = `⚠  ${ed.salud.aplazados} partido(s) aplazado(s) sin fecha nueva. ` +
+      `Entran en la simulación como partidos por jugar.`;
+  } else { av.style.display = 'none'; }
+
+  // ── la tabla ──
+  const th = (t, a) => `<th style="text-align:${a || 'left'};padding:7px 8px;font-size:10px;letter-spacing:.7px;
+    text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border2);font-weight:600;white-space:nowrap">${t}</th>`;
+  let h = `<thead><tr>${th('#')}${th('Equipo')}${th('Pts', 'right')}${th('PJ', 'right')}${th('DG', 'right')}
+    ${th('Rango del 80 % de posición final')}${th('Título', 'right')}${th('Top 4', 'right')}${th('Desc.', 'right')}</tr></thead><tbody>`;
+
+  ed.tabla.forEach(f => {
+    const zona = f.pos_hoy <= 4 ? '#10b981' : (f.pos_hoy >= nEq - 2 ? '#f43f5e' : 'var(--text3)');
+    h += `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:7px 8px;color:${zona};font-weight:700">${f.pos_hoy}</td>
+      <td style="padding:7px 8px;font-family:var(--fb);font-weight:600;white-space:nowrap">${esc(f.corto)}</td>
+      <td style="padding:7px 8px;text-align:right;font-weight:700">${f.pts_hoy}</td>
+      <td style="padding:7px 8px;text-align:right;color:var(--text3)">${f.pj}</td>
+      <td style="padding:7px 8px;text-align:right;color:${f.dg > 0 ? '#10b981' : (f.dg < 0 ? '#f43f5e' : 'var(--text3)')}">${f.dg > 0 ? '+' : ''}${f.dg}</td>
+      <td style="padding:5px 8px;min-width:210px">${simBarra(f, nEq)}</td>
+      <td style="padding:7px 8px;text-align:right">${simPct(f.p_titulo, '#e3b341')}</td>
+      <td style="padding:7px 8px;text-align:right">${simPct(f.p_champions, '#10b981')}</td>
+      <td style="padding:7px 8px;text-align:right">${simPct(f.p_descenso, '#f43f5e')}</td>
+    </tr>`;
+  });
+  $('simTabla').innerHTML = h + '</tbody>';
+
+  // ── los próximos partidos ──
+  let p = `<thead><tr>${th('Fecha')}${th('J', 'center')}${th('Partido')}
+    ${th('1 · X · 2')}${th('Goles esp.', 'right')}</tr></thead><tbody>`;
+  (ed.proximos || []).forEach(q => {
+    p += `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:7px 8px;color:var(--text2);white-space:nowrap">${simFecha(q.fecha)}</td>
+      <td style="padding:7px 8px;text-align:center;color:var(--text3)">${q.jornada}${q.aplazado ? ' ⏸' : ''}</td>
+      <td style="padding:7px 8px;font-family:var(--fb);white-space:nowrap">
+        <b>${esc(q.local)}</b> <span style="color:var(--text3)">v</span> ${esc(q.visitante)}</td>
+      <td style="padding:5px 8px;min-width:170px">${sim1x2(q)}</td>
+      <td style="padding:7px 8px;text-align:right;color:var(--text2);white-space:nowrap">
+        ${q.goles_esperados_local.toFixed(2)}–${q.goles_esperados_visitante.toFixed(2)}</td>
+    </tr>`;
+  });
+  $('simProx').innerHTML = p + '</tbody>';
+}
+
+// La barra del rango: del percentil 10 al 90, con la mediana marcada.
+// Se dibuja sobre una pista de nEq puestos, así que la posición dentro
+// de la pista ES la posición en la tabla. Sin ejes, pero a escala.
+function simBarra(f, nEq) {
+  const izq = (f.p10 - 1) / nEq * 100;
+  const ancho = (f.p90 - f.p10 + 1) / nEq * 100;
+  const med = (f.mediana - 0.5) / nEq * 100;
+  const col = f.p90 <= 4 ? '#10b981' : (f.p10 >= nEq - 2 ? '#f43f5e' : 'var(--electric)');
+  return `<div title="del ${f.p10}º al ${f.p90}º en 8 de cada 10 simulaciones · mediana ${f.mediana}º"
+      style="position:relative;height:17px;background:rgba(14,165,233,.07);border-radius:4px;overflow:hidden">
+    <div style="position:absolute;left:${izq}%;width:${ancho}%;top:3px;bottom:3px;
+      background:${col};opacity:.45;border-radius:3px"></div>
+    <div style="position:absolute;left:${med}%;top:1px;bottom:1px;width:2px;background:#fff;opacity:.85"></div>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-end;
+      padding-right:5px;font-size:10.5px;color:var(--text2)">${f.p10}–${f.p90}</div>
+  </div>`;
+}
+
+function sim1x2(q) {
+  const t = [[q.p_local, '#10b981'], [q.p_empate, '#3d5a78'], [q.p_visitante, '#0ea5e9']];
+  return `<div title="local ${Math.round(q.p_local * 100)} % · empate ${Math.round(q.p_empate * 100)} % · visitante ${Math.round(q.p_visitante * 100)} %"
+      style="display:flex;height:17px;border-radius:4px;overflow:hidden;font-size:10px;
+      font-family:var(--fm);line-height:17px;text-align:center">
+    ${t.map(([v, c]) => `<div style="width:${v * 100}%;background:${c};opacity:.8;overflow:hidden;white-space:nowrap">${v >= 0.14 ? Math.round(v * 100) + '%' : ''}</div>`).join('')}
+  </div>`;
+}
+
+// Una probabilidad por debajo del 0,5 % se escribe "<1 %", no "0 %":
+// que el modelo le dé poquísimo no es que le dé nada.
+function simPct(v, color) {
+  if (v <= 0) return `<span style="color:var(--text3)">—</span>`;
+  const txt = v < 0.005 ? '&lt;1' : Math.round(v * 100);
+  const fuerte = v >= 0.10;
+  return `<span style="color:${fuerte ? color : 'var(--text2)'};font-weight:${fuerte ? 700 : 400}">${txt} %</span>`;
+}
+
+function simFecha(iso) {
+  if (!iso) return '—';
+  const [a, m, d] = iso.split('-');
+  return `${d}/${m}/${a}`;
+}
+
+function nmil(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+
 </script>
 </body>
 </html>
