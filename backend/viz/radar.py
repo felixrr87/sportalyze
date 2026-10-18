@@ -163,7 +163,12 @@ def generar_radar_pizza(
 
     # ── Títulos (igual que tu notebook) ───────────────────
     player_name = titulo_principal or player_data.get("name", "Jugador")
-    subtitle    = titulo_secundario or f"{player_data.get('team', '')} · {position} · 2024/25"
+    # Sin temporada escrita a mano: la de hoy. Antes ponía «2024/25»
+    # fijo en el pie del radar, así que una imagen generada hoy salía
+    # firmada con una temporada que acabó hace año y medio.
+    from backend.temporada import nombre_temporada
+    subtitle    = titulo_secundario or (
+        f"{player_data.get('team', '')} · {position} · {nombre_temporada()}")
 
     fig.text(0.515, 0.975, player_name, size=18, ha="center", color="#FFFFFF",
              fontweight="bold",
