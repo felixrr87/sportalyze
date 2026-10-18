@@ -187,8 +187,9 @@ w.addEventListener('load', async () => {
   // 2. LA FICHA
   // ════════════════════════════════════════════════════════════
   console.log('\n── ficha de jugador ──');
-  const p0 = pl[0];
-  await w.abrirFicha(JSON.parse(JSON.stringify(p0)));
+  const p0 = JSON.parse(JSON.stringify(pl[0]));
+  p0.shots = TIROS.shots.length;   // que la cabecera cuadre con el mapa
+  await w.abrirFicha(p0);
   await esperar(40);
 
   const ficha = doc.getElementById('fichaJug');
@@ -241,6 +242,12 @@ w.addEventListener('load', async () => {
       'cada tiro está en su sitio, con su xG al pasar el ratón y relleno si fue gol',
       malTiro.slice(0, 3).join(' · '));
 
+    comprueba(!/No cuadra/i.test(ficha.textContent),
+      'cuando el mapa y la cabecera cuadran, no avisa de nada');
+    const u = pedidas.find(x => x.includes('/shots')) || '';
+    comprueba(u.includes('season='),
+      'pide los tiros DE ESTA TEMPORADA, no los de toda la carrera', u);
+
     const goles = TIROS.shots.filter(t => t.result === 'Goal').length;
     const xgTotal = TIROS.shots.reduce((a, t) => a + t.xG, 0);
     comprueba(ficha.textContent.includes(xgTotal.toFixed(2)),
@@ -251,6 +258,72 @@ w.addEventListener('load', async () => {
     comprueba(/suerte/i.test(ficha.textContent.replace(/\s+/g, ' ')),
       'avisa de que esa diferencia es sobre todo suerte');
   }
+
+  // ── un servidor viejo que se traga el filtro de temporada ──
+  //
+  // index.html se lee del disco en cada visita; main.py sólo al
+  // arrancar. Así que durante un rato la pantalla es nueva y el
+  // servidor es viejo, y ahí fue donde salió: Raphinha con 550 tiros
+  // y 79 goles bajo una cabecera que decía 26 tiros.
+  w.cerrarFicha();
+  const otrasTemporadas = [];
+  for (let i = 0; i < 40; i++) {
+    const t = JSON.parse(JSON.stringify(TIROS.shots[i % TIROS.shots.length]));
+    t.season = '2019';
+    t.result = 'Goal';
+    t.id = 'viejo' + i;
+    otrasTemporadas.push(t);
+  }
+  const servidorViejo = { shots: TIROS.shots.concat(otrasTemporadas),
+                          total: TIROS.shots.length + 40 };   // sin temporada ni total_carrera
+  const antesFetch = w.fetch;
+  // Un servidor viejo tampoco manda `season` en el scouting: sólo el
+  // "2026/27". Esto reproduce eso, que es lo que de verdad pasó.
+  const scoutingViejo = JSON.parse(JSON.stringify(D));
+  delete scoutingViejo.season;
+  w.fetch = async (url) => {
+    pedidas.push(String(url));
+    const u = String(url);
+    if (u.includes('/shots'))
+      return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(servidorViejo)) };
+    if (u.includes('/api/scouting/'))
+      return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(scoutingViejo)) };
+    return antesFetch(url);
+  };
+  w.eval('window.SEASON_ANYO = undefined');
+  await w.runScouting();
+  await esperar(60);
+  comprueba(w.SEASON_ANYO === 2026,
+    'sin `season`, saca el año del texto «2026/27» en vez de rendirse',
+    'SEASON_ANYO = ' + w.SEASON_ANYO);
+  w.eval('FICHA.tiros = {}');
+  const pViejo = JSON.parse(JSON.stringify(pl[0]));
+  pViejo.shots = TIROS.shots.length;
+  await w.abrirFicha(pViejo);
+  await esperar(60);
+  const fv = doc.getElementById('fichaJug');
+  const circulosV = [...fv.querySelectorAll('svg circle')].filter(c => c.querySelector('title'));
+  comprueba(circulosV.length === TIROS.shots.length,
+    'con un servidor viejo, la pantalla recorta ella misma a esta temporada',
+    `pinta ${circulosV.length} y esta temporada tiene ${TIROS.shots.length}`);
+  comprueba(!/No cuadra/i.test(fv.textContent.replace(/\s+/g, ' ')),
+    'y entonces ya no hace falta avisar de ningún descuadre');
+  w.fetch = antesFetch;
+  w.eval('FICHA.tiros = {}');
+  w.cerrarFicha();
+
+  // ── el mapa que no cuadra con la cabecera ──
+  //
+  // Esto es el fallo que apareció con datos reales: Understat devuelve
+  // los tiros de toda la CARRERA, así que Raphinha salía con 550 tiros
+  // debajo de una cabecera que decía 26.
+  w.cerrarFicha();
+  const descuadrado = JSON.parse(JSON.stringify(pl[0]));
+  descuadrado.shots = TIROS.shots.length + 500;
+  await w.abrirFicha(descuadrado);
+  await esperar(40);
+  comprueba(/No cuadra/i.test(doc.getElementById('fichaJug').textContent.replace(/\s+/g, ' ')),
+    'si el mapa y la cabecera no cuadran, lo dice en pantalla');
 
   // ── el cero que no debe pintarse ──
   w.cerrarFicha();

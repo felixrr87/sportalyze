@@ -92,6 +92,7 @@ def main() -> None:
     salida = run_scouting_pipeline(
         players=jugadores, position="FW", max_age=50, min_minutes=270)
     salida["ligas"] = ["PD"]
+    salida["season"] = temporada_actual()
     salida["temporada"] = nombre_temporada()
 
     pl = salida["players"]
@@ -106,7 +107,20 @@ def main() -> None:
     with open("tests/datos/scouting_fixture.json", "w", encoding="utf-8") as f:
         json.dump(salida, f, ensure_ascii=False, indent=1)
 
-    tiros = {"shots": [tiro(n, rnd) for n in range(1, 24)], "total": 23}
+    # La respuesta de /api/player/{id}/shots tal y como queda ahora:
+    # los de ESTA temporada, más el reparto de toda la carrera. Esa
+    # diferencia es el fallo que apareció con datos reales —Raphinha
+    # con 550 tiros desde 2019 bajo una cabecera que decía 26—, así
+    # que el fixture tiene que llevarla para poder probarla.
+    lista = [tiro(n, rnd) for n in range(1, 24)]
+    tiros = {
+        "shots": lista,
+        "total": len(lista),
+        "temporada": nombre_temporada(),
+        "total_carrera": len(lista) + 527,
+        "por_temporada": {str(temporada_actual()): len(lista),
+                          "2025": 180, "2024": 200, "2023": 147},
+    }
     with open("tests/datos/tiros_fixture.json", "w", encoding="utf-8") as f:
         json.dump(tiros, f, ensure_ascii=False, indent=1)
 
@@ -116,7 +130,7 @@ def main() -> None:
           f"pca ({pl[0]['pca_x']}, {pl[0]['pca_y']})")
     print(f"grupos: " + ", ".join(
         f"{c}={sum(1 for p in pl if p['cluster'] == c)}" for c in range(4)))
-    print(f"{tiros['total']} tiros")
+    print(f"{tiros['total']} tiros de {tiros['total_carrera']} de carrera")
 
 
 if __name__ == "__main__":

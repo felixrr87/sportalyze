@@ -494,13 +494,51 @@ async def get_league_players_stats(
 
 
 @app.get("/api/player/{player_id}/shots")
-async def get_player_shot_map(player_id: str):
-    """Disparos de un jugador con coordenadas para shot map"""
+async def get_player_shot_map(
+    player_id: str,
+    season: int = Query(None, description="año en que empieza la temporada; "
+                        "sin él, TODOS los tiros de su carrera"),
+):
+    """Disparos de un jugador con coordenadas para el mapa de tiros.
+
+    LO DE LA TEMPORADA NO ES UN ADORNO. Understat devuelve aquí todos
+    los tiros de la CARRERA del jugador. Probándolo con datos reales,
+    Raphinha salía con 550 tiros —hasta un Brest-Rennes de 2019— en una
+    ficha cuya cabecera decía «590 minutos en 8 partidos» y «26 tiros».
+
+    O sea que el mapa y los números de arriba contaban temporadas
+    distintas, y el «goles menos xG» de debajo del mapa se calculaba
+    sobre siete años. Eso no es un mapa mal pintado: es otra pregunta
+    contestada sin avisar.
+
+    Con `season` se devuelven sólo los de esa temporada. Y vaya siempre
+    el reparto por temporadas y el total de la carrera, para que quien
+    mire la respuesta sepa qué se ha quedado fuera. Filtrar en silencio
+    es tan malo como no filtrar.
+    """
     try:
-        shots = await get_player_shots(player_id)
-        return {"shots": shots, "total": len(shots)}
+        todos = await get_player_shots(player_id)
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+    por_temporada = {}
+    for t in todos:
+        clave = str(t.get("season", ""))
+        por_temporada[clave] = por_temporada.get(clave, 0) + 1
+
+    if season is None:
+        return {"shots": todos, "total": len(todos),
+                "temporada": None, "total_carrera": len(todos),
+                "por_temporada": por_temporada}
+
+    shots = [t for t in todos if str(t.get("season", "")) == str(season)]
+    return {
+        "shots": shots,
+        "total": len(shots),
+        "temporada": nombre_temporada(season),
+        "total_carrera": len(todos),
+        "por_temporada": por_temporada,
+    }
 
 
 # ════════════════════════════════════════════════════════
@@ -625,7 +663,12 @@ async def run_scouting(
             min_minutes=min_minutes,
         )
         salida["ligas"] = ligas
-        salida["temporada"] = nombre_temporada(season or temporada_actual())
+        # El año suelto, además del "2026/27": la ficha de jugador lo
+        # necesita para pedir los tiros DE ESTA TEMPORADA y no los de
+        # toda la carrera. Que lo saque recortando la cadena es pedir
+        # que algún día se recorte mal.
+        salida["season"] = season or temporada_actual()
+        salida["temporada"] = nombre_temporada(salida["season"])
         if caidas:
             # Una liga caída NO se calla: cambia con quién se está
             # comparando a todo el mundo.

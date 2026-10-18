@@ -1185,7 +1185,7 @@ async function cargarJugadores(liga) {
         percentiles: x.percentiles || null,
       }));
       SIN_NOTA = d.puestos_sin_nota || {};
-      TEMPORADA = d.temporada || '';
+      recuerdaTemporada(d);
       MINUTOS_MAX = d.minutos_maximos || 0;
       ['stTemp'].forEach(i => { const n = $(i);
         if (n && TEMPORADA) n.textContent = 'Temporada ' + TEMPORADA; });
@@ -2823,6 +2823,7 @@ async function runScouting() {
   }
 
   SC.ultima = d;
+  recuerdaTemporada(d);
   scPinta(d);
 }
 
@@ -3131,25 +3132,112 @@ async function abrirFicha(p) {
     </div>`);
 
   // ── los tiros, que son otra petición ──
+  //
+  // CON LA TEMPORADA PUESTA, Y NO ES UN DETALLE. Understat devuelve
+  // aquí los tiros de toda la CARRERA. Probándolo con datos reales,
+  // Raphinha salía con 550 tiros —el primero de un Brest-Rennes de
+  // 2019— debajo de una cabecera que decía "590 min en 8 partidos" y
+  // "26 tiros". El mapa y los números de arriba hablaban de cosas
+  // distintas, y el "goles menos xG" se calculaba sobre siete años.
   const id = p.player_id ?? p.understat_id;
   if (!id) {
     $('fichaTiros').innerHTML =
       '<div class="al alw">No tengo el identificador de este jugador para pedir sus tiros.</div>';
     return;
   }
+  const anyo = anyoDeTemporada();
+  const llave = `${id}/${anyo || 'carrera'}`;
   try {
-    let tiros = FICHA.tiros[id];
-    if (!tiros) {
-      const r = await fetch(`${API}/api/player/${id}/shots`);
+    let guardado = FICHA.tiros[llave];
+    if (!guardado) {
+      const r = await fetch(`${API}/api/player/${id}/shots` +
+                            (anyo ? `?season=${anyo}` : ''));
       const d = await r.json();
       if (!r.ok) throw new Error((d && (d.detail || d.message)) || `HTTP ${r.status}`);
-      tiros = d.shots || [];
-      FICHA.tiros[id] = tiros;
+      guardado = recortarALaTemporada(d, anyo);
+      FICHA.tiros[llave] = guardado;
     }
-    pintaTirosFicha(tiros);
+    pintaTirosFicha(guardado, p);
   } catch (e) {
     const n = $('fichaTiros');
     if (n) n.innerHTML = `<div class="al alw">No he podido traer sus tiros: ${esc(e.message)}</div>`;
+  }
+}
+
+// El año en que empezó la temporada que se está enseñando. Sale del
+// servidor, que es quien la decide; no se recorta de "2026/27" a mano
+// ni se usa la fecha de hoy, porque entonces en enero pediría el año
+// equivocado. Si no lo sabe, devuelve null y la ficha lo dice.
+function anyoDeTemporada() {
+  return Number.isInteger(window.SEASON_ANYO) ? window.SEASON_ANYO : null;
+}
+
+// ── el cinturón, además de los tirantes ──
+//
+// El servidor ya filtra por temporada cuando se le pide. Pero si el
+// que está corriendo es más viejo que este archivo —acaba de pasar:
+// index.html se lee del disco en cada visita y main.py sólo al
+// arrancar— se traga el parámetro y devuelve la carrera entera. Y
+// entonces la ficha de Raphinha enseña 550 tiros y 79 goles debajo de
+// una cabecera que dice 26 tiros en 8 partidos.
+//
+// Así que la temporada se recorta TAMBIÉN aquí. Cada tiro trae el año
+// en el que se hizo, así que no hace falta fiarse de nadie. Si el
+// servidor ya lo había hecho, esto no quita nada: filtrar dos veces
+// por lo mismo deja la misma lista.
+function recortarALaTemporada(d, anyo) {
+  const todos = (d && d.shots) || [];
+  const reparto = (d && d.por_temporada) || todos.reduce((a, t) => {
+    const k = String(t.season || '');
+    a[k] = (a[k] || 0) + 1;
+    return a;
+  }, {});
+  if (!anyo) {
+    return { shots: todos, total: todos.length, temporada: null,
+             total_carrera: todos.length, por_temporada: reparto };
+  }
+  const suyos = todos.filter(t => String(t.season) === String(anyo));
+  return {
+    shots: suyos,
+    total: suyos.length,
+    temporada: (d && d.temporada) || `${anyo}/${String(anyo + 1).slice(-2)}`,
+    // Si el servidor ya filtró, él sabe el total de la carrera y
+    // nosotros no: sólo hemos visto los de esta temporada.
+    total_carrera: (d && d.total_carrera) || todos.length,
+    por_temporada: reparto,
+    recortado_aqui: suyos.length !== todos.length,
+  };
+}
+
+// Se llama desde las TRES pantallas que traen jugadores. Hacía falta
+// que fueran las tres: la ficha se abre desde el Scouting, desde las
+// Cartas y desde el Comparador, y entrando directo a una de ellas el
+// año se quedaba sin saber, así que los tiros se pedían sin filtro y
+// volvía la carrera entera. Lo encontró una prueba, no el ojo.
+function recuerdaTemporada(d) {
+  if (d && Number.isInteger(d.season)) {
+    window.SEASON_ANYO = d.season;
+  } else if (d && /^\d{4}\//.test(String(d.temporada || ''))) {
+    // Plan B: recortar el año de "2026/27".
+    //
+    // No me gusta y está aquí a propósito. El servidor manda `season`
+    // justo para no tener que hacer esto, pero index.html se lee del
+    // disco en cada visita y main.py sólo al arrancar: después de una
+    // actualización hay un rato en que la pantalla es nueva y el
+    // servidor todavía es el de antes, y no manda `season`.
+    //
+    // Sin esto, en ese rato la ficha pedía los tiros sin temporada y
+    // salía la carrera entera: Raphinha con 550 tiros y 79 goles
+    // debajo de una cabecera que decía 26 tiros en 8 partidos. Entre
+    // recortar una cadena y enseñar siete años como si fueran este,
+    // prefiero recortar la cadena.
+    window.SEASON_ANYO = +String(d.temporada).slice(0, 4);
+  }
+  if (d && d.temporada) {
+    TEMPORADA = d.temporada;
+    const n = $('stTemp');
+    if (n) n.textContent = 'Temporada ' + d.temporada;
+    if ($('cfgTemp')) $('cfgTemp').textContent = d.temporada;
   }
 }
 
@@ -3161,11 +3249,17 @@ function puestoLargo(p) {
 // El campo de Understat va de 0 a 1 en las dos direcciones, con el
 // ataque hacia x = 1. Se lleva a las medidas de un campo real para que
 // las distancias se vean como son.
-function pintaTirosFicha(tiros) {
+function pintaTirosFicha(d, p) {
   const n = $('fichaTiros');
   if (!n) return;
+  const tiros = (d && d.shots) || [];
+  const fuera = (d && d.total_carrera ? d.total_carrera : tiros.length) - tiros.length;
   if (!tiros.length) {
-    n.innerHTML = '<div class="empty" style="padding:20px"><p>No ha tirado esta temporada.</p></div>';
+    n.innerHTML = `<div class="empty" style="padding:20px"><p>No ha tirado
+      ${d && d.temporada ? 'en ' + esc(d.temporada) : 'todavía'}.</p>
+      ${fuera > 0 ? `<p style="font-size:12px;opacity:.75">Sí tiene ${fuera}
+        tiros de temporadas anteriores, que no se pintan aquí porque la
+        cabecera de esta ficha es de esta temporada.</p>` : ''}</div>`;
     return;
   }
   const maxXg = Math.max(0.05, ...tiros.map(t => t.xG || 0));
@@ -3178,7 +3272,7 @@ function pintaTirosFicha(tiros) {
       stroke="${gol ? '#e3b341' : '#0ea5e9'}" stroke-width=".45"
       opacity="${gol ? 1 : .7}" style="cursor:crosshair">
       <title>min ${t.minute} · xG ${(t.xG || 0).toFixed(3)} · ${esc(trad(t.result))}
-${esc(t.shot_type || '')} · ${esc(trad(t.situation))}
+${esc(trad(t.shot_type))} · ${esc(trad(t.situation))}
 ${esc(t.home_team || '')} ${esc(t.date || '')} ${esc(t.away_team || '')}</title></circle>`;
   }).join('');
 
@@ -3200,10 +3294,31 @@ Con pocos tiros esto es casi todo suerte y se corrige solo con el tiempo."
         <b style="font-family:var(--fm)">${dif > 0 ? '+' : ''}${dif.toFixed(2)}</b>
         <span style="color:var(--text2)">respecto a lo esperado</span></span>
     </div>
+    ${descuadre(tiros.length, p)}
     <div style="color:var(--text3);font-size:11.5px;margin-top:6px;line-height:1.55;max-width:66ch">
-      Lo de «respecto a lo esperado» con pocos tiros es sobre todo suerte: quien
-      mete más de lo que valen sus tiros suele volver a su sitio, y al revés.
+      ${d && d.temporada ? `Sólo los de <b>${esc(d.temporada)}</b>${fuera > 0
+        ? `. Entre esta temporada y las anteriores lleva ${d.total_carrera} tiros
+           en Understat; los ${fuera} de otros años no se pintan aquí porque las
+           cifras de arriba son de esta temporada` : ''}. ` : ''}Lo de «respecto a
+      lo esperado» con pocos tiros es sobre todo suerte: quien mete más de lo que
+      valen sus tiros suele volver a su sitio, y al revés.
     </div>`;
+}
+
+// ── el mapa tiene que cuadrar con la cabecera ──
+//
+// La cabecera dice "Tiros: 26" y el mapa pinta unos cuantos círculos.
+// Si no son el mismo número, es que las dos cosas vienen de sitios que
+// no están contando lo mismo —que es exactamente lo que pasaba cuando
+// el mapa traía la carrera entera— y eso hay que decirlo en pantalla,
+// no dejarlo pasar porque "el mapa se ve bien".
+function descuadre(pintados, p) {
+  const dice = p && p.shots;
+  if (!Number.isFinite(dice) || dice === pintados) return '';
+  return `<div class="al alw" style="margin-top:8px;font-size:12px">
+    ⚠ Aquí hay ${pintados} tiros y sus cifras dicen ${dice}. No cuadra, y
+    prefiero enseñarlo a disimularlo: puede ser que la fuente haya
+    actualizado una cosa antes que la otra.</div>`;
 }
 
 function trad(s) {
@@ -3212,6 +3327,9 @@ function trad(s) {
     BlockedShot: 'bloqueado', ShotOnPost: 'al palo', OwnGoal: 'en propia',
     OpenPlay: 'jugada', FromCorner: 'de córner', SetPiece: 'balón parado',
     DirectFreekick: 'falta directa', Penalty: 'penalti',
+    // El tipo de tiro venía sin traducir: "LeftFoot · de córner".
+    LeftFoot: 'pierna izquierda', RightFoot: 'pierna derecha', Head: 'cabeza',
+    OtherBodyPart: 'otra parte del cuerpo',
   })[s] || s || '';
 }
 
@@ -3267,6 +3385,7 @@ async function initCmp() {
         return;
       }
       CMP.porPuesto[llave] = d.players || [];
+      recuerdaTemporada(d);
     } catch (e) {
       $('cOut').innerHTML = `<div class="al alw">No he podido pedir los jugadores: ${esc(e.message)}</div>`;
       return;

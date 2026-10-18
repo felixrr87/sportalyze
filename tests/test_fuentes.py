@@ -376,3 +376,82 @@ def test_la_liga_esta_mapeada():
     diccionario en un refactor."""
     from backend.scrapers.understat import UNDERSTAT_LEAGUES
     assert UNDERSTAT_LEAGUES["PD"] == "La_Liga"
+
+
+# ══════════════════════════════════════════════════════════════════
+# LOS TIROS DE UN JUGADOR SON DE TODA SU CARRERA
+# ══════════════════════════════════════════════════════════════════
+#
+# Esto no se vio hasta probarlo con datos reales. La ficha de Raphinha
+# decía arriba "590 min en 8 partidos · 26 tiros" y debajo pintaba 550
+# tiros, el primero de un Brest–Rennes de 2019: Understat devuelve en
+# esa ruta los tiros de la CARRERA entera.
+#
+# O sea que la cabecera y el mapa contaban temporadas distintas, y el
+# "goles menos xG" de debajo se calculaba sobre siete años. No es un
+# mapa mal dibujado: es otra pregunta contestada sin avisar.
+
+TIROS_DE_PRUEBA = [
+    {"id": "1", "season": "2026", "minute": 10, "result": "Goal", "xG": 0.5},
+    {"id": "2", "season": "2026", "minute": 20, "result": "SavedShot", "xG": 0.1},
+    {"id": "3", "season": "2019", "minute": 30, "result": "Goal", "xG": 0.3},
+    {"id": "4", "season": "2024", "minute": 40, "result": "MissedShots", "xG": 0.2},
+]
+
+
+def _tiros_falsos(monkeypatch):
+    async def falso(player_id):
+        return list(TIROS_DE_PRUEBA)
+    monkeypatch.setattr(main, "get_player_shots", falso)
+
+
+def test_los_tiros_sin_temporada_son_los_de_toda_la_carrera(cliente, monkeypatch):
+    _tiros_falsos(monkeypatch)
+    d = cliente.get("/api/player/999/shots").json()
+    assert d["total"] == 4
+    assert d["temporada"] is None
+    # Y aunque no filtre, dice de qué años son: quien mire la respuesta
+    # tiene que poder enterarse de que ahí dentro hay siete temporadas.
+    assert d["por_temporada"] == {"2026": 2, "2019": 1, "2024": 1}
+
+
+def test_los_tiros_con_temporada_son_solo_los_de_esa_temporada(cliente, monkeypatch):
+    _tiros_falsos(monkeypatch)
+    d = cliente.get("/api/player/999/shots?season=2026").json()
+    assert d["total"] == 2
+    assert [t["id"] for t in d["shots"]] == ["1", "2"]
+    assert d["temporada"] == "2026/27"
+
+
+def test_filtrar_los_tiros_no_esconde_lo_que_deja_fuera(cliente, monkeypatch):
+    """Filtrar en silencio es tan malo como no filtrar.
+
+    Si la ficha enseña 2 tiros de los 4 que hay, tiene que poder decir
+    cuántos se ha dejado fuera y de qué años eran. Si no, el visitante
+    cree que ése es todo el historial del jugador.
+    """
+    _tiros_falsos(monkeypatch)
+    d = cliente.get("/api/player/999/shots?season=2026").json()
+    assert d["total_carrera"] == 4
+    assert d["total_carrera"] - d["total"] == 2
+    assert d["por_temporada"]["2019"] == 1
+
+
+def test_una_temporada_sin_tiros_da_lista_vacia_y_no_la_carrera(cliente, monkeypatch):
+    """El fallo al revés: que al no encontrar nada enseñe todo."""
+    _tiros_falsos(monkeypatch)
+    d = cliente.get("/api/player/999/shots?season=2001").json()
+    assert d["shots"] == []
+    assert d["total_carrera"] == 4
+
+
+def test_el_scouting_dice_el_ano_de_la_temporada_y_no_solo_el_texto(cliente, monkeypatch):
+    """La ficha necesita el año suelto para pedir los tiros.
+
+    Si sólo viniera "2026/27", la pantalla tendría que recortar la
+    cadena, y eso es pedir que algún día se recorte mal.
+    """
+    _usar(_ClienteBueno, monkeypatch)
+    d = cliente.get("/api/scouting/PD?position=FW&min_minutes=0").json()
+    assert isinstance(d.get("season"), int)
+    assert d["temporada"].startswith(str(d["season"]))
