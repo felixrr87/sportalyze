@@ -1473,6 +1473,13 @@ async function loadStandings() {
         <td style="font-family:var(--fm);color:${x.goal_diff > 0 ? 'var(--green)' : x.goal_diff < 0 ? 'var(--red)' : 'inherit'}">${x.goal_diff > 0 ? '+' : ''}${x.goal_diff}</td>
         <td style="font-family:var(--fm);font-weight:700;color:var(--electric)">${x.points}</td>
       </tr>`).join('') + '</tbody></table></div>';
+    // Si el xG no ha podido entrar, se dice. Una columna vacía sin
+    // explicación es lo mismo que un número inventado: quien mira no
+    // puede saber qué está viendo.
+    if (d.aviso_xg) {
+      $('sTbl').insertAdjacentHTML('afterbegin',
+        `<div class="al alw" style="margin-bottom:10px">⚠ ${esc(d.aviso_xg)}</div>`);
+    }
     const top10 = t.slice(0, 10), ns = top10.map(x => x.team_tla || x.team_name.slice(0, 6));
     mkBar('sGC', ns, [{ label: 'Goles', data: top10.map(x => x.goals_for), backgroundColor: top10.map((_, i) => TC[i % TC.length] + '88'), borderColor: top10.map((_, i) => TC[i % TC.length]), borderWidth: 1, borderRadius: 5 }], { indexAxis: 'y', plugins: { legend: { display: false } } });
     const def = [...t].sort((a, b) => a.goals_against - b.goals_against).slice(0, 10);
