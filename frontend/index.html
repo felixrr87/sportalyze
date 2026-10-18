@@ -637,7 +637,7 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
       <span style="border-left:3px solid var(--orange);padding-left:8px">UEL</span>&nbsp;&nbsp;
       <span style="border-left:3px solid var(--green);padding-left:8px">UECL</span>&nbsp;&nbsp;
       <span style="border-left:3px solid var(--red);padding-left:8px">Descenso</span>
-      <span style="float:right;color:var(--text3)">Temporada 2024/25</span>
+      <span style="float:right;color:var(--text3)" id="stTemp">Temporada —</span>
     </div>
     <div class="card" style="margin-bottom:14px"><div id="sTbl"><div class="ld"><div class="sp"></div>Cargando clasificación…</div></div></div>
     <div class="g2">
@@ -666,7 +666,7 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
 <div class="page" id="page-scorers">
   <div class="page-header">
     <div class="header-row">
-      <div><div class="ptitle">Goleadores</div><div class="psub">Top scorers de la temporada 2024/25</div></div>
+      <div><div class="ptitle">Goleadores</div><div class="psub" id="scSub">Máximos goleadores</div></div>
       <select id="scL2" onchange="loadScorers()" style="width:auto">
         <option value="PL">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</option><option value="PD">🇪🇸 La Liga</option>
         <option value="BL1">🇩🇪 Bundesliga</option><option value="SA">🇮🇹 Serie A</option>
@@ -780,7 +780,7 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
           <div class="pw"><div class="pm"><span>Watchlist</span><span id="cfgWL" style="font-family:var(--fm)">0</span></div><div class="pb"><div class="pf" id="cfgWLB" style="width:0%;background:var(--gold)"></div></div></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div class="kpi"><div class="kl">Temporada</div><div class="kv" style="font-size:18px">24/25</div><div class="ks">Understat</div></div>
+          <div class="kpi"><div class="kl">Temporada</div><div class="kv" style="font-size:18px" id="cfgTemp">—</div><div class="ks">Understat</div></div>
           <div class="kpi"><div class="kl">ML Engine</div><div class="kv" style="font-size:14px;margin-top:4px">K-Means</div><div class="ks">4 clusters</div></div>
         </div>
       </div>
@@ -1064,6 +1064,14 @@ const guarda = {
 // servidor para que la explicación de pantalla sea la misma que la del
 // código y no dos textos que un día dejan de coincidir.
 let SIN_NOTA = {};
+// La temporada que está usando el servidor. Nadie la escribe a
+// mano: la dice la respuesta, y así la pantalla no puede quedarse
+// anunciando un año distinto del de las cifras que enseña.
+let TEMPORADA = '';
+// Minutos del que más ha jugado. Sin esto, un filtro de minutos
+// no se puede interpretar: 400 es suave en mayo y durísimo en
+// octubre, cuando nadie pasa de 720.
+let MINUTOS_MAX = 0;
 let AVISOS_JUGADORES = [];
 
 // Cómo se pinta una nota que puede no existir.
@@ -1149,7 +1157,7 @@ async function cargarJugadores(liga) {
   if ($("pGrid")) $("pGrid").innerHTML = '<div class="ld" style="grid-column:1/-1"><div class="sp"></div>Pidiendo datos a Understat…</div>';
   let fallo = "";
   try {
-    const r = await fetch(`/api/players/${lg}?limit=200&min_minutes=400`);
+    const r = await fetch(`/api/players/${lg}?limit=200&min_minutes=270`);
     if (!r.ok) { fallo = `${r.status} — ${(await r.text()).slice(0,140)}`; PLAYERS = []; }
     else {
       const d = await r.json();
@@ -1170,6 +1178,11 @@ async function cargarJugadores(liga) {
         percentiles: x.percentiles || null,
       }));
       SIN_NOTA = d.puestos_sin_nota || {};
+      TEMPORADA = d.temporada || '';
+      MINUTOS_MAX = d.minutos_maximos || 0;
+      ['stTemp'].forEach(i => { const n = $(i);
+        if (n && TEMPORADA) n.textContent = 'Temporada ' + TEMPORADA; });
+      if ($('cfgTemp') && TEMPORADA) $('cfgTemp').textContent = TEMPORADA;
       AVISOS_JUGADORES = d.avisos || [];
     }
   } catch (e) { fallo = e.message; PLAYERS = []; }
@@ -1395,7 +1408,7 @@ function setStatus(ok) {
 // ── DASHBOARD ─────────────────────────────────────────────
 async function loadDash() {
   const lk = $('dL').value, lm = LEAGUES[lk] || {};
-  $('dashSub').textContent = `${lm.name || lk} — Temporada 2024/25`;
+  $('dashSub').textContent = `${lm.name || lk} — Temporada ${TEMPORADA || '—'}`;
   $('dLN').textContent = `${lm.flag || ''} ${lm.name || lk}`;
   $('dKPIs').innerHTML = Array(4).fill('<div class="kpi" style="animation:pulse 1.5s infinite"></div>').join('');
   try {
