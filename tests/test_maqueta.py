@@ -79,10 +79,28 @@ def test_el_informe_pintado_es_el_dato():
     _correr("comprobar_informe.js", ruta, "Todo el informe pintado cuadra")
 
 
+@pytest.mark.skipif(not _node(), reason="no hay node instalado")
+@pytest.mark.skipif(not _jsdom(),
+                    reason="falta jsdom: cd tests/maqueta && npm install")
+def test_todas_las_pantallas_estan_explicadas():
+    """Cada pantalla, su explicación: el método arriba y la versión en
+    cristiano debajo. Y que ninguna prometa lo que el código no hace.
+
+    Lo encontró a la primera: en Partidos y en Watchlist la explicación
+    desaparecía, porque esas dos pantallas reescriben su propio .cont y
+    se la llevaban por delante al cargar los datos. Dos de doce, que es
+    como no verlo nunca.
+    """
+    _correr("comprobar_explicaciones.js", None, "Todas las pantallas explicadas")
+
+
 def _correr(script, datos, frase):
     index = os.path.join(os.path.dirname(AQUI), "frontend", "index.html")
+    argumentos = [_node(), os.path.join(MAQ, script), index]
+    if datos:
+        argumentos.append(datos)
     r = subprocess.run(
-        [_node(), os.path.join(MAQ, script), index, datos],
+        argumentos,
         capture_output=True, text=True, timeout=180, cwd=MAQ)
     # La salida del comprobador se imprime siempre: si falla, ahí está
     # la línea que dice qué no cuadra.
