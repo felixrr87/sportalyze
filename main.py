@@ -7,6 +7,7 @@
 
 import asyncio
 import logging
+from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,7 +17,7 @@ from pathlib import Path
 from cachetools import TTLCache
 from backend.config import PORT, ENV, LEAGUES
 from backend.errors import FuenteNoDisponible
-from backend.scrapers.football_data import LimiteAlcanzado
+from backend.scrapers.football_data import FaltaLaClave, LimiteAlcanzado
 
 # ── Logging ───────────────────────────────────────────────
 logging.basicConfig(
@@ -53,6 +54,7 @@ from backend.scrapers.transfermarkt import (
 from backend.ml.scouting import run_scouting_pipeline, find_similar_players
 from backend.ml import simulador as sim
 from backend.ml import informe as inf
+from backend.ml.puntuar import PuestoSinDatos
 from backend.scrapers import statsbomb as sb
 from backend.ml.injury_prediction import build_player_risk_features, calculate_injury_risk
 
@@ -239,6 +241,9 @@ async def get_simulador(competition_code: str):
 
     try:
         crudos = await football_client.get_competition_season(codigo)
+    except FaltaLaClave as e:
+        raise HTTPException(status_code=503, detail={
+            "motivo": "falta_la_clave", "detalle": str(e)})
     except LimiteAlcanzado as e:
         raise HTTPException(status_code=429, detail={
             "motivo": "limite_alcanzado", "detalle": str(e)})
@@ -370,18 +375,48 @@ async def get_league_players_stats(
         players = [p for p in players if p.get("position", "").upper() == position.upper()]
     players = [p for p in players if p.get("time", 0) >= min_minutes]
 
-    # Score ML
-    from backend.ml.scouting import score_player
-    for p in players:
-        pos = p.get("position", "FW")
-        p["score"] = score_player(p, pos[:2])
+    # ── Puntuación ──
+    #
+    # Antes aquí se llamaba a score_player(p, pos[:2]) con la cadena de
+    # Understat en crudo: para «F M S» eso era «F », que no es ningún
+    # puesto, así que caía en el por defecto y puntuaba a un delantero
+    # con las métricas de centrocampista. Y las de centrocampista no
+    # las da Understat, así que salía el suelo.
+    #
+    # Ahora se agrupa por puesto de verdad y se puntúa cada grupo
+    # contra SU grupo, que es lo único que hace comparable un
+    # percentil. Defensas y porteros se quedan sin nota, con su motivo.
+    from backend.ml.puntuar import puntuar, PuestoSinDatos
+    from backend.ml.scouting import puesto as puesto_de
 
-    players.sort(key=lambda x: -x.get("score", 0))
+    por_puesto = {}
+    for p in players:
+        por_puesto.setdefault(puesto_de(p.get("position", "")), []).append(p)
+
+    avisos, sin_nota = [], {}
+    for pst, grupo in por_puesto.items():
+        try:
+            ficha = puntuar(grupo, pst)
+            avisos.extend(ficha.get("avisos", []))
+        except PuestoSinDatos as e:
+            sin_nota[pst] = e.motivo
+            for p in grupo:
+                p["score"] = None
+        except ValueError as e:
+            sin_nota[pst] = str(e)
+            for p in grupo:
+                p["score"] = None
+
+    # Los que no tienen nota van detrás, no delante con un cero.
+    players.sort(key=lambda x: (x.get("score") is None,
+                                -(x.get("score") or 0)))
     return {
         "players": players[:limit],
         "total": len(players),
         "competition": competition_code.upper(),
         "season": season,
+        "avisos": avisos,
+        "puestos_sin_nota": sin_nota,
     }
 
 
@@ -464,24 +499,39 @@ async def run_scouting(
     min_minutes: int = Query(500, ge=0),
     season: int = Query(2024),
 ):
-    """
-    Scouting ML — K-Means clustering + scoring por posición.
-    Basado en tu notebook Futuras_estrellas.
+    """Scouting: percentiles por 90 minutos y agrupación por parecido.
+
+    Se niega, con su motivo, cuando no puede hacerlo bien:
+
+      puesto_sin_datos   Understat no publica con qué puntuar ese
+                         puesto. Pasa con defensas y porteros, y no es
+                         un «todavía no»: es que esos datos no están.
+      faltan_metricas    la fuente ha cambiado y falta algo que antes
+                         venía. Mejor saberlo que rellenarlo con ceros.
+      fuente_caida       Understat no ha contestado
     """
     try:
         players = await get_league_players(competition_code.upper(), season)
     except FuenteNoDisponible as e:
         # 503, nunca 200 con la lista vacía: "no he podido mirar" no es
         # lo mismo que "he mirado y no hay nadie".
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail={
+            "motivo": "fuente_caida", "detalle": str(e)})
 
-    result = run_scouting_pipeline(
-        players=players,
-        position=position.upper()[:2],
-        max_age=max_age,
-        min_minutes=min_minutes,
-    )
-    return result
+    try:
+        return run_scouting_pipeline(
+            players=players,
+            position=position.upper()[:2],
+            max_age=max_age,
+            min_minutes=min_minutes,
+        )
+    except PuestoSinDatos as e:
+        raise HTTPException(status_code=503, detail={
+            "motivo": "puesto_sin_datos", "puesto": e.puesto,
+            "detalle": e.motivo})
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail={
+            "motivo": "faltan_metricas", "detalle": str(e)})
 
 
 @app.get("/api/player/{player_id}/similar")
@@ -668,11 +718,82 @@ else:
 @app.get("/health")
 async def health():
     from backend.config import FOOTBALL_API_KEY
+    from backend.scrapers.football_data import _turnero
     return {
         "status": "ok",
         "api_key_configured": bool(FOOTBALL_API_KEY),
         "env": ENV,
+        # Cuánta cola hay ahora mismo para football-data. Sirve para
+        # mirar desde fuera si la página está saturada sin tener que
+        # entrar a probarla.
+        "espera_football_data": round(_turnero.espera_estimada(), 1),
     }
+
+
+# ════════════════════════════════════════════════════════
+# CALENTAR LA CACHÉ
+# ════════════════════════════════════════════════════════
+#
+# El primero que entra se lo encuentra todo frío: cada pantalla que
+# toca es una petición a football-data, y las primeras tardan. Si ese
+# primero es alguien a quien le estás enseñando el proyecto, la primera
+# impresión es una ruedecita girando.
+#
+# Así que al arrancar se piden las clasificaciones de las ligas
+# grandes. Pero DESPACIO y CEDIENDO EL PASO:
+#
+#   · una cada CADA_CUANTO segundos, no todas de golpe
+#   · y sólo si el turnero dice que no hay cola, porque un visitante de
+#     verdad vale más que calentar una liga que a lo mejor nadie mira
+#
+# Sin eso, calentar seis ligas se comería los seis primeros turnos del
+# minuto y el primer visitante esperaría por culpa del calentamiento,
+# que es exactamente lo contrario de lo que se busca.
+
+LIGAS_QUE_SE_CALIENTAN = ("PD", "PL", "SA", "BL1", "FL1")
+CADA_CUANTO = 7.0          # segundos entre una liga y la siguiente
+ESPERA_INICIAL = 3.0       # dejar que el servidor acabe de levantarse
+
+
+async def calentar():
+    """Deja las clasificaciones listas antes de que entre nadie."""
+    from backend.config import FOOTBALL_API_KEY
+    from backend.scrapers.football_data import _turnero
+
+    if not FOOTBALL_API_KEY:
+        logger.info("Sin clave de football-data: no hay nada que calentar.")
+        return
+
+    await asyncio.sleep(ESPERA_INICIAL)
+    hechas = 0
+    for codigo in LIGAS_QUE_SE_CALIENTAN:
+        # Si hay cola, el visitante va primero. Se deja para otra vez.
+        if _turnero.espera_estimada() > 0:
+            logger.info("Hay cola; dejo de calentar en %s.", codigo)
+            break
+        try:
+            await football_client.get_standings(codigo)
+            hechas += 1
+            logger.info("Calentada la clasificación de %s.", codigo)
+        except Exception as e:
+            # Calentar NUNCA puede tirar el servidor: es un lujo, no un
+            # requisito. Si falla, se apunta y se sigue.
+            logger.warning("No he podido calentar %s: %s", codigo, e)
+        await asyncio.sleep(CADA_CUANTO)
+    logger.info("Calentadas %d de %d ligas.", hechas, len(LIGAS_QUE_SE_CALIENTAN))
+
+
+# El calentamiento se engancha con lifespan y no con @app.on_event,
+# que FastAPI da por obsoleto y avisa por consola en cada arranque.
+@asynccontextmanager
+async def ciclo_de_vida(app):
+    # En segundo plano: el servidor tiene que estar contestando ya.
+    tarea = asyncio.create_task(calentar())
+    yield
+    tarea.cancel()
+
+
+app.router.lifespan_context = ciclo_de_vida
 
 
 # ════════════════════════════════════════════════════════

@@ -35,3 +35,6 @@ sqlalchemy>=2.0.0
 # Exportación
 fpdf2>=2.7.0
 openpyxl>=3.1.0
+
+# Las de PROBAR no van aquí: en producción se instalarían por nada y
+# alargan cada despliegue. Están en requirements-dev.txt.

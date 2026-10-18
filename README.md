@@ -67,6 +67,53 @@ API Docs: **http://localhost:8000/docs**
 | `GET /api/viz/shotmap/123` | Shot Map (PNG) |
 | `GET /api/simulador/PD` | El Simulador: rangos de posición final |
 
+### Abierto a la gente: el límite de football-data
+
+Las **10 peticiones por minuto** del plan gratuito son del plan, no de
+cada visitante. Con una persona no se nota; con un enlace compartido,
+cinco personas pinchando equipos a la vez se las comen y todas ven un
+error.
+
+Por eso el cliente hace dos cosas:
+
+- **Un turno.** Nunca salen más de nueve peticiones en sesenta
+  segundos. Quien llega de más espera un par de segundos en lugar de
+  recibir un 429.
+- **Un viaje por petición.** Si cinco visitantes piden lo mismo a la
+  vez, sale **una** y las cinco esperan a esa. Ahorra más que el turno,
+  porque todo el mundo mira las mismas ligas.
+
+Y al arrancar se calientan las clasificaciones de las cinco grandes,
+despacio y cediendo el paso: si hay cola, deja de calentar. Un
+visitante de verdad vale más que una liga que a lo mejor nadie mira.
+
+`GET /health` dice cuántos segundos de cola hay ahora mismo.
+
+El informe post-partido y el relieve **no gastan de aquí**: van sobre
+StatsBomb Open Data, que no pide clave ni tiene límite.
+
+### Scouting: lo que esta fuente permite puntuar
+
+| Puesto | Nota | Por qué |
+|---|---|---|
+| Delanteros | sí | npxG, goles, xA, asistencias, pases clave, tiros y xGChain, por 90 minutos |
+| Centrocampistas | sí | xA, pases clave, xGBuildup, xGChain, asistencias, npxG y goles, por 90 |
+| Defensas | **no** | Understat no publica entradas, intercepciones, despejes ni duelos |
+| Porteros | **no** | Understat no publica paradas, xG evitado ni salidas |
+
+La nota es el **percentil medio dentro de su puesto en esa misma
+comparación**, no una suma de métricas con unidades distintas. Un 86
+quiere decir «mejor que el 86 % de los delanteros de esta comparación»,
+y cada jugador lleva su desglose métrica a métrica.
+
+**Lo que había antes, medido:** la tabla pedía métricas que Understat
+no publica y las daba por cero cuando faltaban. Llegaban 5 de 8 para
+delanteros, 2 de 8 para centrocampistas y **0 de 8** para defensas y
+porteros — o sea que todos los defensas y todos los porteros tenían
+exactamente 40,0 y la pantalla los ordenaba como si significara algo.
+Encima multiplicaba por un bonus de edad calculado sobre una edad por
+defecto de 25 años, porque Understat tampoco da la edad.
+
 ### El informe post-partido
 
 | Ruta | Qué hace |

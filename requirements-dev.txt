@@ -1,0 +1,12 @@
+# SPORTALYZE — lo que hace falta sólo para PROBAR
+#
+#     pip install -r requirements.txt -r requirements-dev.txt
+#     python3 -m pytest tests/ -v
+#
+# Aparte de esto, el comprobador de maqueta necesita node y jsdom:
+#
+#     cd tests/maqueta && npm install
+#
+# Si no están, esas pruebas se saltan en vez de fallar.
+pytest>=8.0
+pytest-asyncio>=0.23
