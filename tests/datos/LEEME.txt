@@ -18,3 +18,25 @@ fichero se le muestra a nadie. En funcionamiento, los partidos los trae
 football-data.org en vivo. Y como estos resultados se quedaron en la
 jornada 7, el propio simulador los rechaza por desfasados si se le
 pasan con la fecha de hoy: eso es, de hecho, una de las pruebas.
+
+
+final_mundial_2022_*.json(.gz)
+------------------------------
+La final del Mundial 2022 (Argentina 3-3 Francia) tal como la publica
+StatsBomb Open Data: eventos, alineaciones y la ficha del partido.
+
+Los eventos vienen PODADOS — se han quitado los campos que el motor no
+mira, sobre todo los freeze_frame, que son casi todo el peso. De 3,7 MB
+a 195 KB comprimidos. Hay una comprobación que lo justifica: el informe
+calculado con el fichero entero y con el podado da exactamente las
+mismas cifras, byte a byte.
+
+Está este partido y no otro porque es el que más trampas tiene juntas:
+prórroga, tanda de penaltis (que si se cuenta deja el marcador en 7-5),
+un primer cambio en el minuto 40 que corta la red de pases de Francia
+por la mitad, y nombres que ninguna regla automática acierta sola
+—Di María, Kolo Muani, Mac Allister—. Si el informe sale bien aquí,
+sale bien en un partido normal.
+
+StatsBomb Open Data se usa con atribución, y por eso «StatsBomb» sale
+en la pantalla del informe y no escondido en un pie de página.
