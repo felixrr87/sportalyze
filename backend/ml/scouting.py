@@ -13,6 +13,8 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import cosine_similarity
 from backend.config import METRICS_BY_POSITION
+from backend.ml.metricas import METRICAS_POR_PUESTO
+from backend.ml.puntuar import puntuar, PuestoSinDatos
 
 logger = logging.getLogger(__name__)
 
@@ -25,40 +27,25 @@ CLUSTER_LABELS = {
 }
 
 
-def score_player(player: dict, position: str) -> float:
-    """
-    Calcula score 0-99 basado en métricas ponderadas por posición.
-    Lógica extraída y mejorada de tu notebook Futuras_estrellas.
-    """
-    metrics = METRICS_BY_POSITION.get(position, METRICS_BY_POSITION["MF"])
-    keys    = metrics["keys"]
-    weights = metrics["weights"]
-
-    score = 0.0
-    weight_sum = 0.0
-
-    for key, weight in zip(keys, weights):
-        val = player.get(key, 0) or 0
-        if weight > 0:
-            score += float(val) * abs(weight)
-        else:
-            score -= float(val) * abs(weight)  # penalización (ej: errores)
-        weight_sum += abs(weight)
-
-    # Normalizar
-    score = score / max(weight_sum, 0.001) * 10
-
-    # Bonus por edad (jugadores jóvenes con buen rendimiento son más valiosos)
-    age = player.get("age", 25) or 25
-    if age <= 20:   score *= 1.18
-    elif age <= 22: score *= 1.12
-    elif age <= 24: score *= 1.06
-    elif age <= 26: score *= 1.02
-    elif age > 30:  score *= 0.95
-    elif age > 33:  score *= 0.88
-
-    return round(min(99, max(40, score)), 1)
-
+# score_player() ESTABA AQUÍ Y SE HA IDO.
+#
+# Sumaba métricas multiplicadas por un peso, y las que no venían las
+# daba por cero con `player.get(clave, 0) or 0`. Como las métricas que
+# pedía para centrocampistas, defensas y porteros no las publica
+# Understat, el resultado medido era:
+#
+#     delanteros        llegaban 5 de 8  -> puntuación distorsionada
+#     centrocampistas   llegaban 2 de 8  -> todos al suelo
+#     defensas          llegaban 0 de 8  -> TODOS exactamente 40,0
+#     porteros          llegaban 0 de 8  -> TODOS exactamente 40,0
+#
+# Y encima multiplicaba por un bonus de edad calculado sobre
+# `player.get("age", 25)`: como Understat no da edad, metía a todo el
+# mundo en el tramo «≤26» y les subía un 2 %.
+#
+# Ahora puntúa backend/ml/puntuar.py, con percentiles, por 90 minutos,
+# sólo métricas que la fuente da de verdad, y negándose a puntuar los
+# puestos que no se pueden puntuar.
 
 def run_kmeans_clustering(players: list, position: str) -> list:
     """
@@ -83,8 +70,20 @@ def run_kmeans_clustering(players: list, position: str) -> list:
             p["cluster_color"] = CLUSTER_LABELS[i % N_CLUSTERS]["color"]
         return players
 
-    # Matriz de features
-    X = np.array([[float(p.get(k, 0) or 0) for k in feature_keys] for p in players])
+    # Matriz de features: los PERCENTILES, no los totales.
+    #
+    # Con totales, el primer componente del PCA era «quién ha jugado
+    # más minutos» — que es lo que domina cuando mezclas números que
+    # van de 0 a 3.000 con otros que van de 0 a 20. Agrupaba por
+    # titularidad, no por tipo de jugador.
+    etiquetas = [e for _, e, _, _ in
+                 METRICAS_POR_PUESTO.get(position.upper()[:2], {}).get("metricas", [])]
+    if etiquetas and all(p.get("percentiles") for p in players):
+        X = np.array([[float(p["percentiles"].get(e, 50)) for e in etiquetas]
+                      for p in players])
+    else:
+        X = np.array([[float(p.get(k, 0) or 0) for k in feature_keys]
+                      for p in players])
 
     # Normalizar (StandardScaler — igual que tu notebook)
     scaler = StandardScaler()
@@ -241,9 +240,10 @@ def run_scouting_pipeline(
                 % (position, min_minutes)],
         }
 
-    # Calcular scores
-    for p in filtered:
-        p["score"] = score_player(p, position)
+    # Puntuar. Puede negarse, y si se niega sube tal cual: la ruta lo
+    # convierte en una explicación en pantalla.
+    ficha = puntuar(filtered, position)
+    avisos.extend(ficha.get("avisos", []))
 
     # K-Means clustering
     filtered = run_kmeans_clustering(filtered, position)
