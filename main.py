@@ -16,6 +16,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pathlib import Path
 from cachetools import TTLCache
 from backend.config import PORT, ENV, LEAGUES
+from backend.temporada import nombre_temporada, temporada_actual
 from backend.errors import FuenteNoDisponible
 from backend.scrapers.football_data import FaltaLaClave, LimiteAlcanzado
 
@@ -380,7 +381,8 @@ async def get_informe(match_id: int):
 @app.get("/api/players/{competition_code}")
 async def get_league_players_stats(
     competition_code: str,
-    season: int = Query(2024, description="2024 = temporada 2024/25"),
+    season: int = Query(None, description="año en que empieza la temporada; "
+                        "por defecto, la que se está jugando"),
     position: str = Query(None),
     min_minutes: int = Query(200, ge=0),
     # Antes: Query(99, ge=15, le=50). El valor por defecto incumplía su
@@ -393,10 +395,22 @@ async def get_league_players_stats(
     Jugadores de una liga con estadísticas xG reales (Understat).
     Filtros: posición, minutos mínimos, edad máxima.
     """
+    # La temporada, resuelta aquí para poder devolverla: quien mire la
+    # respuesta tiene que saber de qué año son las cifras. Estuvo
+    # clavada a 2024 en cinco rutas, así que Cartas, Scouting y
+    # Comparador enseñaban la 2024/25 mientras la clasificación y el
+    # Simulador iban de la temporada en curso.
+    season = season if season is not None else temporada_actual()
     try:
         players = await get_league_players(competition_code.upper(), season)
     except FuenteNoDisponible as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+    # Cuántos minutos lleva el que más ha jugado. Va en la respuesta
+    # porque sin eso el filtro de minutos no se puede interpretar: 400
+    # minutos es un filtro suave en una temporada entera y durísimo en
+    # octubre, cuando el que más lleva no pasa de 720.
+    minutos_maximos = max((p.get("time", 0) or 0 for p in players), default=0)
 
     # Filtros
     if position:
@@ -472,6 +486,8 @@ async def get_league_players_stats(
         "total": len(players),
         "competition": competition_code.upper(),
         "season": season,
+        "temporada": nombre_temporada(season),
+        "minutos_maximos": minutos_maximos,
         "avisos": avisos,
         "puestos_sin_nota": sin_nota,
     }
@@ -554,7 +570,7 @@ async def run_scouting(
     position: str = Query("FW", description="FW | MF | DF | GK"),
     max_age: int = Query(25, ge=15, le=35),
     min_minutes: int = Query(500, ge=0),
-    season: int = Query(2024),
+    season: int = Query(None),
 ):
     """Scouting: percentiles por 90 minutos y agrupación por parecido.
 
@@ -596,7 +612,7 @@ async def get_similar_players(
     player_id: str,
     competition_code: str = Query("PL"),
     top_n: int = Query(5, ge=3, le=10),
-    season: int = Query(2024),
+    season: int = Query(None),
 ):
     """'Jugadores similares a X' — K-Means similarity"""
     players = await get_league_players(competition_code.upper(), season)
@@ -621,7 +637,7 @@ async def get_similar_players(
 async def get_player_radar(
     competition_code: str,
     player_id: str,
-    season: int = Query(2024),
+    season: int = Query(None),
     position: str = Query(None),
 ):
     """Radar PyPizza del jugador — imagen PNG en base64"""
@@ -657,7 +673,7 @@ async def get_custom_radar(
     position: str = Query("FW"),
     team: str = Query(""),
     competition_code: str = Query("PL"),
-    season: int = Query(2024),
+    season: int = Query(None),
 ):
     """Radar PyPizza con datos directos — para jugadores locales del frontend"""
     try:
@@ -684,7 +700,8 @@ async def get_custom_radar(
                 all_players=all_players,
                 position=position[:2].upper(),
                 titulo_principal=name,
-                titulo_secundario=f"{team} · {position} · Temporada {season}/{str(season+1)[-2:]}",
+                titulo_secundario=f"{team} · {position} · Temporada "
+                              f"{nombre_temporada(season or temporada_actual())}",
             )
         except Exception as pizza_err:
             logger.warning(f"PyPizza failed ({pizza_err}), using simple radar")
