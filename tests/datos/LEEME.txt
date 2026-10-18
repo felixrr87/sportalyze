@@ -1,0 +1,20 @@
+DE DÓNDE SALEN ESTOS DATOS Y PARA QUÉ SIRVEN
+============================================
+
+laliga_2026_27.json
+-------------------
+El calendario completo de La Liga 2026-27 (380 partidos, 20 equipos)
+con los resultados reales hasta la jornada 7, tomados de openfootball
+(github.com/openfootball/espana, dominio público) y envueltos en la
+MISMA forma que devuelve football-data.org.
+
+Está aquí por una razón concreta: las pruebas no tienen red. Sin un
+calendario de verdad no se puede comprobar que el simulador cuadra las
+cuentas —380 partidos, 19 en casa por equipo, nadie contra sí mismo—
+ni que se niega a trabajar cuando no cuadran.
+
+LO QUE NO ES: una fuente de datos de la aplicación. Nada de este
+fichero se le muestra a nadie. En funcionamiento, los partidos los trae
+football-data.org en vivo. Y como estos resultados se quedaron en la
+jornada 7, el propio simulador los rechaza por desfasados si se le
+pasan con la fecha de hoy: eso es, de hecho, una de las pruebas.
