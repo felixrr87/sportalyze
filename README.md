@@ -39,7 +39,37 @@ API Docs: **http://localhost:8000/docs**
 
 ---
 
-## 🌐 Deploy en Railway (gratis, 24/7)
+## 🌐 Subirlo a internet
+
+El repositorio trae `render.yaml` y `railway.json`, así que en los dos
+sitios es conectar el repositorio y poner una variable:
+
+    FOOTBALL_API_KEY = tu clave de football-data.org
+
+Y nada más. `ENV=production` ya va en los dos ficheros.
+
+**Un solo worker, a propósito.** La caché y el turnero de football-data
+viven en la memoria del proceso. Con dos workers habría dos cachés y
+dos turneros, y entre los dos se pasarían del límite de la API —
+exactamente el problema que el turnero está para evitar.
+
+**Lo que consume**, medido:
+
+| | Memoria |
+|---|---|
+| Arrancado, sin hacer nada | 67 MB |
+| Después de simular 10.000 ligas | 175 MB |
+
+Cabe en los 512 MB de los planes pequeños. Antes eran 169 y 368: se
+bajó quitando `pandas` (se importaba en tres ficheros y no se usaba en
+ninguno), cargando `scipy` y `sklearn` sólo cuando hacen falta, y
+troceando la simulación.
+
+**Sin clave** la página funciona igual: el informe post-partido y el
+relieve van sobre StatsBomb, que no pide clave. Las pantallas que
+necesitan football-data dicen «falta la clave» en vez de un 403 pelado.
+
+## 🌐 Deploy en Railway (histórico)
 
 1. Sube el proyecto a GitHub
 2. Ve a [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub**

@@ -1,0 +1,24 @@
+# Cómo levantar Sportalyze en Render.
+#
+# Render lee este fichero solo al conectar el repositorio ("Blueprint").
+# No hace falta tocar nada más que poner la clave.
+services:
+  - type: web
+    name: sportalyze
+    runtime: python
+    region: frankfurt          # el más cercano a España de los que hay
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # $PORT lo pone Render. Un solo worker a propósito: la caché y el
+    # turnero de football-data viven en memoria del proceso, así que
+    # con dos workers habría dos cachés y dos turneros, y entre los dos
+    # se pasarían del límite de la API.
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /health
+    envVars:
+      - key: ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: FOOTBALL_API_KEY
+        sync: false            # se escribe a mano en el panel; no va en el repo
