@@ -482,6 +482,10 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
       <svg fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6 19V9"/><path d="M11 19V5"/><path d="M16 19v-7"/><path d="M21 19v-4"/></svg>
       El Simulador
     </a>
+    <a class="ni" onclick="nav('informe')">
+      <svg fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h5M7 13h10M7 17h7"/></svg>
+      Informe post-partido
+    </a>
     <a class="ni" onclick="nav('matches')">
       <svg fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
       Partidos
@@ -901,6 +905,96 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
   </div>
 </div>
 
+<div class="page" id="page-informe">
+  <div class="page-header">
+    <div class="header-row">
+      <div><div class="ptitle">Informe post-partido</div>
+        <div class="psub" id="infSub">Red de pases, tiros con su xG y todo lo que se puede contar de un partido</div></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="infComp" style="width:auto;max-width:230px"></select>
+        <select id="infPartido" style="width:auto;max-width:280px"></select>
+      </div>
+    </div>
+  </div>
+  <div class="cont">
+
+    <div id="infEstado" class="card" style="display:none">
+      <div style="padding:30px 20px;text-align:center">
+        <div id="infEstadoTit" style="font-size:15px;font-weight:650;margin-bottom:8px"></div>
+        <div id="infEstadoTxt" style="color:var(--text2);font-size:13px;line-height:1.65;max-width:58ch;margin:0 auto"></div>
+      </div>
+    </div>
+
+    <!-- marcador -->
+    <div class="card" id="infCabecera" style="margin-bottom:16px;display:none">
+      <div id="infMarcador" style="padding:20px 16px;text-align:center"></div>
+      <div id="infAviso" style="display:none;padding:11px 16px;background:rgba(227,179,65,.09);border-top:1px solid var(--border);color:#e3b341;font-size:12.5px;line-height:1.5"></div>
+      <div id="infProc" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;background:var(--border);border-top:1px solid var(--border)"></div>
+    </div>
+
+    <!-- la carrera de xG -->
+    <div class="card" id="infXgCard" style="margin-bottom:16px;display:none">
+      <div class="ch"><div class="ct">La carrera de xG</div>
+        <span class="bge b-blue" style="font-size:10px">goles esperados acumulados</span></div>
+      <div style="padding:14px 16px 2px;color:var(--text2);font-size:13px;line-height:1.6;max-width:72ch">
+        Cada escalón es un tiro, y su altura es lo que valía esa ocasión. Los círculos son
+        goles. Si una línea sube mucho y el marcador no la sigue, ese equipo generó y no metió.
+      </div>
+      <div style="padding:10px 16px 18px"><div id="infXg"></div></div>
+    </div>
+
+    <!-- redes de pases -->
+    <div class="card" id="infRedCard" style="margin-bottom:16px;display:none">
+      <div class="ch"><div class="ct">Red de pases</div>
+        <span id="infRedNota" class="bge b-blue" style="font-size:10px"></span></div>
+      <div style="padding:14px 16px 2px;color:var(--text2);font-size:13px;line-height:1.6;max-width:72ch">
+        Cada círculo es un titular, puesto en la <b>posición media</b> desde la que tocó el
+        balón. La línea entre dos jugadores es la cantidad de pases que se cruzaron. Sólo
+        cuenta el rato en que estuvo el once inicial: en cuanto entra un suplente, la posición
+        media deja de significar nada. Ataque hacia la derecha.
+      </div>
+      <div id="infRedes" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px;padding:12px 16px 18px"></div>
+    </div>
+
+    <!-- mapa de tiros -->
+    <div class="card" id="infTirosCard" style="margin-bottom:16px;display:none">
+      <div class="ch"><div class="ct">Todos los tiros</div>
+        <span id="infTirosNota" class="bge b-blue" style="font-size:10px"></span></div>
+      <div style="padding:14px 16px 2px;color:var(--text2);font-size:13px;line-height:1.6;max-width:72ch">
+        El tamaño del círculo es el xG de ese tiro: lo que valía la ocasión. Relleno = gol.
+        Cada equipo ataca hacia su lado. Pasa el ratón por encima para ver quién y cuándo.
+      </div>
+      <div style="padding:12px 16px 18px"><div id="infTiros"></div></div>
+    </div>
+
+    <!-- comparativa -->
+    <div class="card" id="infStatsCard" style="margin-bottom:16px;display:none">
+      <div class="ch"><div class="ct">Los dos equipos, cifra a cifra</div></div>
+      <div id="infStats" style="padding:14px 16px 18px"></div>
+      <div style="padding:0 16px 18px;color:var(--text3);font-size:12px;line-height:1.6;max-width:72ch">
+        La <b>posesión</b> está calculada por pases intentados, no por tiempo de balón, y por
+        eso puede no coincidir con la que da la televisión: con datos de eventos no hay
+        cronómetro. Es una medida real y comprobable; la otra habría que inventarla.
+      </div>
+    </div>
+
+    <!-- jugadores -->
+    <div class="card" id="infJugCard" style="display:none">
+      <div class="ch"><div class="ct">Quién hizo qué</div>
+        <span class="bge b-blue" style="font-size:10px">ordenado por xG</span></div>
+      <div style="overflow-x:auto;padding:12px 16px 18px">
+        <table id="infJug" style="border-collapse:collapse;width:100%;font-family:var(--fm);font-size:12.5px;min-width:640px"></table>
+      </div>
+      <div style="padding:0 16px 18px;color:var(--text3);font-size:12px;line-height:1.6;max-width:72ch">
+        <b>Pase progresivo</b>: el que acerca el balón a la portería rival al menos un 25 % de
+        lo que quedaba, y avanza más de cinco metros. Hay media docena de definiciones por ahí
+        y ninguna es la oficial, así que conviene decir cuál se usa.
+      </div>
+    </div>
+
+  </div>
+</div>
+
 </main>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -1186,7 +1280,8 @@ function nav(page) {
     matches: loadMatches, scorers: loadScorers,
     players: renderCards, scouting: runScouting,
     compare: initCmp, watchlist: renderWL, config: renderCfg,
-    relieve: loadRelieve, simulador: loadSimulador
+    relieve: loadRelieve, simulador: loadSimulador,
+    informe: loadInforme
   };
   actions[page]?.();
 }
@@ -1955,6 +2050,391 @@ function simFecha(iso) {
 }
 
 function nmil(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+
+
+// ══════════════════════════════════════════════════════════
+// EL INFORME POST-PARTIDO
+// ══════════════════════════════════════════════════════════
+//
+// Pinta lo que devuelve /api/informe/{match_id}. Todo se dibuja en SVG
+// a partir del dato, no hay ni una imagen: el campo son líneas, los
+// tiros son círculos y la red de pases son nodos y aristas. Así se
+// puede pasar el ratón por encima y preguntar quién fue.
+//
+// El sistema de coordenadas es el de StatsBomb: campo de 120 × 80, el
+// origen arriba a la izquierda y el equipo en posesión SIEMPRE atacando
+// hacia x = 120. No hay que girar nada al cambiar de parte.
+
+const INF = { informe: null, comps: null, partidos: {} };
+
+const INF_MOTIVOS = {
+  no_esta_abierto: ['Ese partido no está en los datos abiertos',
+    'StatsBomb publica unos 3.500 partidos, no todos los del mundo. Prueba con otro.'],
+  partido_incompleto: ['Los eventos no dan para un informe',
+    'O faltan datos, o el marcador que sale de los eventos no cuadra con el oficial. ' +
+    'Prefiero no enseñar un informe antes que enseñar uno con el resultado mal.'],
+  fuente_caida: ['StatsBomb no ha contestado',
+    'No es que no haya datos: es que no se sabe. Puede ser la conexión.'],
+};
+
+// Los dos colores de los equipos. El local siempre el mismo, el
+// visitante siempre el mismo: así en todas las pantallas del informe
+// un color quiere decir el mismo equipo.
+const INF_COL = ['#e3b341', '#0ea5e9'];
+
+function infEstado(titulo, texto, detalle) {
+  ['infCabecera', 'infXgCard', 'infRedCard', 'infTirosCard', 'infStatsCard', 'infJugCard']
+    .forEach(id => { const n = $(id); if (n) n.style.display = 'none'; });
+  $('infEstado').style.display = '';
+  $('infEstadoTit').textContent = titulo;
+  $('infEstadoTxt').innerHTML = esc(texto) +
+    (detalle ? `<br><br><span style="color:var(--text3);font-family:var(--fm);font-size:11.5px">${esc(detalle)}</span>` : '');
+}
+
+function infFallo(r, cuerpo) {
+  const d = cuerpo && cuerpo.detail;
+  const motivo = (d && d.motivo) || 'fuente_caida';
+  const detalle = (d && d.detalle) || (typeof d === 'string' ? d : '') || `HTTP ${r.status}`;
+  const [t, x] = INF_MOTIVOS[motivo] || INF_MOTIVOS.fuente_caida;
+  infEstado(t, x, detalle);
+}
+
+// ── el menú ───────────────────────────────────────────────
+async function loadInforme() {
+  if (!INF.comps) {
+    infEstado('Cargando el catálogo…', 'StatsBomb publica unos 3.500 partidos.');
+    try {
+      const r = await fetch(`${API}/api/informe/competiciones`);
+      const c = await r.json();
+      if (!r.ok) { infFallo(r, c); return; }
+      INF.comps = c.competiciones;
+    } catch (e) { infEstado(...INF_MOTIVOS.fuente_caida, e.message); return; }
+
+    // Las más reconocibles primero: es un escaparate, y nadie busca
+    // la segunda división femenina sueca en el primer minuto.
+    const peso = n => ({ 'FIFA World Cup': 0, 'UEFA Euro': 1, 'Champions League': 2,
+      'La Liga': 3, 'Premier League': 4 }[n] ?? 9);
+    INF.comps.sort((a, b) =>
+      peso(a.competition_name) - peso(b.competition_name) ||
+      a.competition_name.localeCompare(b.competition_name) ||
+      b.season_name.localeCompare(a.season_name));
+
+    $('infComp').innerHTML = INF.comps.map((c, i) =>
+      `<option value="${i}">${esc(c.competition_name)} ${esc(c.season_name)}</option>`).join('');
+    $('infComp').onchange = infCargaPartidos;
+    $('infPartido').onchange = () => infPide(+$('infPartido').value);
+  }
+  await infCargaPartidos();
+}
+
+async function infCargaPartidos() {
+  const c = INF.comps[+$('infComp').value];
+  const llave = `${c.competition_id}/${c.season_id}`;
+  infEstado('Buscando los partidos…', `${c.competition_name} ${c.season_name}`);
+
+  if (!INF.partidos[llave]) {
+    try {
+      const r = await fetch(`${API}/api/informe/partidos/${llave}`);
+      const d = await r.json();
+      if (!r.ok) { infFallo(r, d); return; }
+      INF.partidos[llave] = d.partidos;
+    } catch (e) { infEstado(...INF_MOTIVOS.fuente_caida, e.message); return; }
+  }
+  const ps = INF.partidos[llave];
+  if (!ps.length) { infEstado('No hay partidos', 'Esa temporada no trae ninguno.'); return; }
+
+  // Las finales y semifinales arriba: son las que alguien quiere ver.
+  const fase = p => /Final|Semi/i.test(p.fase || '') ? 0 : 1;
+  const orden = [...ps].sort((a, b) => fase(a) - fase(b) || b.fecha.localeCompare(a.fecha));
+  $('infPartido').innerHTML = orden.map(p =>
+    `<option value="${p.match_id}">${esc(p.local)} ${p.goles_local}-${p.goles_visitante} ` +
+    `${esc(p.visitante)} · ${esc(p.fase || p.fecha)}</option>`).join('');
+  await infPide(orden[0].match_id);
+}
+
+async function infPide(matchId) {
+  infEstado('Leyendo el partido…', 'Son varios megas de eventos: unos segundos.');
+  let r, d;
+  try {
+    r = await fetch(`${API}/api/informe/${matchId}`);
+    d = await r.json();
+  } catch (e) { infEstado(...INF_MOTIVOS.fuente_caida, e.message); return; }
+  if (!r.ok) { infFallo(r, d); return; }
+  INF.informe = d;
+  infPinta(d);
+}
+
+// ── el campo, en SVG ──────────────────────────────────────
+// Un campo de 120 × 80 dibujado con líneas. Las medidas son las de
+// StatsBomb, que son las reales en yardas.
+function infCampo(extra, opciones) {
+  const o = opciones || {};
+  const c = o.color || 'rgba(255,255,255,.22)';
+  const l = (x1, y1, x2, y2) =>
+    `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width=".4"/>`;
+  const r = (x, y, w, h) =>
+    `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${c}" stroke-width=".4"/>`;
+  return `<svg viewBox="-2 -2 124 84" style="width:100%;height:auto;display:block;
+      background:${o.fondo || '#0B1220'};border:1px solid var(--border);border-radius:10px">
+    ${r(0, 0, 120, 80)}
+    ${l(60, 0, 60, 80)}
+    <circle cx="60" cy="40" r="10" fill="none" stroke="${c}" stroke-width=".4"/>
+    <circle cx="60" cy="40" r=".7" fill="${c}"/>
+    ${r(0, 18, 18, 44)}${r(102, 18, 18, 44)}
+    ${r(0, 30, 6, 20)}${r(114, 30, 6, 20)}
+    ${r(-2, 36, 2, 8)}${r(120, 36, 2, 8)}
+    <circle cx="12" cy="40" r=".7" fill="${c}"/><circle cx="108" cy="40" r=".7" fill="${c}"/>
+    ${extra}
+  </svg>`;
+}
+
+// ── marcador y procedencia ────────────────────────────────
+function infPinta(d) {
+  $('infEstado').style.display = 'none';
+  ['infCabecera', 'infXgCard', 'infRedCard', 'infTirosCard', 'infStatsCard', 'infJugCard']
+    .forEach(id => { const n = $(id); if (n) n.style.display = ''; });
+
+  const L = d.local, V = d.visitante;
+  $('infSub').textContent =
+    `${d.competicion} ${d.temporada}${d.fase ? ' · ' + d.fase : ''}`;
+
+  $('infMarcador').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap">
+      <div style="text-align:right;min-width:130px">
+        <div style="font-family:var(--fh);font-size:21px;font-weight:700;color:${INF_COL[0]}">${esc(L)}</div>
+      </div>
+      <div style="font-family:var(--fm);font-size:34px;font-weight:700;letter-spacing:1px;white-space:nowrap">
+        ${d.goles_local}<span style="color:var(--text3)">–</span>${d.goles_visitante}</div>
+      <div style="text-align:left;min-width:130px">
+        <div style="font-family:var(--fh);font-size:21px;font-weight:700;color:${INF_COL[1]}">${esc(V)}</div>
+      </div>
+    </div>
+    <div style="margin-top:7px;color:var(--text3);font-size:12.5px">
+      ${esc([d.competicion, d.temporada, d.fase, d.fecha, d.estadio].filter(Boolean).join(' · '))}
+    </div>`;
+
+  const av = $('infAviso');
+  if (d.aviso) { av.style.display = ''; av.textContent = '⚠  ' + d.aviso; }
+  else av.style.display = 'none';
+
+  const fichas = [
+    ['Fuente', 'StatsBomb'], ['Eventos', nmil(d.eventos)],
+    ['Minutos', d.minutos],
+    ['xG ' + corta(L), d.estadisticas[L].xg.toFixed(2)],
+    ['xG ' + corta(V), d.estadisticas[V].xg.toFixed(2)],
+    ['Tiros', `${d.estadisticas[L].tiros}–${d.estadisticas[V].tiros}`],
+  ];
+  $('infProc').innerHTML = fichas.map(([k, v]) => `
+    <div style="background:var(--bg2);padding:10px 13px">
+      <div style="font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--text3)">${esc(k)}</div>
+      <div style="font-family:var(--fm);font-size:14px;font-weight:650;margin-top:2px">${esc(String(v))}</div>
+    </div>`).join('');
+
+  infPintaXg(d); infPintaRedes(d); infPintaTiros(d);
+  infPintaStats(d); infPintaJugadores(d);
+}
+
+const corta = s => (s || '').length > 11 ? s.slice(0, 10) + '.' : s;
+
+// ── la carrera de xG ──────────────────────────────────────
+function infPintaXg(d) {
+  const eq = [d.local, d.visitante];
+  const series = eq.map(e => d.carrera_xg[e]);
+  const maxX = Math.max(1, ...series.flat().map(p => p.minuto));
+  const maxY = Math.max(0.5, ...series.flat().map(p => p.xg));
+  const W = 100, H = 46, mi = 4;                 // en unidades del viewBox
+  const px = m => mi + (m / maxX) * (W - mi - 1);
+  const py = v => H - 5 - (v / maxY) * (H - 10);
+
+  let s = '';
+  // rejilla horizontal, una línea por gol esperado entero
+  for (let g = 0; g <= Math.floor(maxY); g++) {
+    s += `<line x1="${mi}" y1="${py(g)}" x2="${W - 1}" y2="${py(g)}"
+      stroke="rgba(255,255,255,.08)" stroke-width=".22"/>
+      <text x="${mi - 1}" y="${py(g) + 1}" text-anchor="end" fill="var(--text3)"
+      font-size="2.4" style="font-family:var(--fm)">${g}</text>`;
+  }
+  // las dos escaleras
+  series.forEach((serie, i) => {
+    let dd = `M ${px(serie[0].minuto)} ${py(serie[0].xg)}`;
+    for (let k = 1; k < serie.length; k++) {
+      dd += ` L ${px(serie[k].minuto)} ${py(serie[k - 1].xg)}`;
+      dd += ` L ${px(serie[k].minuto)} ${py(serie[k].xg)}`;
+    }
+    s += `<path d="${dd}" fill="none" stroke="${INF_COL[i]}" stroke-width=".8"
+      stroke-linejoin="round" stroke-linecap="round"/>`;
+    serie.filter(p => p.gol).forEach(p => {
+      s += `<circle cx="${px(p.minuto)}" cy="${py(p.xg)}" r="1.5" fill="${INF_COL[i]}"
+        stroke="#0B1220" stroke-width=".4"><title>${esc(p.jugador || '')} · min ${p.minuto} · gol</title></circle>`;
+    });
+    const fin = serie[serie.length - 1];
+    s += `<text x="${px(fin.minuto) - 1}" y="${py(fin.xg) - 1.6}" text-anchor="end"
+      fill="${INF_COL[i]}" font-size="3" font-weight="700"
+      style="font-family:var(--fm)">${fin.xg.toFixed(2)}</text>`;
+  });
+  // minutos abajo
+  [0, 15, 30, 45, 60, 75, 90, 105, 120].filter(m => m <= maxX).forEach(m => {
+    s += `<text x="${px(m)}" y="${H - 1}" text-anchor="middle" fill="var(--text3)"
+      font-size="2.4" style="font-family:var(--fm)">${m}'</text>`;
+  });
+
+  $('infXg').innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">${s}</svg>
+    <div style="display:flex;gap:16px;justify-content:center;margin-top:8px;font-size:12px">
+      ${eq.map((e, i) => `<span style="color:${INF_COL[i]}">
+        <b style="font-family:var(--fm)">▬</b> ${esc(e)}</span>`).join('')}
+    </div>`;
+}
+
+// ── redes de pases ────────────────────────────────────────
+function infPintaRedes(d) {
+  const eq = [d.local, d.visitante];
+  $('infRedNota').textContent =
+    eq.map(e => `${corta(e)}: hasta el min ${d.red[e].hasta_minuto}`).join(' · ');
+
+  $('infRedes').innerHTML = eq.map((e, i) => {
+    const r = d.red[e];
+    const pos = Object.fromEntries(r.nodos.map(n => [n.id, n]));
+    const maxEnlace = Math.max(1, ...r.enlaces.map(l => l.pases));
+    const maxPases = Math.max(1, ...r.nodos.map(n => n.pases));
+
+    let s = r.enlaces.map(l => {
+      const a = pos[l.de], b = pos[l.a];
+      const w = 0.3 + 1.7 * (l.pases / maxEnlace);
+      const op = 0.18 + 0.5 * (l.pases / maxEnlace);
+      return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"
+        stroke="${INF_COL[i]}" stroke-width="${w.toFixed(2)}" opacity="${op.toFixed(2)}">
+        <title>${esc(a.corto)} – ${esc(b.corto)}: ${l.pases} pases</title></line>`;
+    }).join('');
+
+    s += r.nodos.map(n => {
+      const rad = 1.8 + 2.6 * Math.sqrt(n.pases / maxPases);
+      return `<g><circle cx="${n.x}" cy="${n.y}" r="${rad.toFixed(2)}" fill="${INF_COL[i]}"
+          fill-opacity=".85" stroke="#0B1220" stroke-width=".35"/>
+        <text x="${n.x}" y="${n.y + 1}" text-anchor="middle" fill="#0B1220"
+          font-size="${Math.min(3, rad * 1.1).toFixed(1)}" font-weight="700"
+          style="font-family:var(--fm)" pointer-events="none">${n.dorsal ?? ''}</text>
+        <text x="${n.x}" y="${(n.y - rad - 1).toFixed(2)}" text-anchor="middle"
+          fill="#fff" font-size="2.6" style="font-family:var(--fb)"
+          pointer-events="none" opacity=".92">${esc(n.corto)}</text>
+        <title>${esc(n.nombre)} (${esc(n.puesto)}) · ${n.pases} pases dados</title></g>`;
+    }).join('');
+
+    return `<div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+        <b style="color:${INF_COL[i]};font-family:var(--fh);font-size:15px">${esc(e)}</b>
+        <span style="color:var(--text3);font-family:var(--fm);font-size:11px">
+          ${esc(r.formacion)} · hasta el min ${r.hasta_minuto} (${esc(r.motivo_corte)})</span>
+      </div>
+      ${infCampo(s)}
+      <div style="color:var(--text3);font-size:11px;margin-top:6px;font-family:var(--fm)">
+        ${r.nodos.length} jugadores · ${r.enlaces.length} parejas con ${r.min_pases_enlace}+ pases
+      </div></div>`;
+  }).join('');
+}
+
+// ── mapa de tiros ─────────────────────────────────────────
+function infPintaTiros(d) {
+  const eq = [d.local, d.visitante];
+  const maxXg = Math.max(0.1, ...d.tiros.map(t => t.xg));
+
+  // El visitante se dibuja espejado para que cada equipo ataque hacia
+  // su lado. StatsBomb da SIEMPRE al atacante yendo hacia x=120, así
+  // que al local se le deja tal cual y al visitante se le da la vuelta.
+  const s = d.tiros.map(t => {
+    const i = t.equipo === d.local ? 0 : 1;
+    const x = i === 0 ? t.x : 120 - t.x;
+    const y = i === 0 ? t.y : 80 - t.y;
+    const r = 1 + 4 * Math.sqrt(t.xg / maxXg);
+    return `<circle cx="${x}" cy="${y}" r="${r.toFixed(2)}"
+      fill="${t.gol ? INF_COL[i] : 'none'}" fill-opacity="${t.gol ? .9 : 0}"
+      stroke="${INF_COL[i]}" stroke-width=".45" opacity="${t.gol ? 1 : .75}">
+      <title>${esc(t.corto)} · min ${t.minuto} · xG ${t.xg.toFixed(2)} · ${esc(t.resultado)}${t.penalti ? ' (penalti)' : ''}</title>
+    </circle>`;
+  }).join('');
+
+  const porEq = e => d.tiros.filter(t => t.equipo === e);
+  $('infTirosNota').textContent = `${d.tiros.length} tiros`;
+  $('infTiros').innerHTML = infCampo(s) + `
+    <div style="display:flex;gap:18px;justify-content:space-between;margin-top:9px;
+      font-size:12px;flex-wrap:wrap">
+      ${eq.map((e, i) => {
+        const ts = porEq(e);
+        return `<span style="color:${INF_COL[i]}"><b>${esc(e)}</b>
+          <span style="color:var(--text2)"> ${ts.length} tiros ·
+          ${ts.filter(t => t.a_puerta).length} a puerta ·
+          ${d.estadisticas[e].xg.toFixed(2)} xG</span></span>`;
+      }).join('')}
+    </div>
+    <div style="color:var(--text3);font-size:11.5px;margin-top:7px">
+      Círculo relleno = gol. El tamaño es el xG del tiro.
+    </div>`;
+}
+
+// ── comparativa ───────────────────────────────────────────
+const INF_FILAS = [
+  ['posesion', 'Posesión (por pases)', '%'],
+  ['pases', 'Pases'], ['precision', 'Precisión de pase', '%'],
+  ['tiros', 'Tiros'], ['tiros_a_puerta', 'Tiros a puerta'],
+  ['xg', 'Goles esperados (xG)'],
+  ['pases_clave', 'Pases que acaban en tiro'],
+  ['entradas_ultimo_tercio', 'Entradas al último tercio'],
+  ['pases_al_area', 'Pases al área'],
+  ['toques_en_area', 'Toques en el área'],
+  ['centros', 'Centros'],
+  ['presiones', 'Presiones'],
+  ['acciones_defensivas', 'Acciones defensivas'],
+  ['duelos_ganados', 'Duelos ganados'],
+  ['faltas', 'Faltas'],
+];
+
+function infPintaStats(d) {
+  const L = d.local, V = d.visitante;
+  $('infStats').innerHTML = INF_FILAS.map(([k, etiqueta, u]) => {
+    const a = d.estadisticas[L][k], b = d.estadisticas[V][k];
+    const tot = (a + b) || 1;
+    const pa = 100 * a / tot;
+    const fmt = v => (k === 'xg' ? v.toFixed(2) : v) + (u || '');
+    return `<div style="margin-bottom:9px">
+      <div style="display:flex;justify-content:space-between;font-family:var(--fm);
+        font-size:12.5px;margin-bottom:3px">
+        <b style="color:${a >= b ? INF_COL[0] : 'var(--text2)'}">${fmt(a)}</b>
+        <span style="color:var(--text3);font-family:var(--fb);font-size:12px">${esc(etiqueta)}</span>
+        <b style="color:${b >= a ? INF_COL[1] : 'var(--text2)'}">${fmt(b)}</b>
+      </div>
+      <div style="display:flex;height:6px;border-radius:3px;overflow:hidden;
+        background:rgba(255,255,255,.05)">
+        <div style="width:${pa}%;background:${INF_COL[0]};opacity:.8"></div>
+        <div style="width:${100 - pa}%;background:${INF_COL[1]};opacity:.8"></div>
+      </div></div>`;
+  }).join('');
+}
+
+// ── jugadores ─────────────────────────────────────────────
+function infPintaJugadores(d) {
+  const th = (t, a) => `<th style="text-align:${a || 'left'};padding:7px 8px;font-size:10px;
+    letter-spacing:.7px;text-transform:uppercase;color:var(--text3);
+    border-bottom:1px solid var(--border2);font-weight:600;white-space:nowrap">${t}</th>`;
+  let h = `<thead><tr>${th('Jugador')}${th('Equipo')}${th('G', 'right')}${th('xG', 'right')}
+    ${th('Tiros', 'right')}${th('Pases', 'right')}${th('Prog.', 'right')}${th('Clave', 'right')}
+    ${th('Asist.', 'right')}${th('Def.', 'right')}${th('Regates', 'right')}</tr></thead><tbody>`;
+
+  [...d.jugadores].sort((a, b) => b.xg - a.xg || b.pases - a.pases).slice(0, 24)
+    .forEach(j => {
+      const i = j.equipo === d.local ? 0 : 1;
+      const td = (v, fuerte) => `<td style="padding:6px 8px;text-align:right;${fuerte
+        ? 'font-weight:700' : 'color:var(--text2)'}">${v}</td>`;
+      h += `<tr style="border-bottom:1px solid var(--border)" title="${esc(j.nombre)}">
+        <td style="padding:6px 8px;font-family:var(--fb);font-weight:600;white-space:nowrap">
+          ${j.dorsal != null ? `<span style="color:var(--text3);font-family:var(--fm)">${j.dorsal}</span> ` : ''}${esc(j.corto)}</td>
+        <td style="padding:6px 8px;color:${INF_COL[i]};white-space:nowrap">${esc(corta(j.equipo))}</td>
+        ${td(j.goles || '<span style="color:var(--text3)">—</span>', j.goles > 0)}
+        ${td(j.xg.toFixed(2), j.xg >= 0.5)}${td(j.tiros)}${td(j.pases)}
+        ${td(j.pases_progresivos)}${td(j.pases_clave)}${td(j.asistencias)}
+        ${td(j.acciones_defensivas)}${td(`${j.regates_bien}/${j.regates}`)}</tr>`;
+    });
+  $('infJug').innerHTML = h + '</tbody>';
+}
 
 </script>
 </body>
