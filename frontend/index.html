@@ -142,6 +142,8 @@ body {
 }
 .psub { color:var(--text2); font-size:13px; margin-top:3px }
 .cont { padding:22px 28px 48px; flex:1 }
+/* Si delante va la explicación, el aire ya lo pone ella. */
+.expl + .cont { padding-top:16px }
 
 /* ── Cards ── */
 .card {
@@ -417,6 +419,29 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
   .g2 { grid-template-columns:1fr }
   .pgrid { grid-template-columns:repeat(auto-fill,minmax(150px,1fr)) }
 }
+
+/* ── La explicación de cada pantalla ──────────────────────
+   Dos columnas: el método a la izquierda y la versión en cristiano a
+   la derecha, las dos siempre visibles. En pantalla estrecha, una
+   debajo de otra. Un desplegable sería una explicación que nadie lee. */
+.expl {
+  display:grid; grid-template-columns:1.15fr 1fr; gap:1px;
+  background:var(--border); border:1px solid var(--border);
+  border-radius:12px; overflow:hidden;
+  /* Vive entre la cabecera y .cont, así que se pone los márgenes
+     laterales que .cont tiene de suyo. */
+  margin:22px 28px 0;
+}
+.expl > div { background:var(--bg2); padding:13px 16px 15px }
+.expl-c { background:rgba(14,165,233,0.05) }
+.expl-t {
+  font-size:9.5px; letter-spacing:1.1px; text-transform:uppercase;
+  color:var(--text3); font-weight:700; margin-bottom:6px;
+}
+.expl-t span { color:var(--electric); letter-spacing:.4px; font-weight:600 }
+.expl p { margin:0; font-size:12.5px; line-height:1.65; color:var(--text2) }
+.expl-c p { color:var(--text) }
+@media(max-width:820px) { .expl { grid-template-columns:1fr } }
 
 /* ── Landing page ── */
 .hero {
@@ -1035,6 +1060,29 @@ const guarda = {
   escribir(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } },
 };
 
+// Puestos que la fuente no permite puntuar, con su motivo. Llega del
+// servidor para que la explicación de pantalla sea la misma que la del
+// código y no dos textos que un día dejan de coincidir.
+let SIN_NOTA = {};
+let AVISOS_JUGADORES = [];
+
+// Cómo se pinta una nota que puede no existir.
+function nota(p) {
+  if (p.score === null || p.score === undefined) {
+    return { txt: '—', color: 'var(--text3)', etiqueta: 'Sin nota',
+             clase: 'b-blue',
+             porque: SIN_NOTA[p.pos] || 'Esta fuente no permite puntuar este puesto.' };
+  }
+  const v = p.score;
+  return {
+    txt: String(v),
+    color: v >= 85 ? '#fbbf24' : v >= 70 ? '#f59e0b' : 'rgba(255,255,255,0.92)',
+    etiqueta: v >= 85 ? '🌟 Élite' : v >= 70 ? '🔥 Alto' : '📈 Promedio',
+    clase: v >= 85 ? 'b-gold' : v >= 70 ? 'b-red' : 'b-blue',
+    porque: 'Percentil medio dentro de su puesto en esta comparación.',
+  };
+}
+
 let API = guarda.leer('sp_api') || (location.protocol.startsWith('http') ? location.origin : 'http://localhost:8000');
 const WL = () => { try { return JSON.parse(guarda.leer('sp_wl') || '[]'); } catch (e) { return []; } };
 const sWL = w => guarda.escribir('sp_wl', JSON.stringify(w));
@@ -1113,8 +1161,16 @@ async function cargarJugadores(liga) {
         shots: x.shots, key_passes: x.key_passes,
         minutes: x.time, games: x.games,
         xG90: x.xG_per90, dif: x.goals_diff,
-        score: Math.round(x.score || 0),
+        // OJO: null, no cero. Un defensa no tiene un cero de nota:
+        // no tiene nota, porque Understat no publica con qué dársela.
+        // Redondear null a 0 lo pondría el último de la lista como si
+        // fuera malísimo, que es otra forma de inventarse el dato.
+        score: (x.score === null || x.score === undefined)
+          ? null : Math.round(x.score),
+        percentiles: x.percentiles || null,
       }));
+      SIN_NOTA = d.puestos_sin_nota || {};
+      AVISOS_JUGADORES = d.avisos || [];
     }
   } catch (e) { fallo = e.message; PLAYERS = []; }
   CARGANDO_JUGADORES = false;
@@ -1306,6 +1362,7 @@ function nav(page) {
     relieve: loadRelieve, simulador: loadSimulador,
     informe: loadInforme
   };
+  pintaExplicacion(page);
   actions[page]?.();
 }
 
@@ -1499,7 +1556,7 @@ async function loadScorers() {
 }
 
 // ── FIFA CARDS ────────────────────────────────────────────
-function gGrad(p) { return p.score >= 95 ? GRAD.elite : GRAD[p.league] || ['#0d1520','#080f1a']; }
+function gGrad(p) { return (p.score || 0) >= 88 ? GRAD.elite : GRAD[p.league] || ['#0d1520','#080f1a']; }
 function gInit(n) { const p = n.split(' '); return p.length >= 2 ? p[p.length-2][0] + p[p.length-1][0] : n.slice(0, 2); }
 function pStat(v, l) { return `<div class="fst"><div class="fstv">${v}</div><div class="fstl">${l}</div></div>`; }
 
@@ -1513,12 +1570,12 @@ function renderCards() {
   if (!fp.length) { $('pGrid').innerHTML = '<div class="empty" style="grid-column:1/-1"><h3>Sin resultados</h3><p>Cambia los filtros</p></div>'; return; }
   $('pGrid').innerHTML = fp.map(p => {
     const [top, bot] = gGrad(p), starred = wl.some(w => w.id === p.id);
-    const sc = p.score >= 95 ? '#fbbf24' : p.score >= 88 ? '#f59e0b' : 'rgba(255,255,255,0.92)';
-    const stats = p.pos !== 'GK' ? pStat(p.goals,'GOL') + pStat(p.assists,'ASI') + pStat(p.xG.toFixed(1),'xG') : pStat(p.minutes,'MIN') + pStat(p.games,'PJ') + pStat(p.score,'SCO');
+    const nt = nota(p); const sc = nt.color;
+    const stats = p.pos !== 'GK' ? pStat(p.goals,'GOL') + pStat(p.assists,'ASI') + pStat(p.xG.toFixed(1),'xG') : pStat(p.minutes,'MIN') + pStat(p.games,'PJ') + pStat(p.key_passes,'PC');
     return `<div class="fc${starred?' starred':''}" onclick="toggleWL('${p.id}')" title="${p.name}">
       <div class="fci" style="background:linear-gradient(160deg,${top} 0%,${bot} 100%)">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%">
-          <div><div class="fscore" style="color:${sc}">${p.score}</div><div class="fpos">${p.pos || '—'}</div></div>
+          <div title="${nt.porque}"><div class="fscore" style="color:${sc}">${nt.txt}</div><div class="fpos">${p.pos || '—'}</div></div>
           <div style="font-size:13px;opacity:0.85">${starred?'⭐':'☆'}</div>
         </div>
         <div class="fav">${gInit(p.name)}</div>
@@ -1573,11 +1630,11 @@ function runScouting() {
   dC('scBar');
   C['scBar'] = new Chart($('scBar').getContext('2d'), { type:'bar', data:{
     labels:top10.map(p=>p.name.split(' ').slice(-1)[0]),
-    datasets:[{label:'Score ML',data:top10.map(p=>p.score),backgroundColor:top10.map(p=>p.score>=90?'rgba(245,158,11,0.6)':p.score>=80?'rgba(249,115,22,0.6)':'rgba(14,165,233,0.6)'),borderColor:top10.map(p=>p.score>=90?'#f59e0b':p.score>=80?'#f97316':'#0ea5e9'),borderWidth:1,borderRadius:6}]
+    datasets:[{label:'Percentil medio',data:top10.map(p=>p.score ?? null),backgroundColor:top10.map(p=>(p.score||0)>=85?'rgba(245,158,11,0.6)':(p.score||0)>=70?'rgba(249,115,22,0.6)':'rgba(14,165,233,0.6)'),borderColor:top10.map(p=>(p.score||0)>=85?'#f59e0b':(p.score||0)>=70?'#f97316':'#0ea5e9'),borderWidth:1,borderRadius:6}]
   }, options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{color:'#7a9bbf'},grid:{color:'rgba(14,165,233,0.06)'},min:0,max:100},y:{ticks:{color:'#7a9bbf',font:{size:10}},grid:{color:'rgba(14,165,233,0.04)'}}} }});
   const sorted = [...pl].sort((a,b)=>b.score-a.score);
   $('scTbl').innerHTML = '<table><thead><tr><th>#</th><th>Jugador</th><th>Equipo</th><th>Liga</th><th>Edad</th><th>Goles</th><th>Asist</th><th>xG</th><th>Min</th><th>Score</th><th>Perfil</th></tr></thead><tbody>' +
-    sorted.map((p,i)=>`<tr><td style="color:var(--text2)">${i+1}</td><td style="font-weight:500">${p.name}</td><td style="font-size:11px">${p.team}</td><td><span class="bge b-blue" style="font-size:9px">${p.league}</span></td><td style="font-family:var(--fm)">${p.minutes}</td><td style="font-family:var(--fm);color:var(--green)">${p.goals}</td><td style="font-family:var(--fm);color:var(--electric)">${p.assists}</td><td style="font-family:var(--fm)">${p.xG.toFixed(1)}</td><td style="font-family:var(--fm)">${p.minutes}</td><td style="font-family:var(--fm);font-weight:700;color:${p.score>=90?'var(--gold)':p.score>=80?'var(--orange)':'var(--electric)'}">${p.score}</td><td style="font-size:11px">${cL[p.cluster||0]}</td></tr>`).join('') + '</tbody></table>';
+    sorted.map((p,i)=>`<tr><td style="color:var(--text2)">${i+1}</td><td style="font-weight:500">${p.name}</td><td style="font-size:11px">${p.team}</td><td><span class="bge b-blue" style="font-size:9px">${p.league}</span></td><td style="font-family:var(--fm)">${p.minutes}</td><td style="font-family:var(--fm);color:var(--green)">${p.goals}</td><td style="font-family:var(--fm);color:var(--electric)">${p.assists}</td><td style="font-family:var(--fm)">${p.xG.toFixed(1)}</td><td style="font-family:var(--fm)">${p.minutes}</td><td style="font-family:var(--fm);font-weight:700;color:${nota(p).color}" title="${nota(p).porque}">${nota(p).txt}</td><td style="font-size:11px">${cL[p.cluster||0]}</td></tr>`).join('') + '</tbody></table>';
 }
 
 // ── COMPARE ───────────────────────────────────────────────
@@ -1595,17 +1652,26 @@ function runCompare() {
     <div style="font-size:11px;color:var(--text2);margin-bottom:10px">${p.team} · ${p.minutes} min · ${p.games} PJ</div>
     ${metrics.map((m,i)=>`<div class="pw"><div class="pm"><span>${labels[i]}</span><span style="font-family:var(--fm)">${typeof p[m]==='number'&&m!=='minutes'?p[m].toFixed(1):p[m]}</span></div><div class="pb"><div class="pf" style="width:${Math.round(p[m]/norm[i]*100)}%;background:${col}"></div></div></div>`).join('')}
     <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
-      <div style="font-family:var(--ff);font-size:42px;color:${col}">${p.score}</div>
-      <div><div style="font-size:10px;color:var(--text2)">Score ML</div><span class="bge ${p.score>=90?'b-gold':p.score>=80?'b-red':'b-blue'}" style="margin-top:3px">${p.score>=90?'🌟 Élite':p.score>=80?'🔥 Alto':'📈 Promedio'}</span></div>
+      <div style="font-family:var(--ff);font-size:42px;color:${col}" title="${nota(p).porque}">${nota(p).txt}</div>
+      <div><div style="font-size:10px;color:var(--text2)">Percentil medio</div><span class="bge ${nota(p).clase}" style="margin-top:3px">${nota(p).etiqueta}</span></div>
     </div></div>`;
   dC('rC');
   $('cOut').innerHTML=`<div class="g2" style="margin-bottom:14px">${card(p1,'#0ea5e9')}${card(p2,'#f97316')}</div>
     <div class="card"><div class="ch"><div class="ct">🕸️ Radar comparativo</div></div><div class="rw"><canvas id="rC"></canvas></div></div>`;
   setTimeout(()=>{
     const ctx=$('rC')?.getContext('2d'); if(!ctx) return;
-    C['rC']=new Chart(ctx,{type:'radar',data:{labels:[...labels,'Score/10'],datasets:[
-      {label:p1.name.split(' ').slice(-1)[0],data:[...metrics.map((m,i)=>+(p1[m]/norm[i]*100).toFixed(0)),p1.score],backgroundColor:'rgba(14,165,233,0.15)',borderColor:'#0ea5e9',pointBackgroundColor:'#0ea5e9',borderWidth:2},
-      {label:p2.name.split(' ').slice(-1)[0],data:[...metrics.map((m,i)=>+(p2[m]/norm[i]*100).toFixed(0)),p2.score],backgroundColor:'rgba(249,115,22,0.15)',borderColor:'#f97316',pointBackgroundColor:'#f97316',borderWidth:2}
+    // La punta del percentil sólo se pinta si los DOS tienen nota:
+    // media rueda con un hueco se lee como «vale cero», no como «no
+    // se sabe». Y la etiqueta decía «Score/10» pintando el score tal
+    // cual sobre un eje de 0 a 100, que era otra cosa.
+    const hayNota = p1.score != null && p2.score != null;
+    const ejes = hayNota ? [...labels, 'Percentil'] : labels;
+    const fila = p => hayNota
+      ? [...metrics.map((m,i)=>+(p[m]/norm[i]*100).toFixed(0)), p.score]
+      : metrics.map((m,i)=>+(p[m]/norm[i]*100).toFixed(0));
+    C['rC']=new Chart(ctx,{type:'radar',data:{labels:ejes,datasets:[
+      {label:p1.name.split(' ').slice(-1)[0],data:fila(p1),backgroundColor:'rgba(14,165,233,0.15)',borderColor:'#0ea5e9',pointBackgroundColor:'#0ea5e9',borderWidth:2},
+      {label:p2.name.split(' ').slice(-1)[0],data:fila(p2),backgroundColor:'rgba(249,115,22,0.15)',borderColor:'#f97316',pointBackgroundColor:'#f97316',borderWidth:2}
     ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#7a9bbf'}}},scales:{r:{ticks:{color:'#7a9bbf',backdropColor:'transparent',stepSize:25},grid:{color:'rgba(14,165,233,0.1)'},pointLabels:{color:'#7a9bbf',font:{size:11}},min:0,max:100}}}});
   },50);
 }
@@ -1623,9 +1689,9 @@ function renderWL() {
   if (!wl.length) { $('wlCont').innerHTML=`<div class="empty"><div style="font-size:48px;margin-bottom:12px">⭐</div><h3>Watchlist vacía</h3><p>Haz clic en ☆ en cualquier carta</p><button class="btn bp" onclick="nav('players')" style="margin-top:16px">Ver cartas →</button></div>`; return; }
   $('wlCont').innerHTML=`<div class="sh"><span class="st">${wl.length} jugadores seguidos</span><button class="btn bg bs" onclick="expWL()">⬇ CSV</button></div>
   <div class="pgrid">${wl.map(p=>{
-    const [top,bot]=gGrad(p),sc=p.score>=95?'#fbbf24':p.score>=88?'#f59e0b':'rgba(255,255,255,0.92)';
+    const [top,bot]=gGrad(p),sc=nota(p).color;
     const stats=p.pos!=='GK'?pStat(p.goals,'GOL')+pStat(p.assists,'ASI')+pStat(p.xG.toFixed(1),'xG'):pStat(p.minutes,'MIN')+pStat(p.games,'PJ')+pStat(p.score,'SCO');
-    return `<div class="fc starred" onclick="toggleWL('${p.id}')"><div class="fci" style="background:linear-gradient(160deg,${top} 0%,${bot} 100%)"><div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%"><div><div class="fscore" style="color:${sc}">${p.score}</div><div class="fpos">${p.pos || '—'}</div></div><div style="font-size:13px">⭐</div></div><div class="fav">${gInit(p.name)}</div><div class="fn">${p.name.split(' ').slice(-1)[0]}</div><div class="fteam">${p.team}</div><div class="fstats">${stats}</div></div></div>`;
+    return `<div class="fc starred" onclick="toggleWL('${p.id}')"><div class="fci" style="background:linear-gradient(160deg,${top} 0%,${bot} 100%)"><div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%"><div><div class="fscore" style="color:${sc}" title="${nota(p).porque}">${nota(p).txt}</div><div class="fpos">${p.pos || '—'}</div></div><div style="font-size:13px">⭐</div></div><div class="fav">${gInit(p.name)}</div><div class="fn">${p.name.split(' ').slice(-1)[0]}</div><div class="fteam">${p.team}</div><div class="fstats">${stats}</div></div></div>`;
   }).join('')}</div>`;
 }
 function clrWL() { sWL([]); renderWL(); }
@@ -1910,6 +1976,10 @@ const SIM_MOTIVOS = {
   limite_alcanzado: ['Se han gastado las peticiones del minuto',
     'El plan gratuito de football-data son diez peticiones por minuto. Espera un ' +
     'minuto y vuelve a entrar.'],
+  falta_la_clave: ['Falta la clave de football-data',
+    'Esta pantalla necesita una clave de football-data.org, que es gratis. El ' +
+    'informe post-partido y el relieve funcionan igual sin ella, porque van ' +
+    'sobre StatsBomb Open Data.'],
   fuente_caida: ['football-data no ha contestado',
     'No es que no haya datos: es que no se sabe. Puede ser la conexión, puede ser ' +
     'que falte la clave de la API.'],
@@ -2472,6 +2542,246 @@ function infPintaJugadores(d) {
         ${td(j.acciones_defensivas)}${td(`${j.regates_bien}/${j.regates}`)}</tr>`;
     });
   $('infJug').innerHTML = h + '</tbody>';
+}
+
+
+// ══════════════════════════════════════════════════════════
+// QUÉ ES CADA PANTALLA
+// ══════════════════════════════════════════════════════════
+//
+// Cada pantalla lleva su explicación en dos partes, y en este orden:
+//
+//   EL MÉTODO   de dónde salen los datos, qué se calcula y con qué.
+//               Es lo primero porque quien entra desde LinkedIn suele
+//               ser alguien que sabe de datos y lo que quiere saber es
+//               si esto está bien hecho.
+//   EN CRISTIANO  qué significa y para qué sirve, sin una sola palabra
+//               técnica. Para el que sabe de fútbol y no de datos.
+//
+// Las dos siempre visibles, sin desplegables: un desplegable es una
+// explicación que nadie lee.
+//
+// REGLA AL ESCRIBIR ESTO: aquí no se promete nada que el código no
+// haga. Si una pantalla tiene una limitación, se dice en el método.
+// Un «scouting con inteligencia artificial» sobre una fuente que no
+// publica datos defensivos es justo el tipo de frase que hay que no
+// escribir.
+
+const EXPLICA = {
+
+  dashboard: {
+    fuente: 'football-data.org',
+    metodo:
+      'Resumen de la clasificación oficial de la liga elegida: líder, ' +
+      'goles totales, media de puntos por equipo y jornadas disputadas, ' +
+      'más goles por equipo y puntos por partido de los ocho primeros. ' +
+      'Todo son cifras de la tabla, sin ningún modelo por medio. Se ' +
+      'refresca cada diez minutos.',
+    cristiano:
+      'Cómo va la liga de un vistazo, sin tener que leerse la tabla ' +
+      'entera. Quién manda, cuántos goles se están marcando y qué ocho ' +
+      'equipos están rindiendo mejor.',
+  },
+
+  standings: {
+    fuente: 'football-data.org + Understat',
+    metodo:
+      'La clasificación oficial, con el xG y el xGA de cada equipo ' +
+      'añadidos desde Understat cuando se encuentra la equivalencia de ' +
+      'nombres. Las zonas de Champions, Europa y descenso están ' +
+      'pintadas con el número de plazas habitual de las grandes ligas, ' +
+      'no con el reglamento concreto de cada competición.',
+    cristiano:
+      'La tabla de siempre, pero con una columna más: los goles que ' +
+      '«deberían» haber marcado y encajado según las ocasiones que han ' +
+      'tenido. Si un equipo va quinto pero su xG es de los dos ' +
+      'primeros, está jugando mejor de lo que dicen los puntos.',
+  },
+
+  matches: {
+    fuente: 'football-data.org',
+    metodo:
+      'Partidos de la liga elegida con su estado —jugado, en juego o ' +
+      'por jugar— y el marcador oficial. Abajo, el total de goles y el ' +
+      'porcentaje de victorias locales del grupo de partidos que se ' +
+      'está mirando. Se refresca cada cinco minutos.',
+    cristiano:
+      'Lo que se ha jugado y lo que viene. El porcentaje de victorias ' +
+      'en casa sirve para ponerle número a algo que todo el mundo dice: ' +
+      'cuánto vale de verdad jugar en tu campo.',
+  },
+
+  scorers: {
+    fuente: 'football-data.org',
+    metodo:
+      'Máximos goleadores oficiales de la competición, con asistencias ' +
+      'y partidos jugados cuando la fuente los da. Son goles contados, ' +
+      'no estimados: aquí no hay xG ni modelo de ningún tipo.',
+    cristiano:
+      'El pichichi. Quién lleva más goles, con cuántos partidos y ' +
+      'cuántas asistencias.',
+  },
+
+  players: {
+    fuente: 'Understat',
+    metodo:
+      'Jugadores de la liga con sus cifras de tiro de Understat: goles, ' +
+      'asistencias, xG, npxG, xA, tiros y pases clave. La nota es el ' +
+      'percentil medio dentro de su puesto en esta misma comparación, ' +
+      'calculado por 90 minutos. Defensas y porteros salen SIN NOTA, ' +
+      'con una raya: Understat no publica datos defensivos ni de ' +
+      'portería, y un número inventado para un central es peor que no ' +
+      'tener número.',
+    cristiano:
+      'Una carta por jugador, como las de un videojuego, pero con sus ' +
+      'cifras de verdad. La nota quiere decir: «de los delanteros de ' +
+      'esta liga, es mejor que este porcentaje». Pincha una para verla ' +
+      'entera, y la estrella la guarda en tu lista.',
+  },
+
+  scouting: {
+    fuente: 'Understat',
+    metodo:
+      'Cada métrica se pasa a por 90 minutos y se convierte en ' +
+      'percentil dentro del grupo que se está mirando; la nota es el ' +
+      'promedio ponderado de esos percentiles. Después un K-Means ' +
+      'agrupa a los jugadores por su perfil de percentiles —no por sus ' +
+      'totales, que agruparía por minutos jugados— y un PCA los coloca ' +
+      'en el mapa. Sólo delanteros y centrocampistas: con esta fuente ' +
+      'no se puede puntuar a un defensa ni a un portero, y se dice en ' +
+      'vez de rellenar con ceros.',
+    cristiano:
+      'Buscar jugadores que rinden por encima de lo que su equipo o su ' +
+      'nombre harían pensar. El mapa junta a los que se parecen entre ' +
+      'sí: si encuentras a uno que te gusta, los de su mismo grupo ' +
+      'juegan parecido. Ojo con los filtros de minutos: alguien ' +
+      'espectacular en 200 minutos no ha demostrado nada todavía.',
+  },
+
+  compare: {
+    fuente: 'Understat',
+    metodo:
+      'Dos jugadores, las mismas métricas y un radar. Cada eje está ' +
+      'escalado al mayor de los dos, así que la rueda dice quién gana ' +
+      'en qué, no la posición de cada uno respecto a la liga. El eje ' +
+      'del percentil sólo aparece si los dos jugadores tienen nota.',
+    cristiano:
+      'Dos jugadores, cara a cara. La rueda enseña de un golpe en qué ' +
+      'gana cada uno: si uno tiene la figura estirada hacia los goles ' +
+      'y el otro hacia los pases clave, son dos jugadores distintos ' +
+      'aunque los totales se parezcan.',
+  },
+
+  watchlist: {
+    fuente: 'Tu navegador',
+    metodo:
+      'Se guarda en el navegador que estés usando (localStorage): no ' +
+      'sale de tu ordenador, no se sube a ningún sitio y no se comparte ' +
+      'entre dispositivos. Si borras los datos del navegador, se borra.',
+    cristiano:
+      'Tu lista de jugadores a seguir. Dale a la estrella de cualquier ' +
+      'carta y aparece aquí. Es tuya y sólo tuya: nadie más la ve.',
+  },
+
+  team: {
+    fuente: 'football-data.org',
+    metodo:
+      'Ficha del club con su plantilla y sus últimos partidos. La media ' +
+      'de edad se calcula con los jugadores que traen fecha de ' +
+      'nacimiento, y debajo se dice con cuántos de la plantilla se ha ' +
+      'calculado: una media de edad sobre media plantilla no es la ' +
+      'media de edad del equipo.',
+    cristiano:
+      'Quién juega en ese club y cómo le ha ido últimamente. La media ' +
+      'de edad dice mucho de un proyecto: no es lo mismo ir quinto con ' +
+      'una plantilla de 24 años que con una de 31.',
+  },
+
+  relieve: {
+    fuente: 'StatsBomb Open Data · 29.224 tiros',
+    metodo:
+      'Modelo propio de probabilidad de gol entrenado sobre 29.224 ' +
+      'tiros de datos abiertos, con la distancia y el ángulo que abre ' +
+      'la portería como variables. AUC 0,7387 sobre 108 millones de ' +
+      'pares. La calibración por deciles está abajo, que es lo que de ' +
+      'verdad hay que mirar: un modelo puede ordenar bien y mentir en ' +
+      'el número.',
+    cristiano:
+      'Toca cualquier punto del campo y te dice qué probabilidad de gol ' +
+      'tiene un tiro desde ahí, y cuántos tiros reales hay detrás de ' +
+      'esa respuesta. Donde está oscuro no hay con qué medir, y por eso ' +
+      'no se pinta nada.',
+  },
+
+  simulador: {
+    fuente: 'football-data.org',
+    metodo:
+      'Goles como dos Poisson independientes con fuerza de ataque y de ' +
+      'defensa por equipo más ventaja de campo, ajustado por máxima ' +
+      'verosimilitud penalizada, y 10.000 simulaciones de lo que queda ' +
+      'de temporada. Se tiran dos dados: el del partido y el de la ' +
+      'incertidumbre sobre la propia fuerza estimada. Se niega a ' +
+      'simular si el calendario no cuadra o si la fuente va con ' +
+      'retraso.',
+    cristiano:
+      'Si la liga se jugara diez mil veces desde donde va hoy, ¿dónde ' +
+      'acabaría cada equipo? La barra es donde acaba en ocho de cada ' +
+      'diez. Es ancha porque quedan muchas jornadas, no porque el ' +
+      'modelo dude por gusto.',
+  },
+
+  informe: {
+    fuente: 'StatsBomb Open Data',
+    metodo:
+      'Informe calculado de los eventos del partido: red de pases con ' +
+      'la posición media del once inicial, mapa de tiros con su xG, la ' +
+      'carrera de xG minuto a minuto y quince cifras por equipo. La ' +
+      'tanda de penaltis no entra en ninguna cifra. Antes de enseñar ' +
+      'nada comprueba que los goles que salen de los eventos cuadran ' +
+      'con el marcador oficial.',
+    cristiano:
+      'Todo lo que pasó en un partido, contado con números en vez de ' +
+      'con opiniones. Quién tocaba el balón con quién, desde dónde se ' +
+      'tiró y cuánto valía cada ocasión. Es el informe que un analista ' +
+      'entrega el lunes por la mañana.',
+  },
+};
+
+
+// Pinta la explicación de una pantalla, justo debajo de su cabecera.
+// Se llama desde nav() y sólo pinta una vez por pantalla.
+function pintaExplicacion(pagina) {
+  const e = EXPLICA[pagina];
+  if (!e) return;
+  const pag = $('page-' + pagina);
+  if (!pag || pag.querySelector('.expl')) return;
+
+  const bloque = document.createElement('div');
+  bloque.className = 'expl';
+  bloque.innerHTML = `
+    <div class="expl-m">
+      <div class="expl-t">El método${e.fuente ? ` · <span>${esc(e.fuente)}</span>` : ''}</div>
+      <p>${esc(e.metodo)}</p>
+    </div>
+    <div class="expl-c">
+      <div class="expl-t">En cristiano</div>
+      <p>${esc(e.cristiano)}</p>
+    </div>`;
+
+  // FUERA de .cont, no dentro.
+  //
+  // La primera versión lo metía como primer hijo de .cont, y en
+  // Partidos y en Watchlist desaparecía: esas dos pantallas hacen
+  // `$('mCont').innerHTML = ...` sobre el propio .cont, así que al
+  // cargar los datos se llevaban por delante la explicación. Pasaba
+  // sólo en dos de las doce, que es como no verlo nunca.
+  //
+  // Puesta entre la cabecera y el contenido, es intocable.
+  const cab = pag.querySelector('.page-header');
+  const cont = pag.querySelector('.cont');
+  if (cab) cab.after(bloque);
+  else if (cont) pag.insertBefore(bloque, cont);
+  else pag.insertBefore(bloque, pag.firstChild);
 }
 
 </script>
