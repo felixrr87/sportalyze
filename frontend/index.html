@@ -7,7 +7,8 @@
 <title>SPORTALYZE — Análisis Deportivo Pro</title>
 <script>const LOGO_B64="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%20width%3D%22100%22%20height%3D%22100%22%20role%3D%22img%22%20aria-label%3D%22Sportalyze%22%3E%0A%20%20%3Ctitle%3ESportalyze%3C%2Ftitle%3E%0A%20%20%3Cdefs%3E%0A%20%20%20%20%3ClinearGradient%20id%3D%22oro%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23F2CC6B%22%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220.5%22%20stop-color%3D%22%23E3B341%22%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23B8821F%22%2F%3E%0A%20%20%20%20%3C%2FlinearGradient%3E%0A%20%20%3C%2Fdefs%3E%0A%20%20%3Cpolygon%20points%3D%2250.00%2C6.00%2011.89%2C28.00%2011.89%2C72.00%2050.00%2C94.00%2088.11%2C72.00%2088.11%2C28.00%22%20fill%3D%22none%22%20stroke%3D%22url%28%23oro%29%22%20stroke-width%3D%229.0%22%20stroke-linejoin%3D%22round%22%2F%3E%0A%20%20%3Cpolygon%20points%3D%2250.00%2C30.00%2032.68%2C40.00%2032.68%2C60.00%2050.00%2C70.00%2067.32%2C60.00%2067.32%2C40.00%22%20fill%3D%22none%22%20stroke%3D%22url%28%23oro%29%22%20stroke-width%3D%2210.5%22%20stroke-linejoin%3D%22round%22%2F%3E%0A%3C%2Fsvg%3E%0A";</script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<!-- Chart.js se cargaba dos veces: aquí y otra vez antes del
+     script de la aplicación. Se queda la segunda. -->
 <style>
 /* ═══════════════════════════════════════════════
    SPORTALYZE — Design System
@@ -406,6 +407,12 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
 @media(max-width:820px) {
   .app { grid-template-columns:1fr }
   .sidebar { display:none }
+  /* En pantalla estrecha el título y los selectores se peleaban por el
+     mismo renglón: «Informe post-partido» salía partido en tres líneas
+     al lado de dos desplegables. Se ponen uno debajo del otro. */
+  .header-row { flex-direction:column; align-items:stretch; gap:10px }
+  .header-row > div:last-child { display:flex; flex-wrap:wrap; gap:8px }
+  .header-row select { flex:1; min-width:140px; max-width:none !important }
   .g4,.g3 { grid-template-columns:repeat(2,1fr) }
   .g2 { grid-template-columns:1fr }
   .pgrid { grid-template-columns:repeat(auto-fill,minmax(150px,1fr)) }
@@ -743,18 +750,23 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
       <div class="ch"><div class="ct">📊 Estado del sistema</div></div>
       <div class="g2">
         <div>
-          <div class="pw"><div class="pm"><span>Jugadores en BD</span><span style="font-family:var(--fm)">40</span></div><div class="pb"><div class="pf" style="width:80%;background:var(--electric)"></div></div></div>
+          <div class="pw"><div class="pm"><span>Jugadores cargados</span><span style="font-family:var(--fm)" id="cfgJug">—</span></div><div class="pb"><div class="pf" id="cfgJugB" style="width:0%;background:var(--electric)"></div></div></div>
           <div class="pw"><div class="pm"><span>Ligas activas</span><span style="font-family:var(--fm)">6</span></div><div class="pb"><div class="pf" style="width:100%;background:var(--green)"></div></div></div>
           <div class="pw"><div class="pm"><span>Watchlist</span><span id="cfgWL" style="font-family:var(--fm)">0</span></div><div class="pb"><div class="pf" id="cfgWLB" style="width:0%;background:var(--gold)"></div></div></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div class="kpi"><div class="kl">Temporada</div><div class="kv" style="font-size:18px">24/25</div><div class="ks">datos reales</div></div>
+          <div class="kpi"><div class="kl">Temporada</div><div class="kv" style="font-size:18px">24/25</div><div class="ks">Understat</div></div>
           <div class="kpi"><div class="kl">ML Engine</div><div class="kv" style="font-size:14px;margin-top:4px">K-Means</div><div class="ks">4 clusters</div></div>
         </div>
       </div>
     </div>
-    <div class="card">
-      
+    <!-- Aquí había una <div class="card"> vacía SIN CERRAR. Como no se
+         cerraba, el </div> siguiente cerraba la tarjeta en vez de .cont,
+         y page-config se quedaba abierta: page-team, page-relieve,
+         page-simulador y page-informe acababan DENTRO de ella.
+         En el navegador eso significa que esas cuatro pantallas no se
+         veían nunca, porque su padre estaba en display:none. Lo
+         encontró el comprobador al mirar qué contiene cada .page. -->
   </div>
 </div>
 
@@ -953,7 +965,7 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
         cuenta el rato en que estuvo el once inicial: en cuanto entra un suplente, la posición
         media deja de significar nada. Ataque hacia la derecha.
       </div>
-      <div id="infRedes" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px;padding:12px 16px 18px"></div>
+      <div id="infRedes" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:14px;padding:12px 16px 18px"></div>
     </div>
 
     <!-- mapa de tiros -->
@@ -1119,7 +1131,18 @@ async function cargarJugadores(liga) {
 // ── API fetch helper ──────────────────────────────────────
 async function apiFetch(endpoint) {
   const r = await fetch(API + endpoint);
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  if (!r.ok) {
+    // Antes esto lanzaba «HTTP 503» y ya está, tirando a la basura la
+    // explicación que el servidor había escrito para que se leyera.
+    // En pantalla salía «❌ HTTP 429» en vez de «se han gastado las
+    // diez peticiones del minuto», que es lo que pasaba de verdad.
+    let detalle = '';
+    try {
+      const d = (await r.clone().json()).detail;
+      detalle = (d && (d.detalle || d.motivo)) || (typeof d === 'string' ? d : '');
+    } catch (e) { /* el cuerpo no era JSON: nos quedamos con el código */ }
+    throw new Error(detalle || `HTTP ${r.status}`);
+  }
   return r.json();
 }
 
@@ -1622,6 +1645,11 @@ function renderCfg() {
   const wl = WL();
   $('cfgWL').textContent = wl.length;
   $('cfgWLB').style.width = Math.min(100, wl.length / 20 * 100) + '%';
+  // Aquí había un 40 escrito a mano, de cuando los jugadores estaban
+  // dentro del HTML. Ahora se cargan de Understat y el número depende
+  // de la liga y del filtro de minutos, así que se cuenta.
+  $('cfgJug').textContent = PLAYERS.length || '—';
+  $('cfgJugB').style.width = Math.min(100, PLAYERS.length / 2) + '%';
 }
 
 // ── EXPORTS ───────────────────────────────────────────────
@@ -2321,7 +2349,8 @@ function infPintaRedes(d) {
     }).join('');
 
     return `<div>
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;
+        margin-bottom:6px;flex-wrap:wrap;gap:4px 10px">
         <b style="color:${INF_COL[i]};font-family:var(--fh);font-size:15px">${esc(e)}</b>
         <span style="color:var(--text3);font-family:var(--fm);font-size:11px">
           ${esc(r.formacion)} · hasta el min ${r.hasta_minuto} (${esc(r.motivo_corte)})</span>
@@ -2355,12 +2384,21 @@ function infPintaTiros(d) {
 
   const porEq = e => d.tiros.filter(t => t.equipo === e);
   $('infTirosNota').textContent = `${d.tiros.length} tiros`;
+
+  // El visitante ataca hacia la IZQUIERDA y el local hacia la derecha,
+  // así que las etiquetas van al revés que los equipos: cada nombre
+  // debajo de la portería a la que tira. Puestas en orden normal, el
+  // nombre de Argentina quedaba bajo la portería de Argentina, que es
+  // justo la que no ataca.
+  const lado = [[d.visitante, 1, '◀ ataca'], [d.local, 0, 'ataca ▶']];
   $('infTiros').innerHTML = infCampo(s) + `
     <div style="display:flex;gap:18px;justify-content:space-between;margin-top:9px;
       font-size:12px;flex-wrap:wrap">
-      ${eq.map((e, i) => {
+      ${lado.map(([e, i, flecha]) => {
         const ts = porEq(e);
-        return `<span style="color:${INF_COL[i]}"><b>${esc(e)}</b>
+        return `<span style="color:${INF_COL[i]}">
+          <span style="color:var(--text3);font-size:10.5px">${flecha}</span>
+          <b>${esc(e)}</b>
           <span style="color:var(--text2)"> ${ts.length} tiros ·
           ${ts.filter(t => t.a_puerta).length} a puerta ·
           ${d.estadisticas[e].xg.toFixed(2)} xG</span></span>`;
