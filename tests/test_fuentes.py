@@ -455,3 +455,150 @@ def test_el_scouting_dice_el_ano_de_la_temporada_y_no_solo_el_texto(cliente, mon
     d = cliente.get("/api/scouting/PD?position=FW&min_minutes=0").json()
     assert isinstance(d.get("season"), int)
     assert d["temporada"].startswith(str(d["season"]))
+
+
+# ══════════════════════════════════════════════════════════════════
+# LA RUTA DEL INFORME DE UN PARTIDO DE ESTA TEMPORADA
+# ══════════════════════════════════════════════════════════════════
+#
+# Lo que se comprueba aquí es sobre todo que SE NIEGUE bien. Un
+# informe del partido equivocado es el peor fallo posible de esta
+# pantalla, porque el visitante no tiene forma de notarlo: vería un
+# mapa de tiros perfectamente creíble de otro partido.
+
+CALENDARIO = [
+    {"match_id": "1", "jugado": True, "fecha": "2026-10-18",
+     "local": "Barcelona", "visitante": "Girona",
+     "clave_local": "barcelona", "clave_visitante": "girona",
+     "goles_local": 2, "goles_visitante": 1, "xg_local": 1.9, "xg_visitante": 0.8},
+    {"match_id": "2", "jugado": False, "fecha": "2026-10-25",
+     "local": "Real Madrid", "visitante": "Getafe",
+     "clave_local": "real madrid", "clave_visitante": "getafe",
+     "goles_local": None, "goles_visitante": None},
+]
+
+TIROS_PARTIDO = {
+    "home_shots": [{"minute": 20, "result": "Goal", "x": 88.0, "y": 50.0,
+                    "xG": 0.3, "player": "A", "situation": "OpenPlay",
+                    "shot_type": "RightFoot"},
+                   {"minute": 60, "result": "Goal", "x": 90.0, "y": 48.0,
+                    "xG": 0.5, "player": "B", "situation": "OpenPlay",
+                    "shot_type": "Head"}],
+    "away_shots": [{"minute": 70, "result": "Goal", "x": 85.0, "y": 55.0,
+                    "xG": 0.25, "player": "C", "situation": "FromCorner",
+                    "shot_type": "LeftFoot"}],
+}
+
+
+def _fuente_de_partidos(monkeypatch, calendario=None, tiros=None, roster=None):
+    async def cal(code, season=None):
+        return CALENDARIO if calendario is None else calendario
+    async def sh(mid):
+        return TIROS_PARTIDO if tiros is None else tiros
+    async def ro(mid):
+        if roster == "falla":
+            raise main.FuenteNoDisponible("Understat", "se cayó")
+        return roster or {"local": [], "visitante": []}
+    monkeypatch.setattr(main, "get_league_fixtures", cal)
+    monkeypatch.setattr(main, "get_match_shots", sh)
+    monkeypatch.setattr(main, "get_match_roster", ro)
+
+
+def _pedir(cliente, local="FC Barcelona", visitante="Girona FC",
+           fecha="2026-10-18", code="PD"):
+    return cliente.get(f"/api/informe-liga/{code}",
+                       params={"local": local, "visitante": visitante,
+                               "fecha": fecha})
+
+
+def test_el_informe_de_liga_empareja_y_sale(cliente, monkeypatch):
+    _fuente_de_partidos(monkeypatch)
+    r = _pedir(cliente)
+    assert r.status_code == 200
+    d = r.json()
+    assert d["local"] == "Barcelona" and d["visitante"] == "Girona"
+    assert (d["goles_local"], d["goles_visitante"]) == (2, 1)
+    assert d["fuente"] == "Understat"
+    # el xG del gráfico y el del resumen, lo mismo
+    assert round(d["carrera"][-1]["local"], 2) == d["equipos"]["Barcelona"]["xg"]
+
+
+def test_el_informe_dice_de_que_no_tiene_datos(cliente, monkeypatch):
+    _fuente_de_partidos(monkeypatch)
+    d = _pedir(cliente).json()
+    assert "red de pases" in d["sin_datos_de"]
+
+
+def test_se_niega_si_no_encuentra_el_partido_y_dice_cuales_habia(cliente, monkeypatch):
+    _fuente_de_partidos(monkeypatch)
+    r = _pedir(cliente, local="Sevilla FC", visitante="Real Betis")
+    assert r.status_code == 404
+    d = r.json()["detail"]
+    assert d["motivo"] == "nombres_no_encajan"
+    # y enseña qué partidos SÍ había ese día, que es lo que necesita
+    # quien está mirando para entender qué ha pasado
+    assert "Barcelona - Girona" in d["partidos_ese_dia"]
+
+
+def test_se_niega_si_ese_dia_no_hay_nada(cliente, monkeypatch):
+    _fuente_de_partidos(monkeypatch)
+    r = _pedir(cliente, fecha="2026-03-01")
+    assert r.status_code == 404
+    assert r.json()["detail"]["motivo"] == "sin_partidos_ese_dia"
+
+
+def test_se_niega_con_un_partido_que_no_se_ha_jugado(cliente, monkeypatch):
+    _fuente_de_partidos(monkeypatch)
+    r = _pedir(cliente, local="Real Madrid CF", visitante="Getafe CF",
+               fecha="2026-10-25")
+    assert r.status_code == 404
+    assert r.json()["detail"]["motivo"] == "todavia_no_jugado"
+
+
+def test_una_competicion_que_understat_no_cubre_lo_dice(cliente, monkeypatch):
+    _fuente_de_partidos(monkeypatch, calendario=[])
+    r = _pedir(cliente, code="CL")
+    assert r.status_code == 404
+    d = r.json()["detail"]
+    assert d["motivo"] == "sin_calendario"
+    assert "Champions" in d["detalle"]
+
+
+def test_si_understat_se_cae_es_503_y_no_un_informe_vacio(cliente, monkeypatch):
+    async def cae(code, season=None):
+        raise main.FuenteNoDisponible("Understat", "no contesta")
+    monkeypatch.setattr(main, "get_league_fixtures", cae)
+    r = _pedir(cliente)
+    assert r.status_code == 503
+    assert r.json()["detail"]["motivo"] == "fuente_caida"
+
+
+def test_si_fallan_las_alineaciones_el_informe_sale_igual(cliente, monkeypatch):
+    """Media respuesta buena vale más que un error entero."""
+    _fuente_de_partidos(monkeypatch, roster="falla")
+    r = _pedir(cliente)
+    assert r.status_code == 200
+    d = r.json()
+    assert d["aviso_alineaciones"]
+    assert d["equipos"]["Barcelona"]["xg"] > 0
+
+
+def test_roster_in_y_roster_out_no_se_publican_como_minutos():
+    """Lo parecían, y no lo son.
+
+    Se publicaron como "entró en el minuto X" y en pantalla salió
+    «Gerard Martín ▲806581». Son identificadores internos del cambio.
+    El minuto del cambio NO está en esa respuesta de Understat.
+
+    Esta prueba lee el código y comprueba que nadie los vuelve a
+    sacar al exterior, porque el siguiente que los vea los tomará por
+    minutos otra vez: se llaman "in" y "out" y son números pequeños
+    en algunos partidos.
+    """
+    import inspect
+    from backend.scrapers import understat
+    fuente = inspect.getsource(understat.get_match_roster)
+    assert '"entro"' not in fuente and '"salio"' not in fuente, (
+        "roster_in/roster_out han vuelto a salir como si fueran minutos")
+    assert '"suplente"' in fuente, (
+        "falta el dato que SÍ es verdad: si salió de inicio o entró")

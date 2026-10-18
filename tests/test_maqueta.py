@@ -117,6 +117,25 @@ def test_el_scouting_pintado_es_el_dato():
             os.path.join(AQUI, "datos", "tiros_fixture.json"))
 
 
+@pytest.mark.skipif(not _node(), reason="no hay node instalado")
+@pytest.mark.skipif(not _jsdom(),
+                    reason="falta jsdom: cd tests/maqueta && npm install")
+def test_el_informe_del_partido_pintado_es_el_dato():
+    """La pantalla que sale al pinchar un partido en Partidos.
+
+    El informe se calcula AQUÍ con el motor de verdad y se le sirve a
+    la pantalla, así que si el motor cambia de forma esto se entera.
+
+    Lo que más busca: que cada equipo ataque hacia su lado. Understat
+    da las coordenadas con el que tira yendo siempre hacia la misma
+    portería; si al visitante no se le da la vuelta —o se le da sólo
+    en x— el mapa sigue pareciendo un mapa y cuenta otra cosa.
+    """
+    _correr("comprobar_informe_partido.js",
+            os.path.join(AQUI, "datos", "informe_partido_fixture.json"),
+            "Todo el informe del partido cuadra con el dato")
+
+
 def _correr(script, datos, frase, datos2=None):
     index = os.path.join(os.path.dirname(AQUI), "frontend", "index.html")
     argumentos = [_node(), os.path.join(MAQ, script), index]

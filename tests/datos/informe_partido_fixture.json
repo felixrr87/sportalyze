@@ -1,0 +1,470 @@
+{
+ "match_id": "30783",
+ "fecha": "2026-08-23",
+ "local": "Elche",
+ "visitante": "Barcelona",
+ "goles_local": 1,
+ "goles_visitante": 2,
+ "aviso_marcador": null,
+ "tiros": [
+  {
+   "equipo": "Elche",
+   "visitante": false,
+   "minuto": 12,
+   "jugador": "Pérez",
+   "resultado": "MissedShots",
+   "gol": false,
+   "situacion": "OpenPlay",
+   "tipo": "RightFoot",
+   "xg": 0.08,
+   "x": 112.68,
+   "y": 54.24
+  },
+  {
+   "equipo": "Barcelona",
+   "visitante": true,
+   "minuto": 13,
+   "jugador": "Raphinha",
+   "resultado": "Goal",
+   "gol": true,
+   "situacion": "Penalty",
+   "tipo": "LeftFoot",
+   "xg": 0.743,
+   "x": 16.32,
+   "y": 24.4
+  },
+  {
+   "equipo": "Elche",
+   "visitante": false,
+   "minuto": 30,
+   "jugador": "Mir",
+   "resultado": "Goal",
+   "gol": true,
+   "situacion": "OpenPlay",
+   "tipo": "RightFoot",
+   "xg": 0.21,
+   "x": 110.4,
+   "y": 38.08
+  },
+  {
+   "equipo": "Elche",
+   "visitante": false,
+   "minuto": 44,
+   "jugador": "Mir",
+   "resultado": "BlockedShot",
+   "gol": false,
+   "situacion": "FromCorner",
+   "tipo": "Head",
+   "xg": 0.33,
+   "x": 94.08,
+   "y": 52.16
+  },
+  {
+   "equipo": "Barcelona",
+   "visitante": true,
+   "minuto": 46,
+   "jugador": "Raphinha",
+   "resultado": "BlockedShot",
+   "gol": false,
+   "situacion": "OpenPlay",
+   "tipo": "RightFoot",
+   "xg": 0.451,
+   "x": 30.0,
+   "y": 20.72
+  },
+  {
+   "equipo": "Barcelona",
+   "visitante": true,
+   "minuto": 66,
+   "jugador": "Yamal",
+   "resultado": "Goal",
+   "gol": true,
+   "situacion": "OpenPlay",
+   "tipo": "RightFoot",
+   "xg": 0.491,
+   "x": 4.56,
+   "y": 33.84
+  },
+  {
+   "equipo": "Elche",
+   "visitante": false,
+   "minuto": 70,
+   "jugador": "Pérez",
+   "resultado": "MissedShots",
+   "gol": false,
+   "situacion": "OpenPlay",
+   "tipo": "RightFoot",
+   "xg": 0.07,
+   "x": 106.2,
+   "y": 51.68
+  },
+  {
+   "equipo": "Barcelona",
+   "visitante": true,
+   "minuto": 75,
+   "jugador": "Yamal",
+   "resultado": "BlockedShot",
+   "gol": false,
+   "situacion": "OpenPlay",
+   "tipo": "RightFoot",
+   "xg": 0.09,
+   "x": 13.2,
+   "y": 35.04
+  },
+  {
+   "equipo": "Barcelona",
+   "visitante": true,
+   "minuto": 80,
+   "jugador": "Olmo",
+   "resultado": "BlockedShot",
+   "gol": false,
+   "situacion": "OpenPlay",
+   "tipo": "RightFoot",
+   "xg": 0.15,
+   "x": 29.4,
+   "y": 58.56
+  },
+  {
+   "equipo": "Elche",
+   "visitante": false,
+   "minuto": 88,
+   "jugador": "Soler",
+   "resultado": "SavedShot",
+   "gol": false,
+   "situacion": "OpenPlay",
+   "tipo": "RightFoot",
+   "xg": 0.12,
+   "x": 101.16,
+   "y": 25.68
+  },
+  {
+   "equipo": "Barcelona",
+   "visitante": true,
+   "minuto": 90,
+   "jugador": "Olmo",
+   "resultado": "SavedShot",
+   "gol": false,
+   "situacion": "OpenPlay",
+   "tipo": "RightFoot",
+   "xg": 0.04,
+   "x": 14.64,
+   "y": 28.88
+  }
+ ],
+ "carrera": [
+  {
+   "minuto": 0,
+   "local": 0.0,
+   "visitante": 0.0,
+   "gol": null,
+   "jugador": "",
+   "xg": 0.0
+  },
+  {
+   "minuto": 12,
+   "local": 0.08,
+   "visitante": 0.0,
+   "gol": null,
+   "jugador": "Pérez",
+   "xg": 0.08
+  },
+  {
+   "minuto": 13,
+   "local": 0.08,
+   "visitante": 0.743,
+   "gol": "Barcelona",
+   "jugador": "Raphinha",
+   "xg": 0.743
+  },
+  {
+   "minuto": 30,
+   "local": 0.29,
+   "visitante": 0.743,
+   "gol": "Elche",
+   "jugador": "Mir",
+   "xg": 0.21
+  },
+  {
+   "minuto": 44,
+   "local": 0.62,
+   "visitante": 0.743,
+   "gol": null,
+   "jugador": "Mir",
+   "xg": 0.33
+  },
+  {
+   "minuto": 46,
+   "local": 0.62,
+   "visitante": 1.194,
+   "gol": null,
+   "jugador": "Raphinha",
+   "xg": 0.451
+  },
+  {
+   "minuto": 66,
+   "local": 0.62,
+   "visitante": 1.685,
+   "gol": "Barcelona",
+   "jugador": "Yamal",
+   "xg": 0.491
+  },
+  {
+   "minuto": 70,
+   "local": 0.69,
+   "visitante": 1.685,
+   "gol": null,
+   "jugador": "Pérez",
+   "xg": 0.07
+  },
+  {
+   "minuto": 75,
+   "local": 0.69,
+   "visitante": 1.775,
+   "gol": null,
+   "jugador": "Yamal",
+   "xg": 0.09
+  },
+  {
+   "minuto": 80,
+   "local": 0.69,
+   "visitante": 1.925,
+   "gol": null,
+   "jugador": "Olmo",
+   "xg": 0.15
+  },
+  {
+   "minuto": 88,
+   "local": 0.81,
+   "visitante": 1.925,
+   "gol": null,
+   "jugador": "Soler",
+   "xg": 0.12
+  },
+  {
+   "minuto": 90,
+   "local": 0.81,
+   "visitante": 1.965,
+   "gol": null,
+   "jugador": "Olmo",
+   "xg": 0.04
+  }
+ ],
+ "equipos": {
+  "Elche": {
+   "goles": 1,
+   "xg": 0.81,
+   "tiros": 5,
+   "a_puerta": 2,
+   "xg_por_tiro": 0.162,
+   "ocasiones_claras": 1,
+   "diferencia": 0.19,
+   "mejor_ocasion": {
+    "jugador": "Mir",
+    "minuto": 44,
+    "xg": 0.33,
+    "gol": false,
+    "situacion": "FromCorner"
+   },
+   "reparto": {
+    "OpenPlay": {
+     "tiros": 4,
+     "xg": 0.48,
+     "goles": 1
+    },
+    "FromCorner": {
+     "tiros": 1,
+     "xg": 0.33,
+     "goles": 0
+    }
+   },
+   "jugadores": [
+    {
+     "nombre": "Dituro",
+     "puesto": "GK",
+     "orden": 0,
+     "minutos": 90,
+     "goles": 0,
+     "asistencias": 0,
+     "tiros": 0,
+     "pases_clave": 0,
+     "xg": 0.0,
+     "xa": 0.0,
+     "xgchain": 0.0,
+     "xgbuildup": 0.1,
+     "amarillas": 0,
+     "rojas": 0,
+     "player_id": "100",
+     "suplente": false
+    },
+    {
+     "nombre": "Mir",
+     "puesto": "FW",
+     "orden": 1,
+     "minutos": 90,
+     "goles": 1,
+     "asistencias": 0,
+     "tiros": 2,
+     "pases_clave": 1,
+     "xg": 0.54,
+     "xa": 0.08,
+     "xgchain": 0.62,
+     "xgbuildup": 0.1,
+     "amarillas": 0,
+     "rojas": 0,
+     "player_id": "101",
+     "suplente": false
+    },
+    {
+     "nombre": "Pérez",
+     "puesto": "MF",
+     "orden": 2,
+     "minutos": 72,
+     "goles": 0,
+     "asistencias": 0,
+     "tiros": 2,
+     "pases_clave": 3,
+     "xg": 0.15,
+     "xa": 0.21,
+     "xgchain": 0.44,
+     "xgbuildup": 0.1,
+     "amarillas": 0,
+     "rojas": 0,
+     "player_id": "102",
+     "suplente": false
+    },
+    {
+     "nombre": "Soler",
+     "puesto": "MF",
+     "orden": 3,
+     "minutos": 18,
+     "goles": 0,
+     "asistencias": 0,
+     "tiros": 1,
+     "pases_clave": 0,
+     "xg": 0.12,
+     "xa": 0.0,
+     "xgchain": 0.12,
+     "xgbuildup": 0.1,
+     "amarillas": 0,
+     "rojas": 0,
+     "player_id": "103",
+     "suplente": true
+    }
+   ]
+  },
+  "Barcelona": {
+   "goles": 2,
+   "xg": 1.97,
+   "tiros": 6,
+   "a_puerta": 3,
+   "xg_por_tiro": 0.328,
+   "ocasiones_claras": 3,
+   "diferencia": 0.03,
+   "mejor_ocasion": {
+    "jugador": "Raphinha",
+    "minuto": 13,
+    "xg": 0.743,
+    "gol": true,
+    "situacion": "Penalty"
+   },
+   "reparto": {
+    "Penalty": {
+     "tiros": 1,
+     "xg": 0.743,
+     "goles": 1
+    },
+    "OpenPlay": {
+     "tiros": 5,
+     "xg": 1.222,
+     "goles": 1
+    }
+   },
+   "jugadores": [
+    {
+     "nombre": "Ter Stegen",
+     "puesto": "GK",
+     "orden": 0,
+     "minutos": 90,
+     "goles": 0,
+     "asistencias": 0,
+     "tiros": 0,
+     "pases_clave": 0,
+     "xg": 0.0,
+     "xa": 0.0,
+     "xgchain": 0.0,
+     "xgbuildup": 0.2,
+     "amarillas": 0,
+     "rojas": 0,
+     "player_id": "200",
+     "suplente": false
+    },
+    {
+     "nombre": "Raphinha",
+     "puesto": "FW",
+     "orden": 1,
+     "minutos": 90,
+     "goles": 1,
+     "asistencias": 0,
+     "tiros": 2,
+     "pases_clave": 2,
+     "xg": 1.19,
+     "xa": 0.31,
+     "xgchain": 1.52,
+     "xgbuildup": 0.2,
+     "amarillas": 0,
+     "rojas": 0,
+     "player_id": "201",
+     "suplente": false
+    },
+    {
+     "nombre": "Yamal",
+     "puesto": "FW",
+     "orden": 2,
+     "minutos": 90,
+     "goles": 1,
+     "asistencias": 1,
+     "tiros": 2,
+     "pases_clave": 4,
+     "xg": 0.58,
+     "xa": 0.49,
+     "xgchain": 1.11,
+     "xgbuildup": 0.2,
+     "amarillas": 0,
+     "rojas": 0,
+     "player_id": "202",
+     "suplente": false
+    },
+    {
+     "nombre": "Olmo",
+     "puesto": "MF",
+     "orden": 3,
+     "minutos": 25,
+     "goles": 0,
+     "asistencias": 0,
+     "tiros": 2,
+     "pases_clave": 1,
+     "xg": 0.19,
+     "xa": 0.05,
+     "xgchain": 0.28,
+     "xgbuildup": 0.2,
+     "amarillas": 1,
+     "rojas": 0,
+     "player_id": "203",
+     "suplente": true
+    }
+   ]
+  }
+ },
+ "fuente": "Understat",
+ "sin_datos_de": [
+  "red de pases",
+  "mapa de posiciones",
+  "presiones",
+  "recuperaciones",
+  "duelos",
+  "paradas del portero"
+ ],
+ "temporada": "2026/27",
+ "competicion": "PD",
+ "aviso_alineaciones": null
+}

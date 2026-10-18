@@ -1517,7 +1517,26 @@ async function loadMatches() {
       apiFetch(`/api/matches/${lk}?status=SCHEDULED&limit=10`)
     ]);
     const tn = n => (n || '').slice(0, 12);
-    const mkMatch = m => `<div class="mi">
+    // Cada partido jugado abre su informe. Los que no se han
+    // jugado no: no hay tiros que enseñar todavía.
+    // Cada partido jugado abre su informe. Los que no se han jugado
+    // no: todavía no hay tiros que enseñar.
+    //
+    // El partido se pasa por su POSICIÓN en una lista, no metiendo los
+    // nombres dentro del onclick. Con los nombres dentro, un equipo
+    // con apóstrofo —"Nottingham Forest" no, pero "Boavista d'Oeste"
+    // sí— rompe el atributo y el clic deja de funcionar, o peor, se
+    // ejecuta otra cosa. Un número no rompe nada.
+    PARTIDOS_LISTA = [];
+    const mkMatch = m => {
+      let clic = ' title="Todavía no se ha jugado"';
+      if (m.score_home != null) {
+        const i = PARTIDOS_LISTA.push({ liga: lk, local: m.home_team,
+          visitante: m.away_team, fecha: m.date || '' }) - 1;
+        clic = ` onclick="abrirInformePartidoPorIndice(${i})"` +
+               ' style="cursor:pointer" title="Ver el informe de este partido"';
+      }
+      return `<div class="mi"${clic}>
       <div style="font-size:10px;color:var(--text2);min-width:52px">${m.date?.slice(5) || ''}<br><span style="color:var(--text3)">J${m.matchday || ''}</span></div>
       <div style="flex:1;display:flex;align-items:center;gap:8px">
         <div style="display:flex;align-items:center;gap:5px;flex:1;justify-content:flex-end">
@@ -1531,6 +1550,7 @@ async function loadMatches() {
         </div>
       </div>
     </div>`;
+    };
     const goals = (fin.matches || []).reduce((a, m) => a + (m.score_home || 0) + (m.score_away || 0), 0);
     const hw = (fin.matches || []).filter(m => m.score_home > m.score_away).length;
     const dr = (fin.matches || []).filter(m => m.score_home === m.score_away).length;
@@ -2550,11 +2570,28 @@ const EXPLICA = {
       'Partidos de la liga elegida con su estado —jugado, en juego o ' +
       'por jugar— y el marcador oficial. Abajo, el total de goles y el ' +
       'porcentaje de victorias locales del grupo de partidos que se ' +
-      'está mirando. Se refresca cada cinco minutos.',
+      'está mirando. Se refresca cada cinco minutos.\n\n' +
+      'Pinchando un partido YA JUGADO sale su informe, y ése viene de ' +
+      'Understat, no de football-data: marcador y xG de los dos, la ' +
+      'carrera de xG minuto a minuto, el mapa de tiros con cada equipo ' +
+      'atacando hacia su lado, de qué tipo de jugada salió cada ocasión, ' +
+      'y la tabla de los jugadores que jugaron. Understat publica tiros, ' +
+      'así que ahí no hay red de pases ni posiciones ni presiones: eso ' +
+      'está en el Informe post-partido, que usa StatsBomb y cubre ' +
+      'competiciones ya cerradas.\n\n' +
+      'Los dos sitios usan identificadores de partido distintos, así que ' +
+      'el partido se empareja por fecha y nombres de equipo. Si no se ' +
+      'encuentra uno claramente, se dice: antes eso que enseñar el ' +
+      'informe de otro partido, que sería perfectamente creíble.',
     cristiano:
       'Lo que se ha jugado y lo que viene. El porcentaje de victorias ' +
       'en casa sirve para ponerle número a algo que todo el mundo dice: ' +
-      'cuánto vale de verdad jugar en tu campo.',
+      'cuánto vale de verdad jugar en tu campo.\n\n' +
+      'Y pincha cualquier partido ya jugado: sale su informe. Lo que más ' +
+      'se mira ahí es la carrera de xG, que contesta «¿ganó el que ' +
+      'mereció ganar?» y, sobre todo, CUÁNDO pasó el partido: un 2-0 de ' +
+      'dos contras en el 85 y un 2-0 de machacar noventa minutos son el ' +
+      'mismo resultado y dos dibujos que no se parecen en nada.',
   },
 
   scorers: {
@@ -3525,6 +3562,396 @@ function abrirFichaDesdeCarta(id) {
     percentiles: p.percentiles || {},
     por_90: p.por_90 || {},
   });
+}
+
+
+// ══════════════════════════════════════════════════════════
+// EL INFORME DE UN PARTIDO, DESDE PARTIDOS
+// ══════════════════════════════════════════════════════════
+//
+// Pinchas un partido en la lista y sale su informe.
+//
+// POR QUÉ ES OTRO INFORME Y NO EL QUE YA HABÍA
+//
+// El de la pantalla «Informe post-partido» usa StatsBomb, que publica
+// competiciones cerradas: Mundiales, Eurocopas, temporadas de hace
+// años. Tiene pases, presiones, posiciones — todo. Del partido del
+// sábado pasado no hay nada, y no lo va a haber.
+//
+// Para los partidos de esta temporada la única fuente abierta es
+// Understat, que da tiros. Así que este informe tiene menos cosas, y
+// lo dice arriba en vez de dejar huecos.
+//
+// No se mezclan en uno solo a propósito: un informe que a veces tiene
+// red de pases y a veces no es un informe del que nadie se fía.
+
+const PART = { abierto: null, cache: {} };
+
+// Los partidos que hay ahora mismo en pantalla. La fila sólo lleva su
+// número, así que ningún nombre con comillas puede romper nada.
+let PARTIDOS_LISTA = [];
+
+function abrirInformePartidoPorIndice(i) {
+  const m = PARTIDOS_LISTA[i];
+  if (m) abrirInformePartido(m.liga, m.local, m.visitante, m.fecha);
+}
+
+function cerrarInformePartido() {
+  const n = $('infPartido');
+  if (n) n.remove();
+  dC('ipCarrera');
+  PART.abierto = null;
+}
+
+const IP_LOCAL = '#0ea5e9';
+const IP_VISIT = '#f97316';
+
+async function abrirInformePartido(liga, local, visitante, fecha) {
+  cerrarInformePartido();
+  PART.abierto = `${liga}/${local}/${visitante}/${fecha}`;
+
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="infPartido" onclick="if(event.target===this)cerrarInformePartido()" style="
+      position:fixed;inset:0;z-index:200;background:rgba(3,8,16,.85);
+      display:flex;align-items:flex-start;justify-content:center;
+      padding:24px 16px;overflow:auto;backdrop-filter:blur(3px)">
+      <div style="background:var(--bg2);border:1px solid var(--border2);
+        border-radius:16px;max-width:1000px;width:100%;overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;
+          gap:14px;padding:16px 20px;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-family:var(--fh);font-size:20px;font-weight:800">
+              ${esc(local)} — ${esc(visitante)}</div>
+            <div style="color:var(--text2);font-size:12.5px;margin-top:2px">
+              ${esc(fecha)} · informe del partido</div>
+          </div>
+          <button onclick="cerrarInformePartido()" style="background:none;
+            border:1px solid var(--border2);color:var(--text2);border-radius:8px;
+            padding:5px 11px;cursor:pointer;font-family:inherit;font-size:13px">Cerrar</button>
+        </div>
+        <div id="ipCuerpo" style="padding:18px 20px">
+          <div class="ld"><div class="sp"></div>Buscando este partido en Understat…</div>
+        </div>
+      </div>
+    </div>`);
+
+  const llave = PART.abierto;
+  try {
+    let d = PART.cache[llave];
+    if (!d) {
+      const r = await fetch(`${API}/api/informe-liga/${liga}` +
+        `?local=${encodeURIComponent(local)}` +
+        `&visitante=${encodeURIComponent(visitante)}` +
+        `&fecha=${encodeURIComponent(fecha)}`);
+      const j = await r.json();
+      if (!r.ok) { ipSeNiega(j && j.detail, local, visitante, fecha); return; }
+      d = j;
+      PART.cache[llave] = d;
+    }
+    ipPinta(d);
+  } catch (e) {
+    const n = $('ipCuerpo');
+    if (n) n.innerHTML = `<div class="al alw">No he podido traerlo: ${esc(e.message)}</div>`;
+  }
+}
+
+// ── cuando no se puede, se dice por qué ───────────────────
+//
+// Y se enseña qué partidos SÍ había ese día. Sin eso, «no lo he
+// encontrado» no le sirve de nada a quien está mirando: con eso puede
+// ver si es que la fuente va con retraso o es que el nombre no encaja.
+function ipSeNiega(det, local, visitante, fecha) {
+  const d = det || {};
+  const habia = d.partidos_ese_dia || [];
+  $('ipCuerpo').innerHTML = `
+    <div class="empty" style="padding:26px 20px">
+      <h3>No tengo el informe de este partido</h3>
+      <p style="max-width:64ch;margin:10px auto 0">${esc(d.detalle ||
+        'La fuente no ha contestado.')}</p>
+    </div>
+    ${habia.length ? `<div style="margin-top:4px;color:var(--text3);
+      font-size:12px;line-height:1.7;text-align:center">
+      Lo que Understat sí tiene de ese día:<br>
+      ${habia.map(x => esc(x)).join(' · ')}</div>` : ''}
+    <div style="margin-top:16px;color:var(--text3);font-size:11.5px;
+      line-height:1.6;max-width:64ch;margin-left:auto;margin-right:auto">
+      Buscaba <b>${esc(local)} — ${esc(visitante)}</b> del ${esc(fecha)}.
+      Prefiero decirte que no lo encuentro a enseñarte el informe de otro
+      partido: un mapa de tiros equivocado es perfectamente creíble y no
+      tendrías forma de notarlo.
+    </div>`;
+}
+
+function ipPinta(d) {
+  const L = d.local, V = d.visitante;
+  const el = d.equipos[L], ev = d.equipos[V];
+  const gana = x => x > 0 ? 'var(--green)' : x < 0 ? 'var(--red)' : 'var(--text2)';
+
+  // ── una fila de comparación, los dos equipos contra el centro ──
+  const fila = (etiqueta, a, b, pista) => {
+    const t = (+a) + (+b);
+    const pa = t ? (+a) / t * 100 : 50;
+    return `<div style="margin-bottom:9px" title="${esc(pista || '')}">
+      <div style="display:flex;justify-content:space-between;font-size:12px;
+        font-family:var(--fm)">
+        <b style="color:${IP_LOCAL}">${a}</b>
+        <span style="color:var(--text2);font-family:var(--fb)">${esc(etiqueta)}</span>
+        <b style="color:${IP_VISIT}">${b}</b></div>
+      <div style="display:flex;height:6px;border-radius:3px;overflow:hidden;
+        background:rgba(255,255,255,.05);margin-top:3px">
+        <div style="width:${pa}%;background:${IP_LOCAL};opacity:.8"></div>
+        <div style="width:${100 - pa}%;background:${IP_VISIT};opacity:.8"></div>
+      </div></div>`;
+  };
+
+  // ── el mapa de tiros ──
+  const maxXg = Math.max(0.05, ...d.tiros.map(t => t.xg));
+  const circulos = d.tiros.map(t => {
+    const col = t.visitante ? IP_VISIT : IP_LOCAL;
+    const r = 1.2 + 4 * Math.sqrt(t.xg / maxXg);
+    return `<circle cx="${t.x}" cy="${t.y}" r="${r.toFixed(2)}"
+      fill="${t.gol ? col : 'none'}" fill-opacity="${t.gol ? .9 : 0}"
+      stroke="${col}" stroke-width=".45" opacity="${t.gol ? 1 : .72}"
+      style="cursor:crosshair">
+      <title>${esc(t.jugador)} (${esc(t.equipo)}) · min ${t.minuto}
+xG ${t.xg.toFixed(3)} · ${esc(trad(t.resultado))}
+${esc(trad(t.tipo))} · ${esc(trad(t.situacion))}</title></circle>`;
+  }).join('');
+
+  const repartoHtml = (e, col) => Object.entries(e.reparto)
+    .sort((a, b) => b[1].xg - a[1].xg)
+    .map(([k, v]) => `<div style="display:flex;justify-content:space-between;
+      font-size:11.5px;padding:2px 0">
+      <span style="color:var(--text2)">${esc(trad(k))}</span>
+      <span style="font-family:var(--fm)">${v.tiros} tiros ·
+        <b style="color:${col}">${v.xg.toFixed(2)}</b> xG${v.goles ?
+        ` · ${v.goles} gol${v.goles > 1 ? 'es' : ''}` : ''}</span></div>`).join('');
+
+  const tabla = (e, col) => {
+    if (!e.jugadores.length) return '';
+    const js = e.jugadores.filter(j => j.minutos > 0);
+    return `<table style="width:100%;font-size:11.5px"><thead><tr>
+      <th style="text-align:left">Jugador</th><th>Pos</th><th>Min</th><th>G</th><th>A</th>
+      <th>Tiros</th><th>PC</th><th>xG</th><th>xA</th><th title="lo que vale toda la jugada en la que participó">xGChain</th>
+      </tr></thead><tbody>${js.map(j => `<tr>
+        <td style="text-align:left">${esc(j.nombre)}${
+          j.rojas ? ' 🟥' : j.amarillas ? ' 🟨' : ''}</td>
+        <td style="font-size:10px;color:var(--text2)" title="${j.suplente
+          ? 'Entró desde el banquillo' : 'Salió de inicio'}">${j.suplente
+          ? '<span style="color:var(--green)">▲ supl.</span>' : esc(j.puesto || '')}</td>
+        <td style="font-family:var(--fm)">${j.minutos}</td>
+        <td style="font-family:var(--fm);color:${j.goles ? col : 'var(--text3)'}">${j.goles || ''}</td>
+        <td style="font-family:var(--fm);color:${j.asistencias ? col : 'var(--text3)'}">${j.asistencias || ''}</td>
+        <td style="font-family:var(--fm)">${j.tiros || ''}</td>
+        <td style="font-family:var(--fm)">${j.pases_clave || ''}</td>
+        <td style="font-family:var(--fm)">${j.xg ? j.xg.toFixed(2) : ''}</td>
+        <td style="font-family:var(--fm)">${j.xa ? j.xa.toFixed(2) : ''}</td>
+        <td style="font-family:var(--fm);color:var(--text2)">${j.xgchain ? j.xgchain.toFixed(2) : ''}</td>
+      </tr>`).join('')}</tbody></table>`;
+  };
+
+  const mejor = (e, col) => e.mejor_ocasion ? `
+    <div style="font-size:11.5px;color:var(--text2);margin-top:8px">
+      Su mejor ocasión: <b style="color:${col}">${esc(e.mejor_ocasion.jugador)}</b>
+      en el ${e.mejor_ocasion.minuto}′, un tiro de
+      <b style="font-family:var(--fm)">${e.mejor_ocasion.xg.toFixed(2)}</b> de xG
+      ${e.mejor_ocasion.gol ? '(y entró)' : '(no entró)'}.
+    </div>` : '';
+
+  $('ipCuerpo').innerHTML = `
+    <div class="al ali" style="margin-bottom:14px;font-size:12.5px;line-height:1.6">
+      <b>De dónde sale esto y qué NO lleva.</b> Los datos son de Understat,
+      que publica <b>tiros</b>: dónde se tiró, con qué, desde qué jugada y
+      cuánto valía cada uno. No hay red de pases, ni posiciones, ni
+      presiones, ni duelos, ni paradas: eso sólo está en StatsBomb, que
+      publica competiciones ya cerradas y no la liga de esta semana. El
+      informe que sí lleva todo eso está en la pantalla «Informe
+      post-partido», con partidos históricos.
+    </div>
+
+    ${d.aviso_marcador ? `<div class="al alw" style="margin-bottom:12px;
+      font-size:12px">⚠ ${esc(d.aviso_marcador)}</div>` : ''}
+    ${d.aviso_alineaciones ? `<div class="al alw" style="margin-bottom:12px;
+      font-size:12px">⚠ ${esc(d.aviso_alineaciones)}</div>` : ''}
+
+    <!-- marcador y xG -->
+    <div class="card" style="margin-bottom:14px"><div style="padding:16px 18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px">
+        <div style="flex:1;text-align:right">
+          <div style="font-family:var(--fh);font-size:17px;color:${IP_LOCAL}">${esc(L)}</div>
+          <div style="font-size:11.5px;color:var(--text2)">${el.xg.toFixed(2)} xG</div>
+        </div>
+        <div style="font-family:var(--ff);font-size:40px;letter-spacing:2px">
+          ${d.goles_local}<span style="color:var(--text3)">–</span>${d.goles_visitante}</div>
+        <div style="flex:1">
+          <div style="font-family:var(--fh);font-size:17px;color:${IP_VISIT}">${esc(V)}</div>
+          <div style="font-size:11.5px;color:var(--text2)">${ev.xg.toFixed(2)} xG</div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:10px;font-size:12.5px;color:var(--text2);
+        line-height:1.6;max-width:62ch;margin-left:auto;margin-right:auto">
+        ${ipVeredicto(d, el, ev)}
+      </div>
+    </div></div>
+
+    <div class="g2" style="margin-bottom:14px">
+      <div class="card"><div class="ch"><div class="ct">📈 Carrera de xG</div></div>
+        <div style="position:relative;height:250px;padding:8px"><canvas id="ipCarrera"></canvas></div>
+        <div style="padding:0 16px 14px;color:var(--text3);font-size:11.5px;line-height:1.55">
+          Cuándo pasó el partido. Cada escalón es un tiro y su altura es lo que
+          valía. Un 2-0 de dos contras en el 85 y un 2-0 de dominar noventa
+          minutos son el mismo marcador y dos dibujos que no se parecen en nada.
+        </div>
+      </div>
+      <div class="card"><div class="ch"><div class="ct">🎯 Mapa de tiros</div>
+        <span class="bge b-blue" style="font-size:9px">${d.tiros.length} tiros</span></div>
+        <div style="padding:10px 14px 14px">${infCampo(circulos)}
+          <div style="display:flex;gap:14px;justify-content:center;margin-top:8px;font-size:11.5px">
+            <span style="color:${IP_LOCAL}">● ${esc(L)} →</span>
+            <span style="color:${IP_VISIT}">← ${esc(V)} ●</span>
+          </div>
+          <div style="color:var(--text3);font-size:11.5px;margin-top:6px;line-height:1.55">
+            Cada equipo ataca hacia su lado. El tamaño del círculo es el xG del
+            tiro y el relleno quiere decir gol. Pasa el ratón por cualquiera.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px"><div class="ch"><div class="ct">⚖️ Los dos, lado a lado</div></div>
+      <div style="padding:14px 18px">
+        ${fila('Goles', d.goles_local, d.goles_visitante)}
+        ${fila('xG', el.xg.toFixed(2), ev.xg.toFixed(2), 'Lo que valían sus tiros')}
+        ${fila('Tiros', el.tiros, ev.tiros)}
+        ${fila('A puerta', el.a_puerta, ev.a_puerta, 'Gol o parada del portero')}
+        ${fila('Ocasiones claras', el.ocasiones_claras, ev.ocasiones_claras,
+               'Tiros de 0,30 de xG o más')}
+        ${fila('xG por tiro', el.xg_por_tiro.toFixed(3), ev.xg_por_tiro.toFixed(3),
+               'Si tiraron desde buenas posiciones o desde lejos')}
+        <div style="display:flex;justify-content:space-between;margin-top:12px;
+          font-size:12px;color:var(--text2)">
+          <span>Respecto a lo esperado:
+            <b style="color:${gana(el.diferencia)};font-family:var(--fm)">${el.diferencia > 0 ? '+' : ''}${el.diferencia}</b>
+            ${esc(L)}</span>
+          <span>${esc(V)}
+            <b style="color:${gana(ev.diferencia)};font-family:var(--fm)">${ev.diferencia > 0 ? '+' : ''}${ev.diferencia}</b></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="g2" style="margin-bottom:14px">
+      <div class="card"><div class="ch"><div class="ct" style="color:${IP_LOCAL}">${esc(L)}</div></div>
+        <div style="padding:12px 16px">${repartoHtml(el, IP_LOCAL)}${mejor(el, IP_LOCAL)}</div></div>
+      <div class="card"><div class="ch"><div class="ct" style="color:${IP_VISIT}">${esc(V)}</div></div>
+        <div style="padding:12px 16px">${repartoHtml(ev, IP_VISIT)}${mejor(ev, IP_VISIT)}</div></div>
+    </div>
+
+    ${el.jugadores.length || ev.jugadores.length ? `
+    <div class="card" style="margin-bottom:14px">
+      <div class="ch"><div class="ct">👥 Jugador por jugador</div></div>
+      <div style="padding:6px 12px 14px">
+        <div style="font-family:var(--fh);font-size:13px;color:${IP_LOCAL};margin:8px 0 4px">${esc(L)}</div>
+        <div class="tw">${tabla(el, IP_LOCAL)}</div>
+        <div style="font-family:var(--fh);font-size:13px;color:${IP_VISIT};margin:16px 0 4px">${esc(V)}</div>
+        <div class="tw">${tabla(ev, IP_VISIT)}</div>
+        <div style="color:var(--text3);font-size:11.5px;margin-top:10px;line-height:1.55">
+          PC son pases clave: el pase del que sale un tiro. xGChain es cuánto
+          valía toda la jugada en la que participó, aunque no diera el último
+          pase ni tirara — sirve para ver al que empieza las jugadas buenas.
+          «▲ supl.» quiere decir que entró desde el banquillo; los minutos de
+          al lado son los que jugó. <b>El minuto exacto del cambio no está</b>:
+          Understat no lo publica en esta consulta, y prefiero no ponerlo a
+          ponerlo a ojo.
+        </div>
+      </div>
+    </div>` : ''}
+
+    <div style="color:var(--text3);font-size:11.5px;line-height:1.6">
+      Datos de Understat, ${esc(d.temporada || '')}. Lo que no hay: ${
+        d.sin_datos_de.join(', ')}. No está vacío porque falte por hacer:
+      es que esta fuente no lo publica.
+    </div>`;
+
+  ipCarrera(d, L, V);
+}
+
+// ── el veredicto, en una frase ────────────────────────────
+//
+// Es lo primero que quiere saber cualquiera: ¿ganó el que mereció
+// ganar? Se contesta con la diferencia de xG, y se dice el umbral en
+// voz alta en vez de esconderlo.
+function ipVeredicto(d, el, ev) {
+  const dif = +(el.xg - ev.xg).toFixed(2);
+  const gl = d.goles_local, gv = d.goles_visitante;
+  const quien = dif > 0 ? d.local : d.visitante;
+  const claro = Math.abs(dif) >= 0.75;
+  const parejo = Math.abs(dif) < 0.3;
+
+  let txt;
+  if (parejo) txt = `En ocasiones fue un partido parejo: ${Math.abs(dif).toFixed(2)} de xG los separan.`;
+  else txt = `Por ocasiones ${claro ? 'mandó' : 'fue algo mejor'} el <b>${esc(quien)}</b>,
+    con ${Math.abs(dif).toFixed(2)} de xG de ventaja.`;
+
+  const ganoLocal = gl > gv, ganoVisit = gv > gl;
+  const mejorLocal = dif > 0;
+  if (!parejo && ((ganoLocal && !mejorLocal) || (ganoVisit && mejorLocal))) {
+    txt += ` Y ganó el otro: ${esc(ganoLocal ? d.local : d.visitante)} se llevó
+      los tres puntos generando menos.`;
+  }
+  return txt + ` <span style="color:var(--text3)">(xG es lo que valen los tiros
+    de cada uno; por encima de 0,75 de diferencia se puede hablar de dominio.)</span>`;
+}
+
+function ipCarrera(d, L, V) {
+  dC('ipCarrera');
+  const ctx = $('ipCarrera') && $('ipCarrera').getContext('2d');
+  if (!ctx) return;
+  const goles = d.carrera.filter(p => p.gol);
+  C['ipCarrera'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: d.carrera.map(p => p.minuto),
+      datasets: [
+        { label: L, data: d.carrera.map(p => p.local), borderColor: IP_LOCAL,
+          backgroundColor: 'rgba(14,165,233,.12)', fill: true, stepped: true,
+          borderWidth: 2,
+          pointRadius: d.carrera.map(p => p.gol === L ? 5 : 0),
+          pointBackgroundColor: IP_LOCAL },
+        { label: V, data: d.carrera.map(p => p.visitante), borderColor: IP_VISIT,
+          backgroundColor: 'rgba(249,115,22,.12)', fill: true, stepped: true,
+          borderWidth: 2,
+          pointRadius: d.carrera.map(p => p.gol === V ? 5 : 0),
+          pointBackgroundColor: IP_VISIT },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: '#7a9bbf', font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            title: c => `minuto ${c[0].label}`,
+            afterBody: c => {
+              const p = d.carrera[c[0].dataIndex];
+              if (!p || !p.jugador) return '';
+              return `${p.jugador}: tiro de ${p.xg.toFixed(3)}` +
+                     (p.gol ? `  ⚽ GOL de ${p.gol}` : '');
+            },
+          },
+        },
+      },
+      scales: {
+        x: { ticks: { color: '#7a9bbf', maxTicksLimit: 10 },
+             grid: { color: 'rgba(14,165,233,.06)' },
+             title: { display: true, text: 'minuto', color: '#7a9bbf' } },
+        y: { ticks: { color: '#7a9bbf' }, grid: { color: 'rgba(14,165,233,.08)' },
+             beginAtZero: true,
+             title: { display: true, text: 'xG acumulado', color: '#7a9bbf' } },
+      },
+    },
+  });
+  if (goles.length) { /* los goles ya salen como puntos gordos */ }
 }
 
 </script>

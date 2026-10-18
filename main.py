@@ -48,7 +48,10 @@ from backend.scrapers.football_data import football_client
 from backend.scrapers.understat import (
     get_league_players, get_player_shots,
     get_match_shots, get_league_teams_xg,
+    get_league_fixtures, get_match_roster, _normaliza,
 )
+from backend.ml import informe_liga as inf_liga
+from backend.ml.emparejar import emparejar_con_motivo
 from backend.scrapers.transfermarkt import (
     get_player_injuries, build_injury_features,
 )
@@ -539,6 +542,102 @@ async def get_player_shot_map(
         "total_carrera": len(todos),
         "por_temporada": por_temporada,
     }
+
+
+# ════════════════════════════════════════════════════════
+# RUTAS — INFORME DE UN PARTIDO DE ESTA TEMPORADA
+# ════════════════════════════════════════════════════════
+#
+# El informe que ya había usa StatsBomb, que publica competiciones
+# cerradas: del partido del sábado pasado no hay nada. Para los
+# partidos de esta temporada la única fuente abierta es Understat, y
+# da tiros, no pases.
+#
+# Son dos informes distintos a propósito, y cada uno dice de dónde
+# sale y qué no puede enseñar. Mezclarlos en uno solo que a veces
+# tiene red de pases y a veces no sería peor: nadie sabría nunca qué
+# está mirando.
+
+MOTIVOS_EMPAREJAR = {
+    "sin_calendario":
+        "Understat no cubre esta competición. Tiene las cinco grandes "
+        "ligas europeas y nada más: si esto es Champions, Copa o una "
+        "liga de fuera, no hay datos de tiros que traer.",
+    "sin_partidos_ese_dia":
+        "Understat no tiene ningún partido de esa liga ese día. Si el "
+        "partido es de hoy o de ayer, suele ser que todavía no lo han "
+        "publicado: tardan unas horas desde el pitido final.",
+    "nombres_no_encajan":
+        "He encontrado partidos de ese día pero ninguno es éste. Puede "
+        "ser que los dos sitios escriban los nombres de forma muy "
+        "distinta. Prefiero decirlo a enseñarte el informe de otro "
+        "partido, que es lo que pasaría si me pusiera a adivinar.",
+    "fecha_ilegible":
+        "No he entendido la fecha del partido.",
+}
+
+
+@app.get("/api/informe-liga/{competition_code}")
+async def informe_de_liga(
+    competition_code: str,
+    local: str = Query(..., description="nombre del equipo local, tal cual lo da football-data"),
+    visitante: str = Query(...),
+    fecha: str = Query(..., description="AAAA-MM-DD"),
+    season: int = Query(None),
+):
+    """El informe de un partido de esta temporada, con datos de Understat.
+
+    No recibe un identificador de partido porque football-data y
+    Understat usan los suyos y no se parecen en nada. Se emparejan por
+    fecha y nombres, con las reglas de backend/ml/emparejar.py, que
+    prefieren no emparejar antes que emparejar mal.
+    """
+    codigo = competition_code.upper()
+    try:
+        calendario = await get_league_fixtures(codigo, season)
+    except FuenteNoDisponible as e:
+        raise HTTPException(status_code=503, detail={
+            "motivo": "fuente_caida", "detalle": str(e)})
+
+    partido, motivo = emparejar_con_motivo(
+        fecha, _normaliza(local), _normaliza(visitante), calendario)
+
+    if partido is None:
+        raise HTTPException(status_code=404, detail={
+            "motivo": motivo,
+            "detalle": MOTIVOS_EMPAREJAR.get(motivo, "No he podido encontrarlo."),
+            "buscaba": f"{local} - {visitante} el {fecha}",
+            "partidos_ese_dia": [
+                f"{c['local']} - {c['visitante']}" for c in calendario
+                if str(c.get("fecha", ""))[:10] == str(fecha)[:10]][:12],
+        })
+
+    if not partido.get("jugado"):
+        raise HTTPException(status_code=404, detail={
+            "motivo": "todavia_no_jugado",
+            "detalle": "Ese partido aún no se ha jugado, así que no hay "
+                       "tiros que enseñar."})
+
+    try:
+        tiros = await get_match_shots(partido["match_id"])
+    except FuenteNoDisponible as e:
+        raise HTTPException(status_code=503, detail={
+            "motivo": "fuente_caida", "detalle": str(e)})
+
+    # Las alineaciones son otra consulta y pueden fallar solas. Si
+    # fallan, el informe sale igual sin la tabla de jugadores: media
+    # respuesta buena vale más que un error entero.
+    roster, aviso_roster = None, None
+    try:
+        roster = await get_match_roster(partido["match_id"])
+    except FuenteNoDisponible as e:
+        aviso_roster = f"No he podido traer las alineaciones: {e}"
+
+    salida = inf_liga.informe(partido, tiros, roster)
+    salida["competicion"] = codigo
+    salida["temporada"] = nombre_temporada(season or temporada_actual())
+    salida["aviso_alineaciones"] = aviso_roster
+    return salida
 
 
 # ════════════════════════════════════════════════════════

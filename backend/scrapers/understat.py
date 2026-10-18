@@ -263,3 +263,199 @@ async def get_league_teams_xg(competition_code: str, season: int = None) -> list
     return result
 
 
+
+
+# ════════════════════════════════════════════════════════════
+# UN PARTIDO CONCRETO
+# ════════════════════════════════════════════════════════════
+#
+# Esto es lo que hace falta para que, al pinchar un partido en la
+# pantalla de Partidos, salga su informe.
+#
+# EL PROBLEMA DE JUNTAR DOS FUENTES
+# ---------------------------------
+# El calendario viene de football-data y los tiros de Understat, y
+# cada uno tiene sus propios identificadores de partido, que no se
+# parecen en nada. Así que hay que emparejarlos por lo único que
+# comparten: la fecha y los dos equipos.
+#
+# Y los nombres tampoco coinciden. football-data dice "FC Barcelona" y
+# Understat dice "Barcelona"; "Paris Saint-Germain FC" contra "Paris
+# Saint Germain". Por eso el emparejado se hace con el nombre
+# normalizado y, aun así, se exige que la FECHA cuadre: dos equipos
+# pueden jugar dos veces en una temporada, pero no el mismo día.
+#
+# Si no se encuentra, se dice que no se ha encontrado. Lo que no se
+# hace es devolver el partido "más parecido": un informe del partido
+# equivocado es peor que no tener informe.
+
+
+# Esto NO es ortografía, es traducción, y por eso va en una lista a
+# mano y no en una regla. Limpiar acentos convierte "Köln" en "koln",
+# que sigue sin parecerse a "Cologne" en nada: no hay manera de llegar
+# de uno a otro quitando caracteres.
+#
+# La lista es corta a propósito. Cada entrada es un caso comprobado de
+# que una fuente escribe el nombre en un idioma y la otra en otro. Si
+# algún día hace falta alargarla mucho, será señal de que el
+# emparejado por nombre no da más de sí y hay que buscar otra cosa.
+TRADUCCIONES = {
+    "koln": "cologne",
+    "munchen": "munich",
+    "monchengladbach": "gladbach",
+    "nurnberg": "nuremberg",
+    "torino": "turin",
+    "milano": "milan",
+    "venezia": "venice",
+    "roma": "rome",
+    "firenze": "florence",
+    "sevilla": "seville",
+    "la coruna": "coruna",
+}
+
+
+def _normaliza(nombre: str) -> str:
+    """Un nombre de equipo reducido a lo que de verdad lo identifica.
+
+    Quita acentos, puntuación, y las palabras de adorno que cada fuente
+    pone o quita a su gusto: FC, CF, AC, SC, Club, Deportivo... y
+    después traduce los pocos nombres que una fuente escribe en un
+    idioma y la otra en otro.
+    """
+    import unicodedata
+    s = unicodedata.normalize("NFKD", str(nombre or "").lower())
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = "".join(c if c.isalnum() or c.isspace() else " " for c in s)
+    sobra = {"fc", "cf", "ac", "sc", "cd", "ud", "sd", "rc", "rcd", "afc",
+             "bc", "club", "deportivo", "futbol", "football", "calcio",
+             "sv", "vf", "vfb", "vfl", "tsg", "tsv", "fsv", "ssc", "as",
+             "ss", "us", "de", "the"}
+    # "Real" NO se quita: es lo único que separa a Real Sociedad de
+    # Sociedad y ayuda a distinguir Real Madrid de Madrid a secas.
+    # Los números se van TODOS, y da igual si son el año de fundación
+    # ("1. FC Köln", "Bayer 04") o parte del nombre ("TSV 1860"): lo
+    # que importa no es conservarlos, es que las dos fuentes reciban el
+    # mismo trato. Si a los dos lados se quita el 1860, "1860 Munich" y
+    # "TSV 1860 München" siguen encajando igual de bien.
+    palabras = [TRADUCCIONES.get(p, p) for p in s.split()
+                if p and p not in sobra and not p.isdigit()]
+    limpio = " ".join(palabras) or s.strip()
+    # Y las de dos palabras ("la coruna"), que no se pueden traducir
+    # palabra a palabra.
+    for de, a in TRADUCCIONES.items():
+        if " " in de and de in limpio:
+            limpio = limpio.replace(de, a)
+    return limpio
+
+
+async def get_league_fixtures(competition_code: str, season: int = None) -> list:
+    """Todos los partidos de la liga, con el identificador de Understat.
+
+    Es el índice que permite ir de un partido de football-data al mismo
+    partido en Understat.
+    """
+    season = season if season is not None else temporada_actual()
+    clave = f"understat_fixtures_{competition_code}_{season}"
+    if clave in _cache:
+        return _cache[clave]
+
+    league = UNDERSTAT_LEAGUES.get(competition_code)
+    if not league:
+        return []
+
+    crudos = await _pedir(
+        "calendario de la liga",
+        lambda c: c.league(league=league).get_match_data(season=str(season)),
+    )
+
+    salida = []
+    for p in crudos:
+        local = (p.get("h") or {}).get("title", "")
+        visit = (p.get("a") or {}).get("title", "")
+        goles = p.get("goals") or {}
+        xg = p.get("xG") or {}
+        salida.append({
+            "match_id":   str(p.get("id", "")),
+            "jugado":     bool(p.get("isResult")),
+            "fecha":      str(p.get("datetime", ""))[:10],
+            "local":      local,
+            "visitante":  visit,
+            "clave_local": _normaliza(local),
+            "clave_visitante": _normaliza(visit),
+            "goles_local":     _entero(goles.get("h")),
+            "goles_visitante": _entero(goles.get("a")),
+            "xg_local":        _decimal(xg.get("h")),
+            "xg_visitante":    _decimal(xg.get("a")),
+        })
+
+    _cache[clave] = salida
+    return salida
+
+
+def _entero(v):
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _decimal(v):
+    try:
+        return round(float(v), 2)
+    except (TypeError, ValueError):
+        return None
+
+
+async def get_match_roster(match_id: str) -> dict:
+    """Los jugadores de los dos equipos en ESE partido.
+
+    Understat da, por jugador: minutos, goles, asistencias, tiros,
+    pases clave, xG, xA, xGChain, xGBuildup, tarjetas y el minuto en
+    que entró o salió. Con eso se puede hacer una tabla de verdad.
+    """
+    clave = f"understat_roster_{match_id}"
+    if clave in _cache:
+        return _cache[clave]
+
+    crudo = await _pedir(
+        "alineaciones del partido",
+        lambda c: c.match(match=str(match_id)).get_roster_data(),
+    )
+
+    salida = {"local": [], "visitante": []}
+    for lado, destino in (("h", "local"), ("a", "visitante")):
+        for _, j in (crudo.get(lado) or {}).items():
+            salida[destino].append({
+                "player_id":  str(j.get("player_id", "")),
+                "nombre":     j.get("player", ""),
+                "puesto":     j.get("position", ""),
+                "orden":      _entero(j.get("positionOrder")) or 99,
+                "minutos":    _entero(j.get("time")) or 0,
+                "goles":      _entero(j.get("goals")) or 0,
+                "asistencias": _entero(j.get("assists")) or 0,
+                "tiros":      _entero(j.get("shots")) or 0,
+                "pases_clave": _entero(j.get("key_passes")) or 0,
+                "xg":         _decimal(j.get("xG")) or 0.0,
+                "xa":         _decimal(j.get("xA")) or 0.0,
+                "xgchain":    _decimal(j.get("xGChain")) or 0.0,
+                "xgbuildup":  _decimal(j.get("xGBuildup")) or 0.0,
+                "amarillas":  _entero(j.get("yellow_card")) or 0,
+                "rojas":      _entero(j.get("red_card")) or 0,
+                # OJO: roster_in y roster_out NO son minutos.
+                #
+                # Lo parecían. Se publicaron como "entró en el minuto
+                # X" y en pantalla salió "Gerard Martín ▲806581". Son
+                # identificadores internos de Understat del cambio, y
+                # no hay manera de sacar de ahí el minuto.
+                #
+                # El minuto del cambio NO ESTÁ en esta respuesta. Lo
+                # que sí está, y es verdad, es si salió de inicio o
+                # entró desde el banquillo —position vale "Sub"— y
+                # cuántos minutos jugó. Con eso se dice lo que se
+                # sabe, y no se insinúa lo que no.
+                "suplente":   j.get("position") == "Sub",
+            })
+        salida[destino].sort(key=lambda x: x["orden"])
+
+    _cache[clave] = salida
+    return salida
