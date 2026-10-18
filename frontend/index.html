@@ -647,10 +647,10 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
   </div>
   <div class="cont">
     <div class="fr">
-      <div class="fg"><label class="fl">Liga</label><select id="pL" onchange="renderCards()"><option value="all">Todas</option><option value="PL">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier</option><option value="PD">🇪🇸 La Liga</option><option value="BL1">🇩🇪 Bundesliga</option><option value="SA">🇮🇹 Serie A</option><option value="FL1">🇫🇷 Ligue 1</option></select></div>
+      <div class="fg"><label class="fl">Liga</label><select id="pL" onchange="cargarJugadores(this.value)"><option value="all">Todas</option><option value="PL">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier</option><option value="PD">🇪🇸 La Liga</option><option value="BL1">🇩🇪 Bundesliga</option><option value="SA">🇮🇹 Serie A</option><option value="FL1">🇫🇷 Ligue 1</option></select></div>
       <div class="fg"><label class="fl">Posición</label><select id="pP" onchange="renderCards()"><option value="all">Todas</option><option value="FW">Delantero</option><option value="MF">Centrocampista</option><option value="DF">Defensa</option><option value="GK">Portero</option></select></div>
-      <div class="fg"><label class="fl">Ordenar</label><select id="pS" onchange="renderCards()"><option value="score">Score ML</option><option value="goals">Goles</option><option value="assists">Asistencias</option><option value="rating">Rating</option></select></div>
-      <div class="fg"><label class="fl">Edad</label><select id="pA" onchange="renderCards()"><option value="99">Todos</option><option value="22">≤22 Jóvenes</option><option value="25">≤25</option><option value="28">≤28</option></select></div>
+      <div class="fg"><label class="fl">Ordenar</label><select id="pS" onchange="renderCards()"><option value="score">Score ML</option><option value="goals">Goles</option><option value="assists">Asistencias</option><option value="xG">xG</option><option value="shots">Tiros</option></select></div>
+      
       <div style="align-self:flex-end"><button class="btn bg bs" onclick="expCSV()">⬇ CSV</button></div>
     </div>
     <div class="sh"><span class="st" id="pCnt">Cargando jugadores…</span></div>
@@ -801,48 +801,69 @@ const GRAD = {
 };
 
 // Player data (local — will be enriched from API)
-const PLAYERS = [
-  {id:1,name:"Erling Haaland",team:"Man City",age:24,pos:"FW",league:"PL",nationality:"🇳🇴",goals:22,assists:6,xG:19.2,minutes:2340,rating:95,score:97},
-  {id:2,name:"Mohamed Salah",team:"Liverpool",age:32,pos:"FW",league:"PL",nationality:"🇪🇬",goals:29,assists:14,xG:24.1,minutes:3240,rating:94,score:98},
-  {id:3,name:"Kylian Mbappé",team:"Real Madrid",age:26,pos:"FW",league:"PD",nationality:"🇫🇷",goals:31,assists:8,xG:27.4,minutes:2880,rating:95,score:99},
-  {id:4,name:"Lamine Yamal",team:"Barcelona",age:17,pos:"FW",league:"PD",nationality:"🇪🇸",goals:15,assists:18,xG:12.8,minutes:2700,rating:91,score:93},
-  {id:5,name:"Jude Bellingham",team:"Real Madrid",age:21,pos:"MF",league:"PD",nationality:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",goals:13,assists:9,xG:10.4,minutes:2520,rating:91,score:91},
-  {id:6,name:"Cole Palmer",team:"Chelsea",age:22,pos:"MF",league:"PL",nationality:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",goals:25,assists:15,xG:21.3,minutes:3060,rating:90,score:93},
-  {id:7,name:"Harry Kane",team:"Bayern Munich",age:31,pos:"FW",league:"BL1",nationality:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",goals:32,assists:10,xG:28.9,minutes:3060,rating:92,score:96},
-  {id:8,name:"Florian Wirtz",team:"Bayer Leverkusen",age:21,pos:"MF",league:"BL1",nationality:"🇩🇪",goals:18,assists:20,xG:14.2,minutes:2880,rating:90,score:92},
-  {id:9,name:"Vinicius Jr",team:"Real Madrid",age:24,pos:"FW",league:"PD",nationality:"🇧🇷",goals:23,assists:10,xG:18.9,minutes:2700,rating:91,score:93},
-  {id:10,name:"Phil Foden",team:"Man City",age:24,pos:"MF",league:"PL",nationality:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",goals:10,assists:9,xG:9.8,minutes:2340,rating:87,score:84},
-  {id:11,name:"Bukayo Saka",team:"Arsenal",age:23,pos:"FW",league:"PL",nationality:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",goals:17,assists:14,xG:15.1,minutes:2880,rating:89,score:89},
-  {id:12,name:"Jonathan David",team:"Lille",age:24,pos:"FW",league:"FL1",nationality:"🇨🇦",goals:26,assists:5,xG:22.8,minutes:2880,rating:87,score:88},
-  {id:13,name:"Alexander Isak",team:"Newcastle",age:25,pos:"FW",league:"PL",nationality:"🇸🇪",goals:24,assists:5,xG:20.4,minutes:2880,rating:87,score:88},
-  {id:14,name:"Nico Williams",team:"Athletic",age:22,pos:"FW",league:"PD",nationality:"🇪🇸",goals:14,assists:11,xG:11.8,minutes:2700,rating:85,score:86},
-  {id:15,name:"Khvicha Kvaratskhelia",team:"PSG",age:23,pos:"FW",league:"FL1",nationality:"🇬🇪",goals:18,assists:12,xG:15.2,minutes:2700,rating:87,score:87},
-  {id:16,name:"Lautaro Martínez",team:"Inter Milan",age:27,pos:"FW",league:"SA",nationality:"🇦🇷",goals:22,assists:8,xG:19.8,minutes:2880,rating:88,score:90},
-  {id:17,name:"Rodri",team:"Man City",age:28,pos:"MF",league:"PL",nationality:"🇪🇸",goals:2,assists:7,xG:2.1,minutes:2700,rating:92,score:87},
-  {id:18,name:"Kevin De Bruyne",team:"Man City",age:33,pos:"MF",league:"PL",nationality:"🇧🇪",goals:4,assists:11,xG:4.1,minutes:1620,rating:88,score:82},
-  {id:19,name:"Bruno Fernandes",team:"Man United",age:30,pos:"MF",league:"PL",nationality:"🇵🇹",goals:10,assists:12,xG:9.2,minutes:2880,rating:83,score:80},
-  {id:20,name:"Federico Valverde",team:"Real Madrid",age:26,pos:"MF",league:"PD",nationality:"🇺🇾",goals:8,assists:8,xG:7.2,minutes:2700,rating:87,score:85},
-  {id:21,name:"William Saliba",team:"Arsenal",age:24,pos:"DF",league:"PL",nationality:"🇫🇷",goals:2,assists:1,xG:1.2,minutes:3060,rating:87,score:85},
-  {id:22,name:"Virgil van Dijk",team:"Liverpool",age:33,pos:"DF",league:"PL",nationality:"🇳🇱",goals:4,assists:1,xG:2.8,minutes:3240,rating:87,score:85},
-  {id:23,name:"Rúben Dias",team:"Man City",age:27,pos:"DF",league:"PL",nationality:"🇵🇹",goals:1,assists:2,xG:0.9,minutes:2700,rating:87,score:84},
-  {id:24,name:"Josko Gvardiol",team:"Man City",age:23,pos:"DF",league:"PL",nationality:"🇭🇷",goals:5,assists:4,xG:3.8,minutes:2700,rating:84,score:83},
-  {id:25,name:"Trent Alexander-Arnold",team:"Real Madrid",age:26,pos:"DF",league:"PD",nationality:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",goals:2,assists:8,xG:1.9,minutes:2520,rating:86,score:83},
-  {id:26,name:"Alisson",team:"Liverpool",age:32,pos:"GK",league:"PL",nationality:"🇧🇷",goals:0,assists:0,xG:0,minutes:3060,rating:88,score:86},
-  {id:27,name:"Thibaut Courtois",team:"Real Madrid",age:32,pos:"GK",league:"PD",nationality:"🇧🇪",goals:0,assists:0,xG:0,minutes:2880,rating:89,score:87},
-  {id:28,name:"Rafael Leão",team:"AC Milan",age:25,pos:"FW",league:"SA",nationality:"🇵🇹",goals:13,assists:10,xG:11.4,minutes:2700,rating:84,score:83},
-  {id:29,name:"Dani Olmo",team:"Barcelona",age:26,pos:"MF",league:"PD",nationality:"🇪🇸",goals:12,assists:9,xG:10.4,minutes:2160,rating:86,score:85},
-  {id:30,name:"Rasmus Højlund",team:"Man United",age:22,pos:"FW",league:"PL",nationality:"🇩🇰",goals:14,assists:4,xG:12.8,minutes:2340,rating:80,score:79},
-  {id:31,name:"Warren Zaïre-Emery",team:"PSG",age:18,pos:"MF",league:"FL1",nationality:"🇫🇷",goals:7,assists:6,xG:5.8,minutes:2520,rating:83,score:83},
-  {id:32,name:"Pedri",team:"Barcelona",age:22,pos:"MF",league:"PD",nationality:"🇪🇸",goals:5,assists:8,xG:4.8,minutes:2160,rating:87,score:84},
-  {id:33,name:"Declan Rice",team:"Arsenal",age:26,pos:"MF",league:"PL",nationality:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",goals:6,assists:8,xG:4.9,minutes:3060,rating:86,score:84},
-  {id:34,name:"Son Heung-min",team:"Tottenham",age:32,pos:"FW",league:"PL",nationality:"🇰🇷",goals:16,assists:9,xG:14.2,minutes:2880,rating:83,score:82},
-  {id:35,name:"Achraf Hakimi",team:"PSG",age:26,pos:"DF",league:"FL1",nationality:"🇲🇦",goals:4,assists:11,xG:3.2,minutes:2880,rating:86,score:84},
-  {id:36,name:"Xavi Simons",team:"PSG",age:22,pos:"MF",league:"FL1",nationality:"🇳🇱",goals:11,assists:9,xG:9.4,minutes:2520,rating:84,score:83},
-  {id:37,name:"Gabriel Martinelli",team:"Arsenal",age:23,pos:"FW",league:"PL",nationality:"🇧🇷",goals:12,assists:10,xG:11.1,minutes:2520,rating:82,score:81},
-  {id:38,name:"Kim Min-jae",team:"Bayern Munich",age:28,pos:"DF",league:"BL1",nationality:"🇰🇷",goals:1,assists:1,xG:0.8,minutes:2880,rating:84,score:82},
-  {id:39,name:"Gianluigi Donnarumma",team:"PSG",age:26,pos:"GK",league:"FL1",nationality:"🇮🇹",goals:0,assists:0,xG:0,minutes:3060,rating:87,score:85},
-  {id:40,name:"Ederson",team:"Man City",age:31,pos:"GK",league:"PL",nationality:"🇧🇷",goals:0,assists:0,xG:0,minutes:2700,rating:87,score:85},
-];
+// ── LOS JUGADORES, AHORA DE VERDAD ──────────────────────────
+//
+// Aquí había 40 jugadores ESCRITOS A MANO: Haaland con 22 goles y
+// 19,2 de xG, tecleados, de una temporada que ya no es ésta. De ese
+// array vivían las cuatro pantallas: Cartas, Scouting, Comparador y
+// Watchlist.
+//
+// Ahora salen de /api/players/{liga}, que lee Understat.
+//
+// TRES CAMPOS DESAPARECIERON, Y ES LO CORRECTO:
+//   edad          Understat no la da -> fuera el filtro de edad
+//   nacionalidad  Understat no la da -> fuera la banderita
+//   rating        número del 1 al 100 puesto a ojo -> fuera
+//
+// (La nacionalidad de la PLANTILLA de un equipo sí es real: la da
+// football-data y se queda donde estaba.)
+let PLAYERS = [];
+let CARGANDO_JUGADORES = false;
+
+function puestoDesdeUnderstat(cadena) {
+  for (const l of String(cadena || "").toUpperCase().split(" ")) {
+    if (l === "GK") return "GK";
+    if (l === "F") return "FW";
+    if (l === "M") return "MF";
+    if (l === "D") return "DF";
+  }
+  return "";
+}
+
+async function cargarJugadores(liga) {
+  if (CARGANDO_JUGADORES) return;
+  CARGANDO_JUGADORES = true;
+  const lg = (liga && liga !== "all") ? liga : "PL";
+  if ($("pCnt")) $("pCnt").textContent = "Cargando jugadores reales…";
+  if ($("pGrid")) $("pGrid").innerHTML = '<div class="ld" style="grid-column:1/-1"><div class="sp"></div>Pidiendo datos a Understat…</div>';
+  let fallo = "";
+  try {
+    const r = await fetch(`/api/players/${lg}?limit=200&min_minutes=400`);
+    if (!r.ok) { fallo = `${r.status} — ${(await r.text()).slice(0,140)}`; PLAYERS = []; }
+    else {
+      const d = await r.json();
+      PLAYERS = (d.players || []).map((x, n) => ({
+        id: `${lg}-${x.player_id || n}`, understat_id: x.player_id,
+        name: x.name, team: x.team, league: lg,
+        pos: puestoDesdeUnderstat(x.position),
+        goals: x.goals, assists: x.assists, xG: x.xG, xA: x.xA,
+        shots: x.shots, key_passes: x.key_passes,
+        minutes: x.time, games: x.games,
+        xG90: x.xG_per90, dif: x.goals_diff,
+        score: Math.round(x.score || 0),
+      }));
+    }
+  } catch (e) { fallo = e.message; PLAYERS = []; }
+  CARGANDO_JUGADORES = false;
+  if (!PLAYERS.length) {
+    if ($("pCnt")) $("pCnt").textContent = "Sin datos";
+    if ($("pGrid")) $("pGrid").innerHTML = `<div class="empty" style="grid-column:1/-1">
+      <h3>No se han podido cargar los jugadores</h3><p>${fallo || "La fuente no ha respondido."}</p>
+      <p style="opacity:.7;font-size:12px">No se enseñan datos de ejemplo a propósito.</p></div>`;
+    return;
+  }
+  renderCards();
+}
 
 // ── API fetch helper ──────────────────────────────────────
 async function apiFetch(endpoint) {
@@ -1061,20 +1082,21 @@ function gInit(n) { const p = n.split(' '); return p.length >= 2 ? p[p.length-2]
 function pStat(v, l) { return `<div class="fst"><div class="fstv">${v}</div><div class="fstl">${l}</div></div>`; }
 
 function renderCards() {
-  const lg = $('pL').value, pos = $('pP').value, sort = $('pS').value, maxA = +$('pA').value;
+  const lg = $('pL').value, pos = $('pP').value, sort = $('pS').value;
   const wl = WL();
-  let fp = PLAYERS.filter(p => (lg === 'all' || p.league === lg) && (pos === 'all' || p.pos === pos) && p.age <= maxA);
+  if (!PLAYERS.length && !CARGANDO_JUGADORES) { cargarJugadores(lg); return; }
+  let fp = PLAYERS.filter(p => (pos === 'all' || p.pos === pos));
   fp.sort((a, b) => (b[sort] ?? b.score) - (a[sort] ?? a.score));
   $('pCnt').textContent = `${fp.length} jugadores`;
   if (!fp.length) { $('pGrid').innerHTML = '<div class="empty" style="grid-column:1/-1"><h3>Sin resultados</h3><p>Cambia los filtros</p></div>'; return; }
   $('pGrid').innerHTML = fp.map(p => {
     const [top, bot] = gGrad(p), starred = wl.some(w => w.id === p.id);
     const sc = p.score >= 95 ? '#fbbf24' : p.score >= 88 ? '#f59e0b' : 'rgba(255,255,255,0.92)';
-    const stats = p.pos !== 'GK' ? pStat(p.goals,'GOL') + pStat(p.assists,'ASI') + pStat(p.xG.toFixed(1),'xG') : pStat(p.minutes,'MIN') + pStat(p.rating,'RTG') + pStat(p.age,'EDA');
-    return `<div class="fc${starred?' starred':''}" onclick="toggleWL(${p.id})" title="${p.name}">
+    const stats = p.pos !== 'GK' ? pStat(p.goals,'GOL') + pStat(p.assists,'ASI') + pStat(p.xG.toFixed(1),'xG') : pStat(p.minutes,'MIN') + pStat(p.games,'PJ') + pStat(p.score,'SCO');
+    return `<div class="fc${starred?' starred':''}" onclick="toggleWL('${p.id}')" title="${p.name}">
       <div class="fci" style="background:linear-gradient(160deg,${top} 0%,${bot} 100%)">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%">
-          <div><div class="fscore" style="color:${sc}">${p.score}</div><div class="fpos">${p.pos}</div><div class="fflag">${p.nationality}</div></div>
+          <div><div class="fscore" style="color:${sc}">${p.score}</div><div class="fpos">${p.pos || '—'}</div></div>
           <div style="font-size:13px;opacity:0.85">${starred?'⭐':'☆'}</div>
         </div>
         <div class="fav">${gInit(p.name)}</div>
@@ -1103,7 +1125,7 @@ function kMeans(items, keys, k, iters = 25) {
 
 function runScouting() {
   const pos = $('scP').value, maxA = +$('scA').value, lg = $('scLg').value;
-  let pl = PLAYERS.filter(p => p.pos === pos && p.age <= maxA && (lg === 'all' || p.league === lg));
+  let pl = PLAYERS.filter(p => p.pos === pos);
   if (!pl.length) { $('scKPIs').innerHTML = ''; $('scTbl').innerHTML = '<div class="empty"><p>Sin jugadores</p></div>'; return; }
   const keys = {FW:['goals','assists','xG'],MF:['goals','assists','xG'],DF:['goals','assists','minutes'],GK:['minutes','rating']}[pos];
   const cls = kMeans(pl, keys, 4);
@@ -1133,7 +1155,7 @@ function runScouting() {
   }, options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{color:'#7a9bbf'},grid:{color:'rgba(14,165,233,0.06)'},min:0,max:100},y:{ticks:{color:'#7a9bbf',font:{size:10}},grid:{color:'rgba(14,165,233,0.04)'}}} }});
   const sorted = [...pl].sort((a,b)=>b.score-a.score);
   $('scTbl').innerHTML = '<table><thead><tr><th>#</th><th>Jugador</th><th>Equipo</th><th>Liga</th><th>Edad</th><th>Goles</th><th>Asist</th><th>xG</th><th>Min</th><th>Score</th><th>Perfil</th></tr></thead><tbody>' +
-    sorted.map((p,i)=>`<tr><td style="color:var(--text2)">${i+1}</td><td style="font-weight:500">${p.name}</td><td style="font-size:11px">${p.team}</td><td><span class="bge b-blue" style="font-size:9px">${p.league}</span></td><td style="font-family:var(--fm)">${p.age}</td><td style="font-family:var(--fm);color:var(--green)">${p.goals}</td><td style="font-family:var(--fm);color:var(--electric)">${p.assists}</td><td style="font-family:var(--fm)">${p.xG.toFixed(1)}</td><td style="font-family:var(--fm)">${p.minutes}</td><td style="font-family:var(--fm);font-weight:700;color:${p.score>=90?'var(--gold)':p.score>=80?'var(--orange)':'var(--electric)'}">${p.score}</td><td style="font-size:11px">${cL[p.cluster||0]}</td></tr>`).join('') + '</tbody></table>';
+    sorted.map((p,i)=>`<tr><td style="color:var(--text2)">${i+1}</td><td style="font-weight:500">${p.name}</td><td style="font-size:11px">${p.team}</td><td><span class="bge b-blue" style="font-size:9px">${p.league}</span></td><td style="font-family:var(--fm)">${p.minutes}</td><td style="font-family:var(--fm);color:var(--green)">${p.goals}</td><td style="font-family:var(--fm);color:var(--electric)">${p.assists}</td><td style="font-family:var(--fm)">${p.xG.toFixed(1)}</td><td style="font-family:var(--fm)">${p.minutes}</td><td style="font-family:var(--fm);font-weight:700;color:${p.score>=90?'var(--gold)':p.score>=80?'var(--orange)':'var(--electric)'}">${p.score}</td><td style="font-size:11px">${cL[p.cluster||0]}</td></tr>`).join('') + '</tbody></table>';
 }
 
 // ── COMPARE ───────────────────────────────────────────────
@@ -1148,7 +1170,7 @@ function runCompare() {
   const norm = metrics.map(m=>Math.max(p1[m],p2[m],1));
   const card=(p,col)=>`<div class="card">
     <div class="ch"><div class="ct" style="color:${col}">👤 ${p.name}</div><span class="bge b-blue">${p.league} · ${p.pos}</span></div>
-    <div style="font-size:11px;color:var(--text2);margin-bottom:10px">${p.team} · ${p.age}a · ${p.nationality}</div>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:10px">${p.team} · ${p.minutes} min · ${p.games} PJ</div>
     ${metrics.map((m,i)=>`<div class="pw"><div class="pm"><span>${labels[i]}</span><span style="font-family:var(--fm)">${typeof p[m]==='number'&&m!=='minutes'?p[m].toFixed(1):p[m]}</span></div><div class="pb"><div class="pf" style="width:${Math.round(p[m]/norm[i]*100)}%;background:${col}"></div></div></div>`).join('')}
     <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
       <div style="font-family:var(--ff);font-size:42px;color:${col}">${p.score}</div>
@@ -1180,8 +1202,8 @@ function renderWL() {
   $('wlCont').innerHTML=`<div class="sh"><span class="st">${wl.length} jugadores seguidos</span><button class="btn bg bs" onclick="expWL()">⬇ CSV</button></div>
   <div class="pgrid">${wl.map(p=>{
     const [top,bot]=gGrad(p),sc=p.score>=95?'#fbbf24':p.score>=88?'#f59e0b':'rgba(255,255,255,0.92)';
-    const stats=p.pos!=='GK'?pStat(p.goals,'GOL')+pStat(p.assists,'ASI')+pStat(p.xG.toFixed(1),'xG'):pStat(p.minutes,'MIN')+pStat(p.rating,'RTG')+pStat(p.age,'EDA');
-    return `<div class="fc starred" onclick="toggleWL(${p.id})"><div class="fci" style="background:linear-gradient(160deg,${top} 0%,${bot} 100%)"><div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%"><div><div class="fscore" style="color:${sc}">${p.score}</div><div class="fpos">${p.pos}</div><div class="fflag">${p.nationality}</div></div><div style="font-size:13px">⭐</div></div><div class="fav">${gInit(p.name)}</div><div class="fn">${p.name.split(' ').slice(-1)[0]}</div><div class="fteam">${p.team}</div><div class="fstats">${stats}</div></div></div>`;
+    const stats=p.pos!=='GK'?pStat(p.goals,'GOL')+pStat(p.assists,'ASI')+pStat(p.xG.toFixed(1),'xG'):pStat(p.minutes,'MIN')+pStat(p.games,'PJ')+pStat(p.score,'SCO');
+    return `<div class="fc starred" onclick="toggleWL('${p.id}')"><div class="fci" style="background:linear-gradient(160deg,${top} 0%,${bot} 100%)"><div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%"><div><div class="fscore" style="color:${sc}">${p.score}</div><div class="fpos">${p.pos || '—'}</div></div><div style="font-size:13px">⭐</div></div><div class="fav">${gInit(p.name)}</div><div class="fn">${p.name.split(' ').slice(-1)[0]}</div><div class="fteam">${p.team}</div><div class="fstats">${stats}</div></div></div>`;
   }).join('')}</div>`;
 }
 function clrWL() { sWL([]); renderWL(); }
@@ -1208,9 +1230,9 @@ function doExp(data, name) {
   const k=Object.keys(data[0]), csv=[k.join(','),...data.map(r=>k.map(k=>JSON.stringify(r[k]??'')).join(','))].join('\n');
   const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download=name; a.click();
 }
-function expCSV() { doExp(PLAYERS.map(p=>({Nombre:p.name,Equipo:p.team,Liga:p.league,Pos:p.pos,Edad:p.age,Goles:p.goals,Asist:p.assists,xG:p.xG,Min:p.minutes,Score:p.score})),'sportalyze_jugadores.csv'); }
-function expScout() { doExp(PLAYERS.filter(p=>p.cluster!==undefined).map(p=>({Nombre:p.name,Equipo:p.team,Liga:p.league,Pos:p.pos,Edad:p.age,Score:p.score,Cluster:p.cluster})),'sportalyze_scouting.csv'); }
-function expWL() { doExp(WL().map(p=>({Nombre:p.name,Equipo:p.team,Liga:p.league,Pos:p.pos,Edad:p.age,Score:p.score,Goles:p.goals,Asist:p.assists})),'sportalyze_watchlist.csv'); }
+function expCSV() { doExp(PLAYERS.map(p=>({Nombre:p.name,Equipo:p.team,Liga:p.league,Pos:p.pos,Minutos:p.minutes,PJ:p.games,Goles:p.goals,Asist:p.assists,xG:p.xG,Min:p.minutes,Score:p.score})),'sportalyze_jugadores.csv'); }
+function expScout() { doExp(PLAYERS.filter(p=>p.cluster!==undefined).map(p=>({Nombre:p.name,Equipo:p.team,Liga:p.league,Pos:p.pos,Minutos:p.minutes,PJ:p.games,Score:p.score,Cluster:p.cluster})),'sportalyze_scouting.csv'); }
+function expWL() { doExp(WL().map(p=>({Nombre:p.name,Equipo:p.team,Liga:p.league,Pos:p.pos,Minutos:p.minutes,PJ:p.games,Score:p.score,Goles:p.goals,Asist:p.assists})),'sportalyze_watchlist.csv'); }
 
 
 // ── TEAM PROFILE ─────────────────────────────────────────
