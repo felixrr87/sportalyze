@@ -279,3 +279,87 @@ def test_el_agrupamiento_usa_los_percentiles(delanteros):
     # el mejor grupo no puede ser simplemente "los que más minutos tienen"
     if minutos:
         assert min(minutos) < max(p["time"] for p in ps)
+
+
+# ════════════════════════════════════════════════════════════════
+# EL RECORTE NO PUEDE COMERSE UN PUESTO ENTERO
+# ════════════════════════════════════════════════════════════════
+
+@pytest.mark.asyncio
+async def test_el_recorte_deja_jugadores_de_todos_los_puestos(monkeypatch):
+    """Salió probando La Liga con datos reales: «200 con nota, 0 sin
+    nota».
+
+    La ruta ordenaba por nota —con los sin nota al final— y luego
+    cortaba por `limit`. Como en La Liga hay más de 200 jugadores con
+    nota, los defensas y porteros se caían ENTEROS del corte: en la
+    pantalla de Cartas no aparecía ni un central.
+
+    No se vio en la Premier porque allí había menos de 200 con nota y
+    los sin nota entraban por los pelos. Un fallo que depende de
+    cuántos jugadores tenga la liga.
+    """
+    from fastapi.testclient import TestClient
+    import main
+
+    # 400 jugadores: 150 delanteros, 150 centros, 80 defensas, 20 porteros.
+    # Con el bug, los 200 primeros serían todos delanteros y centros.
+    falsos = []
+    for i in range(400):
+        pos = ("F" if i < 150 else "M" if i < 300 else "D" if i < 380 else "GK")
+        falsos.append(jugador(i, minutos=500 + i, goals=i % 20,
+                              assists=i % 11, npxG=0.5 + i * 0.05,
+                              xA=0.3 + i * 0.03, shots=5 + i,
+                              key_passes=3 + i, xGChain=1.0 + i * 0.07,
+                              xGBuildup=0.4 + i * 0.04))
+        falsos[-1]["position"] = pos
+
+    async def falsa(codigo, temporada=2024):
+        return falsos
+
+    monkeypatch.setattr(main, "get_league_players", falsa)
+    cli = TestClient(main.app)
+    r = cli.get("/api/players/PD?limit=200&min_minutes=0")
+    assert r.status_code == 200, r.text
+    d = r.json()
+
+    reparto = d["reparto_por_puesto"]
+    assert set(reparto) == {"FW", "MF", "DF", "GK"}, reparto
+    assert reparto["DF"] > 0 and reparto["GK"] > 0, (
+        f"el recorte se ha comido un puesto entero: {reparto}")
+    assert len(d["players"]) <= 200
+
+    # y los que no se pueden puntuar siguen saliendo sin nota, no con cero
+    sin = [p for p in d["players"] if p["score"] is None]
+    assert sin, "no sale ningún jugador sin nota"
+    assert set(d["puestos_sin_nota"]) == {"DF", "GK"}
+
+
+@pytest.mark.asyncio
+async def test_dentro_de_cada_puesto_salen_los_mejores(monkeypatch):
+    """Repartir por puesto no puede significar coger a cualquiera: de
+    cada puesto tienen que salir los de más nota."""
+    from fastapi.testclient import TestClient
+    import main
+
+    falsos = []
+    for i in range(120):
+        p = jugador(i, minutos=600 + i * 10, goals=i % 18,
+                    npxG=0.3 + i * 0.08, xA=0.2 + i * 0.05,
+                    assists=i % 9, shots=4 + i, key_passes=2 + i,
+                    xGChain=0.8 + i * 0.1, xGBuildup=0.3 + i * 0.06)
+        p["position"] = "F" if i % 2 else "M"
+        falsos.append(p)
+
+    async def falsa(codigo, temporada=2024):
+        return falsos
+
+    monkeypatch.setattr(main, "get_league_players", falsa)
+    cli = TestClient(main.app)
+    todos = cli.get("/api/players/PD?limit=200&min_minutes=0").json()["players"]
+    pocos = cli.get("/api/players/PD?limit=20&min_minutes=0").json()["players"]
+
+    mejores = {p["name"] for p in todos[:10]}
+    salen = {p["name"] for p in pocos}
+    assert len(mejores & salen) >= 8, (
+        "al recortar se están perdiendo los mejores")
