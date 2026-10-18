@@ -73,7 +73,6 @@ import unicodedata
 from datetime import date
 
 import numpy as np
-from scipy.optimize import minimize
 
 # ── Los números del modelo ───────────────────────────────────────────
 # NO se tocan a mano. Salieron de validar.py, que los eligió por
@@ -86,6 +85,10 @@ ESCALA_INCERT = 0.45
 N_SIM = 10000
 SEMILLA = 7
 MAX_GOLES = 12          # tope al simular: por encima es ruido numérico
+
+# Cuántas simulaciones se calculan de golpe. Baja el pico de memoria
+# sin cambiar ni un número: ver el comentario largo dentro de simular().
+TROZO = 1000
 
 # Mínimos para que simular signifique algo. Con una jornada jugada el
 # modelo es un generador de números bonitos.
@@ -378,6 +381,11 @@ def clasificacion(ps: list, hasta: int = None) -> list:
 # ── El ajuste ────────────────────────────────────────────────────────
 def ajustar(ps, hasta, eq=None, lam=LAMBDA):
     """(ataque, defensa, casa, mu) por máxima verosimilitud penalizada."""
+    # scipy se carga AQUÍ y no al importar el módulo: son unos 40 MB
+    # que sólo hacen falta cuando alguien abre el Simulador. Quien
+    # entre a mirar un informe no los paga.
+    from scipy.optimize import minimize
+
     eq = eq or equipos(ps)
     n = len(eq)
     idx = {e: i for i, e in enumerate(eq)}
@@ -500,22 +508,60 @@ def simular(ps, hasta=None, n_sim=N_SIM, lam=LAMBDA, semilla=SEMILLA,
     s_casa = muestras[:, 2 * n][:, None]
     s_mu = muestras[:, 2 * n + 1][:, None]
 
-    lam_l = np.exp(s_mu + s_at[:, fl] - s_de[:, fv] + s_casa)
-    lam_v = np.exp(s_mu + s_at[:, fv] - s_de[:, fl])
+    # ── POR TROZOS, Y EN EL ORDEN CORRECTO ──────────────────────
+    #
+    # Por qué trocear: hacerlo de una vez son seis matrices de
+    # 10.000 × 311 en float64 e int64. Medido, el pico de memoria del
+    # servidor subía de 169 a 368 MB sólo por esto. En un ordenador da
+    # igual; en un servidor pequeño —medio giga, que es lo que dan los
+    # planes básicos— eso es quedarse sin memoria con dos visitantes.
+    #
+    # POR QUÉ PRIMERO TODOS LOS LOCALES Y LUEGO TODOS LOS VISITANTES,
+    # que es lo que parece de más y es lo único que importa:
+    #
+    # La primera versión troceada sacaba, por cada trozo, los goles
+    # locales y los visitantes seguidos. Eso ALTERNA las dos tiradas en
+    # el generador:
+    #
+    #     de una vez:  local(todos), visitante(todos)
+    #     troceado:    local(1), visitante(1), local(2), visitante(2)…
+    #
+    # Son dos secuencias distintas del mismo generador, así que salían
+    # otros números: comprobado, el 83 % de las posiciones cambiaba.
+    # Haciendo primero la tirada local entera —por trozos— y después la
+    # visitante entera, el generador consume exactamente lo mismo que
+    # de una vez, y el resultado es idéntico hasta el último dígito.
+    # Hay una prueba que lo compara.
+    #
+    # Los goles caben en int8 porque MAX_GOLES es 12: las dos matrices
+    # enteras ocupan 3 MB cada una en vez de 25.
+    n_faltan = len(faltan)
+    gl = np.empty((n_sim, n_faltan), dtype=np.int8)
+    gv = np.empty((n_sim, n_faltan), dtype=np.int8)
 
-    gl = np.minimum(rng.poisson(lam_l), MAX_GOLES)
-    gv = np.minimum(rng.poisson(lam_v), MAX_GOLES)
+    for destino, equipo_local in ((gl, True), (gv, False)):
+        for ini in range(0, n_sim, TROZO):
+            fin = min(ini + TROZO, n_sim)
+            if equipo_local:
+                lam = np.exp(s_mu[ini:fin] + s_at[ini:fin][:, fl]
+                             - s_de[ini:fin][:, fv] + s_casa[ini:fin])
+            else:
+                lam = np.exp(s_mu[ini:fin] + s_at[ini:fin][:, fv]
+                             - s_de[ini:fin][:, fl])
+            destino[ini:fin] = np.minimum(rng.poisson(lam), MAX_GOLES)
+            del lam
 
     pts = np.tile(pts0, (n_sim, 1))
     gf = np.tile(gf0, (n_sim, 1))
     gc = np.tile(gc0, (n_sim, 1))
-    pl = np.where(gl > gv, 3, np.where(gl == gv, 1, 0))
-    pv = np.where(gv > gl, 3, np.where(gl == gv, 1, 0))
-    for k in range(len(faltan)):
+    pl = np.where(gl > gv, 3, np.where(gl == gv, 1, 0)).astype(np.int8)
+    pv = np.where(gv > gl, 3, np.where(gl == gv, 1, 0)).astype(np.int8)
+    for k in range(n_faltan):
         a, b = fl[k], fv[k]
         pts[:, a] += pl[:, k]; pts[:, b] += pv[:, k]
         gf[:, a] += gl[:, k]; gc[:, a] += gv[:, k]
         gf[:, b] += gv[:, k]; gc[:, b] += gl[:, k]
+    del gl, gv, pl, pv
 
     # Ordenar: puntos, diferencia de goles, goles a favor. El empate
     # perfecto se rompe al azar, no por orden alfabético, que favorecería

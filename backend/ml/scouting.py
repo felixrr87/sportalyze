@@ -6,12 +6,16 @@
 # ============================================================
 
 import numpy as np
-import pandas as pd
+# pandas se importaba aquí y no se usaba ni una vez. Son unos
+# 90 MB de memoria y medio segundo de arranque para nada, que
+# en un servidor pequeño es justo lo que no sobra.
 import logging
-from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans
-from sklearn.decomposition import PCA
-from sklearn.metrics.pairwise import cosine_similarity
+# sklearn NO se importa aquí.
+#
+# Son unos 60 MB y casi un segundo de arranque, y sólo hace falta para
+# agrupar jugadores: quien entra a ver un informe post-partido o el
+# relieve no tiene por qué pagarlos. Se carga dentro de las dos
+# funciones que lo usan.
 from backend.config import METRICS_BY_POSITION
 from backend.ml.metricas import METRICAS_POR_PUESTO
 from backend.ml.puntuar import puntuar, PuestoSinDatos
@@ -52,6 +56,10 @@ def run_kmeans_clustering(players: list, position: str) -> list:
     K-Means real sobre los jugadores filtrados.
     Basado en tu notebook Futuras_estrellas — lógica exacta preservada.
     """
+    from sklearn.cluster import KMeans
+    from sklearn.decomposition import PCA
+    from sklearn.preprocessing import StandardScaler
+
     if len(players) < N_CLUSTERS:
         for p in players:
             p["cluster"] = 0
@@ -125,6 +133,8 @@ def find_similar_players(target_player: dict, all_players: list, position: str, 
     'Jugadores similares a X' — K-Means + Cosine Similarity.
     Feature principal de scouting que no tienen los competidores.
     """
+    from sklearn.metrics.pairwise import cosine_similarity
+
     metrics = METRICS_BY_POSITION.get(position, METRICS_BY_POSITION["MF"])
     keys = metrics["keys"]
 

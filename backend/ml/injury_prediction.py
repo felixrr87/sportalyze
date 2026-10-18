@@ -5,7 +5,9 @@
 # ============================================================
 
 import numpy as np
-import pandas as pd
+# pandas se importaba aquí y no se usaba ni una vez. Son unos
+# 90 MB de memoria y medio segundo de arranque para nada, que
+# en un servidor pequeño es justo lo que no sobra.
 import logging
 from typing import Optional
 
