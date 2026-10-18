@@ -11,10 +11,13 @@
 # Límite del plan gratuito: 10 peticiones por minuto.
 # ============================================================
 
-import httpx
 import asyncio
 import logging
+import time
+from collections import deque
 from datetime import date
+
+import httpx
 from cachetools import TTLCache
 from backend.config import FOOTBALL_API_KEY, FOOTBALL_API_BASE, CACHE_TTL, LEAGUES
 
@@ -69,12 +72,116 @@ def _caja(endpoint: str) -> TTLCache:
     return _caches[t]
 
 
+class FaltaLaClave(Exception):
+    """No hay clave de football-data configurada.
+
+    Tiene su propia clase porque es el fallo más probable al subir esto
+    a un servidor: se despliega y se olvida la variable de entorno.
+    Sin esto, la pantalla decía «403 Forbidden», que es verdad y no
+    sirve de nada: parece que la fuente ha dicho que no cuando lo que
+    pasa es que no se le ha preguntado con credenciales.
+    """
+
+    def __init__(self):
+        super().__init__(
+            "falta la clave de football-data. Es gratis: se saca en "
+            "football-data.org/client/register y se pone en la variable "
+            "de entorno FOOTBALL_API_KEY. El informe post-partido y el "
+            "relieve funcionan igual sin ella, porque usan StatsBomb.")
+
+
 class LimiteAlcanzado(Exception):
     """La API ha dicho que no por exceso de peticiones.
 
     Tiene su propia clase para que arriba se pueda distinguir de un
     fallo de verdad y contarle al usuario que sólo hay que esperar.
     """
+
+
+# ══════════════════════════════════════════════════════════════════
+# EL TURNERO, Y POR QUÉ HACE FALTA PARA ABRIR ESTO A LA GENTE
+# ══════════════════════════════════════════════════════════════════
+#
+# Las diez peticiones por minuto del plan gratuito son DEL PLAN, no de
+# cada visitante. En un ordenador, con una persona usándolo, no se nota.
+# Con la página abierta a quien entre, cinco personas pinchando equipos
+# a la vez se las comen en segundos y TODAS ven un error.
+#
+# La caché resuelve la mitad: si dos piden lo mismo, la segunda no sale
+# a la red. Pero sólo cuando la primera ya ha vuelto. Si llegan a la vez
+# —que es lo que pasa cuando compartes un enlace— las dos ven la caché
+# vacía y las dos salen.
+#
+# Por eso aquí hay dos cosas:
+#
+#   1. UN TURNO: nunca hay más de PETICIONES_POR_MINUTO peticiones en
+#      los últimos sesenta segundos. Quien llega de más espera un poco
+#      en vez de recibir un 429. Esperar dos segundos es mejor
+#      experiencia que un error, y además no quema la clave.
+#
+#   2. UN VIAJE POR PETICIÓN: si cinco visitantes piden la misma cosa a
+#      la vez, sale UNA sola petición y las cinco esperan a esa. Esto
+#      ahorra más turnos que ninguna otra cosa, porque lo normal es que
+#      todo el mundo mire las mismas ligas.
+#
+# Nueve y no diez: el contador de football-data va por ventana de un
+# minuto y el reloj de aquí no es el suyo. Dejar uno de margen evita
+# rozar el tope por un cuarto de segundo de diferencia.
+PETICIONES_POR_MINUTO = 9
+VENTANA = 60.0
+
+# Más de esto esperando y se prefiere decirlo a tener a alguien mirando
+# una ruedecita. Veinte segundos es mucho para una web y poco para
+# perder la petición.
+ESPERA_MAXIMA = 20.0
+
+
+class Turnero:
+    """Reparte turnos para no pasarse del límite del plan."""
+
+    def __init__(self, cuantas=PETICIONES_POR_MINUTO, ventana=VENTANA):
+        self.cuantas = cuantas
+        self.ventana = ventana
+        self._salidas = deque()          # cuándo salió cada petición
+        self._cerrojo = asyncio.Lock()
+
+    def _limpiar(self, ahora):
+        while self._salidas and ahora - self._salidas[0] >= self.ventana:
+            self._salidas.popleft()
+
+    def espera_estimada(self) -> float:
+        """Cuánto habría que esperar ahora mismo. Sin pedir turno."""
+        ahora = time.monotonic()
+        self._limpiar(ahora)
+        if len(self._salidas) < self.cuantas:
+            return 0.0
+        return max(0.0, self.ventana - (ahora - self._salidas[0]))
+
+    async def turno(self):
+        """Espera a que toque. Revienta si la cola es absurda."""
+        while True:
+            async with self._cerrojo:
+                ahora = time.monotonic()
+                self._limpiar(ahora)
+                if len(self._salidas) < self.cuantas:
+                    self._salidas.append(ahora)
+                    return
+                falta = self.ventana - (ahora - self._salidas[0]) + 0.05
+            if falta > ESPERA_MAXIMA:
+                raise LimiteAlcanzado(
+                    f"ahora mismo hay cola: habría que esperar "
+                    f"{falta:.0f} segundos. El plan gratuito de "
+                    f"football-data son {self.cuantas + 1} consultas por "
+                    f"minuto para todo el mundo a la vez. Vuelve en un "
+                    f"minuto, o mira el informe post-partido y el "
+                    f"relieve, que no gastan de aquí.")
+            await asyncio.sleep(min(falta, 1.0))
+
+
+_turnero = Turnero()
+
+# Peticiones que están saliendo ahora mismo, para no repetirlas.
+_en_vuelo = {}
 
 
 def edad(nacimiento: str, hoy: date = None) -> int:
@@ -126,10 +233,48 @@ class FootballDataClient:
         self.base = FOOTBALL_API_BASE
 
     async def _get(self, endpoint: str) -> dict:
-        """Petición GET con caché y manejo de errores"""
+        """Una petición, con caché, turno y sin repetir viajes.
+
+        El orden importa:
+
+          1. ¿Está en la caché? Fuera, ni turno ni nada.
+          2. ¿La está pidiendo ya otro? Me cuelgo de la suya.
+          3. Pido turno (puede esperar unos segundos).
+          4. Vuelvo a mirar la caché: mientras esperaba el turno puede
+             haber llegado. Este segundo vistazo parece de más y no lo
+             es — es justo lo que ahorra peticiones cuando entra gente
+             a la vez.
+          5. Salgo a la red.
+        """
         caja = _caja(endpoint)
         if endpoint in caja:
             logger.debug("Cache hit (%ds): %s", vida(endpoint), endpoint)
+            return caja[endpoint]
+
+        # Si ya hay alguien pidiendo esto, se espera a su respuesta en
+        # vez de gastar otro turno en lo mismo.
+        if endpoint in _en_vuelo:
+            logger.debug("Me cuelgo de una petición en curso: %s", endpoint)
+            return await asyncio.shield(_en_vuelo[endpoint])
+
+        tarea = asyncio.ensure_future(self._traer(endpoint, caja))
+        _en_vuelo[endpoint] = tarea
+        try:
+            return await asyncio.shield(tarea)
+        finally:
+            _en_vuelo.pop(endpoint, None)
+
+    async def _traer(self, endpoint: str, caja) -> dict:
+        """El viaje de verdad. Sale uno solo por endpoint a la vez."""
+        # Antes de gastar un turno: si no hay clave, no hay nada que
+        # intentar. Y se dice lo que pasa, no lo que contesta la API.
+        if not FOOTBALL_API_KEY:
+            raise FaltaLaClave()
+
+        await _turnero.turno()
+
+        # Segundo vistazo: mientras esperaba el turno pudo llegar.
+        if endpoint in caja:
             return caja[endpoint]
 
         url = f"{self.base}{endpoint}"
