@@ -30,3 +30,6 @@ reports/
 # Carpetas vacías innecesarias
 {backend/
 {frontend,backend,assets,data}/
+
+# jsdom del comprobador de maqueta
+node_modules/

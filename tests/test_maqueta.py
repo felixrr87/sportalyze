@@ -94,11 +94,36 @@ def test_todas_las_pantallas_estan_explicadas():
     _correr("comprobar_explicaciones.js", None, "Todas las pantallas explicadas")
 
 
-def _correr(script, datos, frase):
+@pytest.mark.skipif(not _node(), reason="no hay node instalado")
+@pytest.mark.skipif(not _jsdom(),
+                    reason="falta jsdom: cd tests/maqueta && npm install")
+def test_el_scouting_pintado_es_el_dato():
+    """Scouting, ficha de jugador y Comparador contra el motor de verdad.
+
+    La respuesta que se le sirve a la pantalla NO es un JSON escrito a
+    mano: sale de run_scouting_pipeline, el mismo código que corre en
+    producción. Así, si el motor cambia de forma, esta prueba se entera.
+
+    Lo que busca, en una frase: que la pantalla no toque el dato. La
+    versión anterior del mapa de talento le sumaba Math.random() a las
+    coordenadas para separar los puntos que se solapaban, y dos
+    jugadores que caen encima es justo el dato que había que ver.
+    """
+    from tests.fabricar_fixture import main as fabricar
+    fabricar()
+    _correr("comprobar_scouting.js",
+            os.path.join(AQUI, "datos", "scouting_fixture.json"),
+            "lo pintado es el dato",
+            os.path.join(AQUI, "datos", "tiros_fixture.json"))
+
+
+def _correr(script, datos, frase, datos2=None):
     index = os.path.join(os.path.dirname(AQUI), "frontend", "index.html")
     argumentos = [_node(), os.path.join(MAQ, script), index]
     if datos:
         argumentos.append(datos)
+    if datos2:
+        argumentos.append(datos2)
     r = subprocess.run(
         argumentos,
         capture_output=True, text=True, timeout=180, cwd=MAQ)

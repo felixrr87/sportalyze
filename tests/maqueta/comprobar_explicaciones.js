@@ -45,6 +45,29 @@ w.addEventListener('load', async ()=>{
      'la de scouting avisa de que no puntúa defensas ni porteros');
   ok(/Understat no publica/i.test(EX.players.metodo) || /SIN NOTA/.test(EX.players.metodo),
      'la de cartas avisa de los que salen sin nota');
+  // ── frases que el código ya no cumple ──
+  //
+  // Una explicación que describe cómo se hacía antes es peor que no
+  // tener explicación: el visitante comprueba lo que dice y no cuadra.
+  // Estas dos estuvieron puestas describiendo exactamente lo contrario
+  // de lo que hace el código ahora.
+  const aplasta = t => String(t).replace(/\s+/g, ' ');
+  const caducadas = [
+    ['compare', /cada eje est[áa] escalado al mayor de los dos/i,
+     'la rueda ya NO se escala al mayor de los dos: va de 0 a 100 fija'],
+    ['scouting', /filtro de edad|edad m[áa]xima/i,
+     'ya no hay selector de edad: Understat no publica la edad'],
+  ];
+  let viejas = [];
+  for (const [k, re, por] of caducadas) {
+    const t = aplasta(EX[k].metodo + ' ' + EX[k].cristiano);
+    // «la edad no se filtra porque...» sí vale: explica la ausencia.
+    if (re.test(t) && !/no se filtra|no la publica|no hac[íi]a nada/i.test(t))
+      viejas.push(`${k}: ${por}`);
+  }
+  ok(!viejas.length, 'ninguna explicación describe cómo se hacía antes', viejas[0]);
+  ok(/percentil/i.test(EX.compare.metodo) && /mismo puesto/i.test(EX.compare.metodo),
+     'la del comparador dice que los ejes son percentiles del mismo puesto');
   console.log('');
   if(fallos){ console.log(fallos+' comprobación(es) FALLAN'); process.exit(1); }
   console.log('Todas las pantallas explicadas.'); process.exit(0);

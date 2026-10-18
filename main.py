@@ -574,6 +574,20 @@ async def run_scouting(
 ):
     """Scouting: percentiles por 90 minutos y agrupación por parecido.
 
+    `competition_code` puede ser una liga («PD») o «ALL» para las cinco
+    grandes juntas.
+
+    LO DE «TODAS» NO ES JUNTAR CINCO LISTAS, y es la diferencia entre
+    que el número signifique algo o no. Un percentil se calcula DENTRO
+    de un grupo: estar en el 90 de La Liga y estar en el 90 de la
+    Premier no son lo mismo, y poner las dos cifras en la misma tabla
+    ordenada las compara como si lo fueran.
+
+    Así que para «todas» se traen las cinco ligas, se juntan los
+    jugadores en UN SOLO grupo, y los percentiles se calculan sobre ese
+    grupo. Entonces el 90 quiere decir «mejor que el 90 % de los
+    delanteros de las cinco grandes», que sí es una frase con sentido.
+
     Se niega, con su motivo, cuando no puede hacerlo bien:
 
       puesto_sin_datos   Understat no publica con qué puntuar ese
@@ -583,21 +597,42 @@ async def run_scouting(
                          venía. Mejor saberlo que rellenarlo con ceros.
       fuente_caida       Understat no ha contestado
     """
-    try:
-        players = await get_league_players(competition_code.upper(), season)
-    except FuenteNoDisponible as e:
+    codigo = competition_code.upper()
+    ligas = list(LIGAS_GRANDES) if codigo in ("ALL", "TODAS") else [codigo]
+
+    players, caidas = [], []
+    for lg in ligas:
+        try:
+            trozo = await get_league_players(lg, season)
+            for p in trozo:
+                p["league"] = lg          # para saber de dónde sale cada uno
+            players.extend(trozo)
+        except FuenteNoDisponible as e:
+            caidas.append(f"{lg}: {e}")
+
+    if not players:
         # 503, nunca 200 con la lista vacía: "no he podido mirar" no es
         # lo mismo que "he mirado y no hay nadie".
         raise HTTPException(status_code=503, detail={
-            "motivo": "fuente_caida", "detalle": str(e)})
+            "motivo": "fuente_caida",
+            "detalle": " · ".join(caidas) or "Understat no ha contestado"})
 
     try:
-        return run_scouting_pipeline(
+        salida = run_scouting_pipeline(
             players=players,
             position=position.upper()[:2],
             max_age=max_age,
             min_minutes=min_minutes,
         )
+        salida["ligas"] = ligas
+        salida["temporada"] = nombre_temporada(season or temporada_actual())
+        if caidas:
+            # Una liga caída NO se calla: cambia con quién se está
+            # comparando a todo el mundo.
+            salida.setdefault("avisos", []).append(
+                "No he podido traer " + " ni ".join(caidas) +
+                ". Los percentiles están calculados sin esa liga.")
+        return salida
     except PuestoSinDatos as e:
         raise HTTPException(status_code=503, detail={
             "motivo": "puesto_sin_datos", "puesto": e.puesto,
@@ -823,6 +858,9 @@ async def health():
 # Sin eso, calentar seis ligas se comería los seis primeros turnos del
 # minuto y el primer visitante esperaría por culpa del calentamiento,
 # que es exactamente lo contrario de lo que se busca.
+
+# Las cinco que se ofrecen juntas en el scouting.
+LIGAS_GRANDES = ("PD", "PL", "SA", "BL1", "FL1")
 
 LIGAS_QUE_SE_CALIENTAN = ("PD", "PL", "SA", "BL1", "FL1")
 CADA_CUANTO = 7.0          # segundos entre una liga y la siguiente

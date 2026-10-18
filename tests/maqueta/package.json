@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "description": "Comprueba que la pantalla del Simulador pinta los números del modelo",
-  "scripts": { "comprobar": "node comprobar.js ../../frontend/index.html edicion.json" },
-  "devDependencies": { "jsdom": "^25.0.1" }
+  "scripts": {
+    "comprobar": "node comprobar.js ../../frontend/index.html edicion.json"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.1"
+  }
 }

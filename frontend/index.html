@@ -715,7 +715,7 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
       <div class="ch"><div class="ct">⚙️ Parámetros</div></div>
       <div class="fr">
         <div class="fg"><label class="fl">Posición</label><select id="scP" onchange="runScouting()"><option value="FW">Delanteros</option><option value="MF">Centrocampistas</option><option value="DF">Defensas</option><option value="GK">Porteros</option></select></div>
-        <div class="fg"><label class="fl">Edad máx.</label><select id="scA" onchange="runScouting()"><option value="23">≤23</option><option value="25">≤25</option><option value="28">≤28</option><option value="99">Todos</option></select></div>
+        <div class="fg"><label class="fl">Minutos mín.</label><select id="scMin" onchange="runScouting()"><option value="180">≥180 (2 partidos)</option><option value="270" selected>≥270 (3 partidos)</option><option value="450">≥450 (5 partidos)</option><option value="720">≥720 (8 partidos)</option></select></div>
         <div class="fg"><label class="fl">Liga</label><select id="scLg" onchange="runScouting()"><option value="all">Todas</option><option value="PL">Premier</option><option value="PD">La Liga</option><option value="BL1">Bundesliga</option><option value="SA">Serie A</option><option value="FL1">Ligue 1</option></select></div>
       </div>
     </div>
@@ -737,6 +737,8 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
     <div class="card" style="margin-bottom:14px">
       <div class="ch"><div class="ct">👥 Selección</div></div>
       <div class="g2">
+        <div class="fg"><label class="fl">Puesto</label><select id="cmpPos" style="width:100%"><option value="FW">Delanteros</option><option value="MF">Centrocampistas</option></select></div>
+        <div class="fg"><label class="fl">Liga</label><select id="cmpLg" style="width:100%"><option value="PD">🇪🇸 La Liga</option><option value="PL">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier</option><option value="BL1">🇩🇪 Bundesliga</option><option value="SA">🇮🇹 Serie A</option><option value="FL1">🇫🇷 Ligue 1</option><option value="all">Las cinco grandes</option></select></div>
         <div class="fg"><label class="fl">Jugador 1</label><select id="c1" onchange="runCompare()" style="width:100%"></select></div>
         <div class="fg"><label class="fl">Jugador 2</label><select id="c2" onchange="runCompare()" style="width:100%"></select></div>
       </div>
@@ -1166,6 +1168,11 @@ async function cargarJugadores(liga) {
         name: x.name, team: x.team, league: lg,
         pos: puestoDesdeUnderstat(x.position),
         goals: x.goals, assists: x.assists, xG: x.xG, xA: x.xA,
+        npxG: x.npxG, xGChain: x.xGChain, xGBuildup: x.xGBuildup,
+        // Las tasas por 90 las calcula el servidor al puntuar. Sin
+        // traerlas, la ficha enseñaba el percentil sin la cifra de la
+        // que sale, que es justo lo que hay que poder comprobar.
+        por_90: x.por_90 || null,
         shots: x.shots, key_passes: x.key_passes,
         minutes: x.time, games: x.games,
         xG90: x.xG_per90, dif: x.goals_diff,
@@ -1592,11 +1599,12 @@ function renderCards() {
     const [top, bot] = gGrad(p), starred = wl.some(w => w.id === p.id);
     const nt = nota(p); const sc = nt.color;
     const stats = p.pos !== 'GK' ? pStat(p.goals,'GOL') + pStat(p.assists,'ASI') + pStat(p.xG.toFixed(1),'xG') : pStat(p.minutes,'MIN') + pStat(p.games,'PJ') + pStat(p.key_passes,'PC');
-    return `<div class="fc${starred?' starred':''}" onclick="toggleWL('${p.id}')" title="${p.name}">
+    return `<div class="fc${starred?' starred':''}" onclick="abrirFichaDesdeCarta('${p.id}')" title="Pincha para ver la ficha de ${p.name}">
       <div class="fci" style="background:linear-gradient(160deg,${top} 0%,${bot} 100%)">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%">
           <div title="${nt.porque}"><div class="fscore" style="color:${sc}">${nt.txt}</div><div class="fpos">${p.pos || '—'}</div></div>
-          <div style="font-size:13px;opacity:0.85">${starred?'⭐':'☆'}</div>
+          <div onclick="event.stopPropagation();toggleWL('${p.id}')" title="Seguir a este jugador"
+            style="font-size:13px;opacity:0.85;cursor:pointer;padding:2px 4px;margin:-2px -4px">${starred?'⭐':'☆'}</div>
         </div>
         <div class="fav">${gInit(p.name)}</div>
         <div class="fn">${p.name.split(' ').slice(-1)[0]}</div>
@@ -1608,94 +1616,12 @@ function renderCards() {
 }
 
 // ── SCOUTING ML ───────────────────────────────────────────
-function kMeans(items, keys, k, iters = 25) {
-  if (items.length <= k) return items.map((_, i) => i % k);
-  const vals = items.map(p => keys.map(k => Number(p[k]) || 0));
-  let centers = vals.slice(0, k).map(v => [...v]), labels = new Array(items.length).fill(0);
-  for (let it = 0; it < iters; it++) {
-    labels = vals.map(v => { let b = 0, bd = Infinity; centers.forEach((c, ci) => { const d = v.reduce((s, x, i) => s + (x - c[i]) ** 2, 0); if (d < bd) { bd = d; b = ci; } }); return b; });
-    centers = Array.from({length:k}, (_, ci) => { const pts = vals.filter((_, i) => labels[i] === ci); return pts.length ? keys.map((_, ki) => pts.reduce((s, p) => s + p[ki], 0) / pts.length) : [...centers[ci]]; });
-  }
-  const avg = Array.from({length:k}, (_, ci) => { const it = items.filter((_, i) => labels[i] === ci); return it.length ? it.reduce((s, p) => s + p.score, 0) / it.length : 0; });
-  const order = [...Array(k).keys()].sort((a, b) => avg[b] - avg[a]), remap = new Array(k);
-  order.forEach((o, r) => remap[o] = r);
-  return labels.map(l => remap[l]);
-}
-
-function runScouting() {
-  const pos = $('scP').value, maxA = +$('scA').value, lg = $('scLg').value;
-  let pl = PLAYERS.filter(p => p.pos === pos);
-  if (!pl.length) { $('scKPIs').innerHTML = ''; $('scTbl').innerHTML = '<div class="empty"><p>Sin jugadores</p></div>'; return; }
-  const keys = {FW:['goals','assists','xG'],MF:['goals','assists','xG'],DF:['goals','assists','minutes'],GK:['minutes','rating']}[pos];
-  const cls = kMeans(pl, keys, 4);
-  pl.forEach((p, i) => p.cluster = cls[i]);
-  const cL = ['🌟 Élite','🔥 Alto','📈 Promedio','🌱 Desarrollo'], cC = ['#f59e0b','#f97316','#06b6d4','#10b981'];
-  const avg = pl.reduce((a, p) => a + p.score, 0) / pl.length;
-  const top1 = [...pl].sort((a, b) => b.score - a.score)[0];
-  $('scKPIs').innerHTML = `
-    <div class="kpi"><div class="kl">👥 Analizados</div><div class="kv">${pl.length}</div></div>
-    <div class="kpi"><div class="kl">⭐ Score medio</div><div class="kv">${avg.toFixed(0)}</div></div>
-    <div class="kpi"><div class="kl">🌟 Élite</div><div class="kv">${pl.filter(p=>p.cluster===0).length}</div></div>
-    <div class="kpi"><div class="kl">🏆 Top</div><div class="kv" style="font-size:13px;margin-top:4px">${top1?.name.split(' ').slice(-1)[0]||'—'}</div></div>`;
-  dC('scPCA');
-  C['scPCA'] = new Chart($('scPCA').getContext('2d'), { type:'bubble', data:{ datasets:[0,1,2,3].map(c=>({
-    label:cL[c], data:pl.filter(p=>p.cluster===c).map(p=>({x:+(p.xG+(Math.random()-.5)*.4).toFixed(2),y:+(p.goals+(Math.random()-.5)*.4).toFixed(2),r:7,name:p.name})),
-    backgroundColor:cC[c]+'88', borderColor:cC[c], borderWidth:1.5
-  }))}, options:{ responsive:true, maintainAspectRatio:false,
-    plugins:{legend:{labels:{color:'#7a9bbf',font:{size:10}}},tooltip:{callbacks:{label:ctx=>ctx.raw.name||''}}},
-    scales:{x:{ticks:{color:'#7a9bbf'},grid:{color:'rgba(14,165,233,0.06)'},title:{display:true,text:'xG',color:'#7a9bbf'}},
-            y:{ticks:{color:'#7a9bbf'},grid:{color:'rgba(14,165,233,0.08)'},title:{display:true,text:'Goles',color:'#7a9bbf'}}}
-  }});
-  const top10 = [...pl].sort((a,b)=>b.score-a.score).slice(0,10);
-  dC('scBar');
-  C['scBar'] = new Chart($('scBar').getContext('2d'), { type:'bar', data:{
-    labels:top10.map(p=>p.name.split(' ').slice(-1)[0]),
-    datasets:[{label:'Percentil medio',data:top10.map(p=>p.score ?? null),backgroundColor:top10.map(p=>(p.score||0)>=85?'rgba(245,158,11,0.6)':(p.score||0)>=70?'rgba(249,115,22,0.6)':'rgba(14,165,233,0.6)'),borderColor:top10.map(p=>(p.score||0)>=85?'#f59e0b':(p.score||0)>=70?'#f97316':'#0ea5e9'),borderWidth:1,borderRadius:6}]
-  }, options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{color:'#7a9bbf'},grid:{color:'rgba(14,165,233,0.06)'},min:0,max:100},y:{ticks:{color:'#7a9bbf',font:{size:10}},grid:{color:'rgba(14,165,233,0.04)'}}} }});
-  const sorted = [...pl].sort((a,b)=>b.score-a.score);
-  $('scTbl').innerHTML = '<table><thead><tr><th>#</th><th>Jugador</th><th>Equipo</th><th>Liga</th><th>Edad</th><th>Goles</th><th>Asist</th><th>xG</th><th>Min</th><th>Score</th><th>Perfil</th></tr></thead><tbody>' +
-    sorted.map((p,i)=>`<tr><td style="color:var(--text2)">${i+1}</td><td style="font-weight:500">${p.name}</td><td style="font-size:11px">${p.team}</td><td><span class="bge b-blue" style="font-size:9px">${p.league}</span></td><td style="font-family:var(--fm)">${p.minutes}</td><td style="font-family:var(--fm);color:var(--green)">${p.goals}</td><td style="font-family:var(--fm);color:var(--electric)">${p.assists}</td><td style="font-family:var(--fm)">${p.xG.toFixed(1)}</td><td style="font-family:var(--fm)">${p.minutes}</td><td style="font-family:var(--fm);font-weight:700;color:${nota(p).color}" title="${nota(p).porque}">${nota(p).txt}</td><td style="font-size:11px">${cL[p.cluster||0]}</td></tr>`).join('') + '</tbody></table>';
-}
+// kMeans() ESTABA AQUÍ. Agrupaba en el navegador sobre goles,
+// asistencias y xG. Ahora agrupa el servidor sobre los percentiles
+// por 90 minutos, que es lo que hay que comparar, y además tiene
+// pruebas. Aquí ya no se calcula nada.
 
 // ── COMPARE ───────────────────────────────────────────────
-function initCmp() {
-  const opts = PLAYERS.map(p=>`<option value="${p.id}">${p.name} (${p.team})</option>`).join('');
-  $('c1').innerHTML = opts; $('c2').innerHTML = opts; $('c2').selectedIndex = 1; runCompare();
-}
-function runCompare() {
-  const p1 = PLAYERS.find(p=>p.id===+$('c1').value), p2 = PLAYERS.find(p=>p.id===+$('c2').value);
-  if (!p1||!p2||p1.id===p2.id) { $('cOut').innerHTML='<div class="al alw">Selecciona dos jugadores distintos</div>'; return; }
-  const metrics=['goals','assists','xG','minutes','rating'], labels=['Goles','Asist','xG','Min','Rating'];
-  const norm = metrics.map(m=>Math.max(p1[m],p2[m],1));
-  const card=(p,col)=>`<div class="card">
-    <div class="ch"><div class="ct" style="color:${col}">👤 ${p.name}</div><span class="bge b-blue">${p.league} · ${p.pos}</span></div>
-    <div style="font-size:11px;color:var(--text2);margin-bottom:10px">${p.team} · ${p.minutes} min · ${p.games} PJ</div>
-    ${metrics.map((m,i)=>`<div class="pw"><div class="pm"><span>${labels[i]}</span><span style="font-family:var(--fm)">${typeof p[m]==='number'&&m!=='minutes'?p[m].toFixed(1):p[m]}</span></div><div class="pb"><div class="pf" style="width:${Math.round(p[m]/norm[i]*100)}%;background:${col}"></div></div></div>`).join('')}
-    <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
-      <div style="font-family:var(--ff);font-size:42px;color:${col}" title="${nota(p).porque}">${nota(p).txt}</div>
-      <div><div style="font-size:10px;color:var(--text2)">Percentil medio</div><span class="bge ${nota(p).clase}" style="margin-top:3px">${nota(p).etiqueta}</span></div>
-    </div></div>`;
-  dC('rC');
-  $('cOut').innerHTML=`<div class="g2" style="margin-bottom:14px">${card(p1,'#0ea5e9')}${card(p2,'#f97316')}</div>
-    <div class="card"><div class="ch"><div class="ct">🕸️ Radar comparativo</div></div><div class="rw"><canvas id="rC"></canvas></div></div>`;
-  setTimeout(()=>{
-    const ctx=$('rC')?.getContext('2d'); if(!ctx) return;
-    // La punta del percentil sólo se pinta si los DOS tienen nota:
-    // media rueda con un hueco se lee como «vale cero», no como «no
-    // se sabe». Y la etiqueta decía «Score/10» pintando el score tal
-    // cual sobre un eje de 0 a 100, que era otra cosa.
-    const hayNota = p1.score != null && p2.score != null;
-    const ejes = hayNota ? [...labels, 'Percentil'] : labels;
-    const fila = p => hayNota
-      ? [...metrics.map((m,i)=>+(p[m]/norm[i]*100).toFixed(0)), p.score]
-      : metrics.map((m,i)=>+(p[m]/norm[i]*100).toFixed(0));
-    C['rC']=new Chart(ctx,{type:'radar',data:{labels:ejes,datasets:[
-      {label:p1.name.split(' ').slice(-1)[0],data:fila(p1),backgroundColor:'rgba(14,165,233,0.15)',borderColor:'#0ea5e9',pointBackgroundColor:'#0ea5e9',borderWidth:2},
-      {label:p2.name.split(' ').slice(-1)[0],data:fila(p2),backgroundColor:'rgba(249,115,22,0.15)',borderColor:'#f97316',pointBackgroundColor:'#f97316',borderWidth:2}
-    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#7a9bbf'}}},scales:{r:{ticks:{color:'#7a9bbf',backdropColor:'transparent',stepSize:25},grid:{color:'rgba(14,165,233,0.1)'},pointLabels:{color:'#7a9bbf',font:{size:11}},min:0,max:100}}}});
-  },50);
-}
-
 // ── WATCHLIST ─────────────────────────────────────────────
 function toggleWL(id) {
   const p = PLAYERS.find(x=>x.id===id); if(!p) return;
@@ -2667,29 +2593,47 @@ const EXPLICA = {
       'promedio ponderado de esos percentiles. Después un K-Means ' +
       'agrupa a los jugadores por su perfil de percentiles —no por sus ' +
       'totales, que agruparía por minutos jugados— y un PCA los coloca ' +
-      'en el mapa. Sólo delanteros y centrocampistas: con esta fuente ' +
-      'no se puede puntuar a un defensa ni a un portero, y se dice en ' +
-      'vez de rellenar con ceros.',
+      'en el mapa. Con «Todas» no se juntan cinco listas ya hechas: se ' +
+      'meten los jugadores de las cinco ligas en UN grupo y los ' +
+      'percentiles se calculan sobre ese grupo, porque estar en el 90 ' +
+      'de La Liga y estar en el 90 de la Premier no son lo mismo y ' +
+      'ponerlos en la misma tabla los compara como si lo fueran. Sólo ' +
+      'delanteros y centrocampistas: con esta fuente no se puede ' +
+      'puntuar a un defensa ni a un portero, y se dice en vez de ' +
+      'rellenar con ceros. La edad no se filtra porque Understat no la ' +
+      'publica, y antes había un selector de edad que no hacía nada.',
     cristiano:
       'Buscar jugadores que rinden por encima de lo que su equipo o su ' +
       'nombre harían pensar. El mapa junta a los que se parecen entre ' +
       'sí: si encuentras a uno que te gusta, los de su mismo grupo ' +
-      'juegan parecido. Ojo con los filtros de minutos: alguien ' +
-      'espectacular en 200 minutos no ha demostrado nada todavía.',
+      'juegan parecido. Dos puntos pegados quieren decir dos jugadores ' +
+      'parecidos: no se separan a mano para que se vean mejor. Pasa el ' +
+      'ratón por encima de cualquier punto o barra para ver quién es y ' +
+      'de dónde sale su nota, y pincha para abrir su ficha. Ojo con los ' +
+      'minutos: alguien espectacular en 200 minutos no ha demostrado ' +
+      'nada todavía.',
   },
 
   compare: {
     fuente: 'Understat',
     metodo:
-      'Dos jugadores, las mismas métricas y un radar. Cada eje está ' +
-      'escalado al mayor de los dos, así que la rueda dice quién gana ' +
-      'en qué, no la posición de cada uno respecto a la liga. El eje ' +
-      'del percentil sólo aparece si los dos jugadores tienen nota.',
+      'Cada eje es el PERCENTIL del jugador dentro de su puesto en la ' +
+      'liga elegida, en una escala fija de 0 a 100. Antes cada eje se ' +
+      'escalaba al mayor de los dos, que contesta «cuál de estos dos ' +
+      'tira más» y no «cómo tira cada uno»: con esa escala, si los dos ' +
+      'son malos tirando, uno de ellos salía con el eje al 100. Sólo se ' +
+      'comparan jugadores del mismo puesto, porque las métricas de un ' +
+      'delantero y las de un centrocampista no son las mismas y ' +
+      'ponerlas en la misma rueda es dibujar una mentira. Pasando el ' +
+      'ratón sale la cifra por 90 minutos de la que viene cada percentil.',
     cristiano:
-      'Dos jugadores, cara a cara. La rueda enseña de un golpe en qué ' +
-      'gana cada uno: si uno tiene la figura estirada hacia los goles ' +
-      'y el otro hacia los pases clave, son dos jugadores distintos ' +
-      'aunque los totales se parezcan.',
+      'Dos jugadores, cara a cara, pero medidos contra la liga y no uno ' +
+      'contra el otro. Si los dos están en el 30, los dos salen en el ' +
+      '30: así ves si alguno es bueno de verdad, no sólo quién es el ' +
+      'menos malo de los dos. Si uno tiene la figura estirada hacia los ' +
+      'goles y el otro hacia los pases clave, son dos jugadores ' +
+      'distintos aunque los totales se parezcan. Pincha cualquiera de ' +
+      'los dos para abrir su ficha entera.',
   },
 
   watchlist: {
@@ -2802,6 +2746,666 @@ function pintaExplicacion(pagina) {
   if (cab) cab.after(bloque);
   else if (cont) pag.insertBefore(bloque, cont);
   else pag.insertBefore(bloque, pag.firstChild);
+}
+
+
+// ══════════════════════════════════════════════════════════
+// SCOUTING
+// ══════════════════════════════════════════════════════════
+//
+// LO QUE HABÍA AQUÍ, Y POR QUÉ SE HA IDO ENTERO
+//
+// La versión anterior no llamaba al servidor. Hacía esto:
+//
+//   · cogía PLAYERS, la lista que había cargado Cartas FIFA, así que
+//     «sólo iba la Premier»: Cartas con «Todas» carga la Premier y el
+//     scouting heredaba esa lista
+//   · leía los selectores de edad y de liga y NO LOS USABA
+//   · hacía su propio K-Means en JavaScript sobre goles, asistencias y
+//     xG, en vez de los percentiles por 90 minutos del servidor
+//   · y al dibujar el mapa le sumaba RUIDO ALEATORIO a las
+//     coordenadas, p.xG + (Math.random()-.5)*.4, para que los puntos
+//     no se solaparan
+//
+// Lo último es lo que no puede estar: mover un punto al azar en un
+// gráfico es inventarse dónde está ese jugador. En un proyecto cuya
+// gracia es que cada número se puede comprobar, eso lo tira todo.
+//
+// Ahora la pantalla no calcula NADA. Pide, y pinta lo que le dan: los
+// percentiles, el agrupamiento y las coordenadas del PCA salen del
+// servidor, que es donde están las pruebas.
+
+const SC = { ultima: null, cargando: false };
+
+const SC_MOTIVOS = {
+  puesto_sin_datos: ['Con esta fuente no se puede puntuar ese puesto', ''],
+  faltan_metricas: ['Faltan métricas en los datos',
+    'La fuente ha cambiado y ya no trae algo que antes venía. Prefiero parar a ' +
+    'rellenarlo con ceros, que es lo que hacía la versión anterior.'],
+  fuente_caida: ['Understat no ha contestado',
+    'No es que no haya datos: es que no se sabe.'],
+};
+
+function scEstado(titulo, texto) {
+  ['scKPIs'].forEach(i => { const n = $(i); if (n) n.innerHTML = ''; });
+  dC('scPCA'); dC('scBar');
+  $('scTbl').innerHTML = `<div class="empty" style="padding:28px 20px">
+    <h3>${esc(titulo)}</h3><p style="max-width:62ch;margin:8px auto 0">${esc(texto)}</p></div>`;
+}
+
+async function runScouting() {
+  if (SC.cargando) return;
+  const pos = $('scP').value;
+  const lg = $('scLg').value;
+  const minutos = $('scMin') ? +$('scMin').value : 270;
+
+  SC.cargando = true;
+  scEstado('Pidiendo datos…',
+    lg === 'all' ? 'Las cinco grandes juntas: son cinco consultas.' : '');
+
+  let r, d;
+  try {
+    r = await fetch(`${API}/api/scouting/${lg === 'all' ? 'ALL' : lg}` +
+                    `?position=${pos}&min_minutes=${minutos}`);
+    d = await r.json();
+  } catch (e) {
+    SC.cargando = false;
+    scEstado(...SC_MOTIVOS.fuente_caida);
+    return;
+  }
+  SC.cargando = false;
+
+  if (!r.ok) {
+    const det = (d && d.detail) || {};
+    const [t, x] = SC_MOTIVOS[det.motivo] || SC_MOTIVOS.fuente_caida;
+    scEstado(t, det.detalle || x);
+    return;
+  }
+
+  SC.ultima = d;
+  scPinta(d);
+}
+
+function scPinta(d) {
+  const pl = d.players || [];
+  if (!pl.length) {
+    scEstado('Ningún jugador pasa los filtros',
+      (d.avisos || []).join(' ') || 'Baja los minutos mínimos.');
+    return;
+  }
+
+  const cL = ['🌟 Élite', '🔥 Alto', '📈 Promedio', '🌱 Desarrollo'];
+  const cC = ['#f59e0b', '#f97316', '#06b6d4', '#10b981'];
+  const media = pl.reduce((a, p) => a + (p.score || 0), 0) / pl.length;
+  const mejor = pl[0];
+
+  $('scKPIs').innerHTML = `
+    <div class="kpi"><div class="kl">👥 Comparados</div><div class="kv">${pl.length}</div>
+      <div class="ks">${esc((d.ligas || []).join(' · '))}</div></div>
+    <div class="kpi"><div class="kl">📊 Percentil medio</div><div class="kv">${media.toFixed(0)}</div>
+      <div class="ks">por definición ronda 50</div></div>
+    <div class="kpi"><div class="kl">🌟 Élite</div><div class="kv">${pl.filter(p => p.cluster === 0).length}</div>
+      <div class="ks">grupo más alto</div></div>
+    <div class="kpi"><div class="kl">🏆 El primero</div>
+      <div class="kv" style="font-size:13px;margin-top:4px">${esc((mejor.name || '').split(' ').slice(-1)[0])}</div>
+      <div class="ks">${mejor.score} · ${mejor.time} min</div></div>`;
+
+  if ((d.avisos || []).length) {
+    $('scKPIs').insertAdjacentHTML('afterend',
+      `<div class="al alw" style="margin-bottom:14px">⚠ ${esc(d.avisos.join(' · '))}</div>`);
+  }
+
+  // ── el mapa: las coordenadas del PCA, SIN tocarlas ──
+  //
+  // Antes aquí se sumaba ruido aleatorio para separar los puntos. Si
+  // dos jugadores caen encima es porque SON parecidos: ése es justo el
+  // dato. Separarlos a mano lo borra.
+  const varianza = pl[0] && pl[0].pca_variance;
+  const sinMapa = pl.filter(p => p.pca_x === undefined || p.pca_x === null).length;
+  dC('scPCA');
+  if (sinMapa) {
+    // El servidor se salta el PCA cuando hay menos de cuatro
+    // jugadores o menos de dos métricas utilizables. Antes esto
+    // dibujaba un recuadro vacío y el visitante no sabía si era un
+    // fallo o es que no había nadie.
+    $('scPCA').parentElement.innerHTML = `<div class="empty" style="padding:24px 18px">
+      <h3>Sin mapa de talento</h3>
+      <p style="max-width:58ch;margin:8px auto 0">Con ${pl.length}
+      ${pl.length === 1 ? 'jugador' : 'jugadores'} no se puede situar a nadie
+      respecto a los demás: hacen falta al menos cuatro para que agrupar
+      signifique algo. La tabla de abajo sí vale.</p></div>`;
+  } else
+  C['scPCA'] = new Chart($('scPCA').getContext('2d'), {
+    type: 'scatter',
+    data: {
+      datasets: [0, 1, 2, 3].map(c => ({
+        label: cL[c],
+        data: pl.filter(p => p.cluster === c).map(p => ({
+          x: p.pca_x, y: p.pca_y, jug: p,
+        })),
+        backgroundColor: cC[c] + '99', borderColor: cC[c],
+        borderWidth: 1.5, pointRadius: 6, pointHoverRadius: 9,
+      })),
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#7a9bbf', font: { size: 10 } } },
+        tooltip: {
+          // Al pasar el ratón, quién es y por qué está ahí.
+          callbacks: {
+            title: c => c[0].raw.jug.name,
+            label: c => {
+              const p = c[0] ? c[0].raw.jug : c.raw.jug;
+              const pc = p.percentiles || {};
+              return [`${p.team} · ${p.time} min · percentil medio ${p.score}`]
+                .concat(Object.entries(pc).slice(0, 4)
+                  .map(([k, v]) => `   ${k}: ${v}`));
+            },
+          },
+        },
+      },
+      onClick: (e, els) => {
+        if (els.length) {
+          const p = C['scPCA'].data.datasets[els[0].datasetIndex]
+            .data[els[0].index].jug;
+          abrirFicha(p);
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#7a9bbf' }, grid: { color: 'rgba(14,165,233,0.06)' },
+             title: { display: true, color: '#7a9bbf',
+               text: 'Componente 1' + (varianza ? ` · los dos ejes explican el ${varianza} % de la variación` : '') } },
+        y: { ticks: { color: '#7a9bbf' }, grid: { color: 'rgba(14,165,233,0.08)' },
+             title: { display: true, text: 'Componente 2', color: '#7a9bbf' } },
+      },
+    },
+  });
+
+  // ── el top 10 ──
+  const top10 = pl.slice(0, 10);
+  dC('scBar');
+  C['scBar'] = new Chart($('scBar').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: top10.map(p => (p.name || '').split(' ').slice(-1)[0]),
+      datasets: [{
+        label: 'Percentil medio',
+        data: top10.map(p => p.score),
+        jugs: top10,
+        backgroundColor: top10.map(p => p.score >= 85 ? 'rgba(245,158,11,0.6)'
+          : p.score >= 70 ? 'rgba(249,115,22,0.6)' : 'rgba(14,165,233,0.6)'),
+        borderColor: top10.map(p => p.score >= 85 ? '#f59e0b'
+          : p.score >= 70 ? '#f97316' : '#0ea5e9'),
+        borderWidth: 1, borderRadius: 6,
+      }],
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: c => top10[c[0].dataIndex].name,
+            label: c => {
+              const p = top10[c.dataIndex], pc = p.percentiles || {};
+              return [`${p.team} · ${p.time} min · ${p.score}`]
+                .concat(Object.entries(pc).map(([k, v]) => `   ${k}: ${v}`));
+            },
+          },
+        },
+      },
+      onClick: (e, els) => { if (els.length) abrirFicha(top10[els[0].index]); },
+      scales: {
+        x: { ticks: { color: '#7a9bbf' }, grid: { color: 'rgba(14,165,233,0.06)' }, min: 0, max: 100 },
+        y: { ticks: { color: '#7a9bbf', font: { size: 10 } }, grid: { color: 'rgba(14,165,233,0.04)' } },
+      },
+    },
+  });
+
+  // ── la tabla, con el desglose ──
+  const etiquetas = Object.keys((pl[0] && pl[0].percentiles) || {});
+  let h = '<table><thead><tr><th>#</th><th>Jugador</th><th>Equipo</th><th>Liga</th>' +
+    '<th>Min</th><th>Goles</th><th>Asist</th><th>xG</th>' +
+    etiquetas.map(e => `<th title="percentil dentro de este grupo">${esc(e)}</th>`).join('') +
+    '<th>Percentil</th><th>Perfil</th></tr></thead><tbody>';
+  pl.forEach((p, i) => {
+    const pc = p.percentiles || {};
+    h += `<tr style="cursor:pointer" onclick="abrirFichaPorId('${esc(String(p.player_id))}')"
+        title="Pincha para ver su ficha">
+      <td style="color:var(--text2)">${i + 1}</td>
+      <td style="font-weight:500">${esc(p.name)}</td>
+      <td style="font-size:11px">${esc(p.team)}</td>
+      <td><span class="bge b-blue" style="font-size:9px">${esc(p.league || '')}</span></td>
+      <td style="font-family:var(--fm)">${p.time}</td>
+      <td style="font-family:var(--fm);color:var(--green)">${p.goals}</td>
+      <td style="font-family:var(--fm);color:var(--electric)">${p.assists}</td>
+      <td style="font-family:var(--fm)">${(p.xG || 0).toFixed(1)}</td>
+      ${etiquetas.map(e => `<td style="font-family:var(--fm);font-size:11px;
+        color:${pc[e] >= 80 ? 'var(--green)' : pc[e] <= 20 ? 'var(--red)' : 'var(--text2)'}">${pc[e] ?? '—'}</td>`).join('')}
+      <td style="font-family:var(--fm);font-weight:700;color:${nota(p).color}">${nota(p).txt}</td>
+      <td style="font-size:11px">${cL[p.cluster || 0]}</td></tr>`;
+  });
+  $('scTbl').innerHTML = h + '</tbody></table>';
+}
+
+function abrirFichaPorId(id) {
+  const p = (SC.ultima && (SC.ultima.players || [])
+    .find(x => String(x.player_id) === String(id)));
+  if (p) abrirFicha(p);
+}
+
+
+// ══════════════════════════════════════════════════════════
+// LA FICHA DE JUGADOR
+// ══════════════════════════════════════════════════════════
+//
+// Se abre pinchando a un jugador en cualquier sitio: una carta, una
+// fila del scouting, un punto del mapa de talento.
+//
+// QUÉ LLEVA Y POR QUÉ ESAS COSAS
+//
+//   1. Sus percentiles contra los de su puesto, en barras. Un número
+//      suelto («0,62 xG por 90») no dice nada si no sabes qué es
+//      normal en ese puesto. Un percentil sí.
+//   2. Su mapa de tiros de verdad, uno a uno, con el xG de cada uno y
+//      cómo acabó. De /api/player/{id}/shots.
+//   3. De dónde sale cada cifra y con cuántos minutos, porque con
+//      trescientos minutos un percentil de 95 es una racha, no un
+//      jugador.
+//
+// LO QUE NO LLEVA, Y SE DICE
+//
+// Ni edad, ni valor de mercado, ni nada defensivo. Understat publica
+// tiros y lo que rodea a un tiro. Poner un hueco vacío sin explicarlo
+// es peor que no poner nada.
+
+const FICHA = { abierta: null, tiros: {} };
+
+function cerrarFicha() {
+  const n = $('fichaJug');
+  if (n) n.remove();
+  FICHA.abierta = null;
+}
+
+async function abrirFicha(p) {
+  if (!p) return;
+  cerrarFicha();
+  FICHA.abierta = p;
+
+  const pc = p.percentiles || {};
+  const p90 = p.por_90 || {};
+  const etiquetas = Object.keys(pc);
+  const pocos = (p.time || 0) < 450;
+
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="fichaJug" onclick="if(event.target===this)cerrarFicha()" style="
+      position:fixed;inset:0;z-index:200;background:rgba(3,8,16,.82);
+      display:flex;align-items:flex-start;justify-content:center;
+      padding:24px 16px;overflow:auto;backdrop-filter:blur(3px)">
+      <div style="background:var(--bg2);border:1px solid var(--border2);
+        border-radius:16px;max-width:860px;width:100%;overflow:hidden">
+
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;
+          gap:14px;padding:18px 20px;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-family:var(--fh);font-size:24px;font-weight:800">${esc(p.name)}</div>
+            <div style="color:var(--text2);font-size:13px;margin-top:2px">
+              ${esc(p.team || '')} · ${esc(p.league || '')} ·
+              ${esc(puestoLargo(p.position || p.pos))} ·
+              ${p.time} min en ${p.games} partidos</div>
+          </div>
+          <button onclick="cerrarFicha()" style="background:none;border:1px solid var(--border2);
+            color:var(--text2);border-radius:8px;padding:5px 11px;cursor:pointer;
+            font-family:inherit;font-size:13px">Cerrar</button>
+        </div>
+
+        ${pocos ? `<div style="padding:11px 20px;background:rgba(227,179,65,.09);
+          border-bottom:1px solid var(--border);color:#e3b341;font-size:12.5px;line-height:1.5">
+          ⚠ Sólo ${p.time} minutos. Con tan poco jugado, una tasa por 90 minutos
+          es más racha que jugador: un percentil alto aquí dice poco todavía.</div>` : ''}
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));
+          gap:1px;background:var(--border);border-bottom:1px solid var(--border)">
+          ${(() => {
+            // dos decimales si hay número, «—» si no viene. Un 0,00
+            // dibujado donde falta el dato es un dato inventado.
+            const d2 = v => (v === null || v === undefined) ? null : (+v).toFixed(2);
+            return [['Goles', p.goals], ['Asistencias', p.assists],
+             ['xG', d2(p.xG)], ['npxG', d2(p.npxG)],
+             ['xA', d2(p.xA)], ['Tiros', p.shots],
+             ['Pases clave', p.key_passes]];
+          })().map(([k, v]) => `
+            <div style="background:var(--bg2);padding:10px 13px">
+              <div style="font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;
+                color:var(--text3)">${esc(k)}</div>
+              <div style="font-family:var(--fm);font-size:15px;font-weight:650;
+                margin-top:2px">${v ?? '—'}</div></div>`).join('')}
+        </div>
+
+        ${etiquetas.length ? `
+        <div style="padding:16px 20px 6px">
+          <div style="font-size:13px;font-weight:650;margin-bottom:3px">
+            Dónde está respecto a los de su puesto</div>
+          <div style="color:var(--text3);font-size:12px;line-height:1.55;max-width:66ch">
+            Cada barra es su percentil dentro del grupo con el que se le está
+            comparando. Un 80 quiere decir «mejor que el 80 % de ellos». Pasa el
+            ratón para ver la cifra por 90 minutos de la que sale.
+          </div>
+        </div>
+        <div style="padding:10px 20px 16px">${etiquetas.map(e => {
+          const v = pc[e] ?? 0;
+          const col = v >= 80 ? '#10b981' : v >= 55 ? '#0ea5e9'
+            : v >= 30 ? '#f59e0b' : '#f43f5e';
+          return `<div style="margin-bottom:7px" title="${esc(e)}: ${p90[e] ?? '—'} por 90 min · percentil ${v}">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px">
+              <span style="color:var(--text2)">${esc(e)}</span>
+              <span style="font-family:var(--fm)"><span style="color:var(--text3)">${p90[e] ?? '—'}</span>
+                <b style="color:${col};margin-left:8px">${v}</b></span></div>
+            <div style="height:7px;border-radius:4px;background:rgba(255,255,255,.05);overflow:hidden">
+              <div style="width:${v}%;height:100%;background:${col};opacity:.85"></div></div></div>`;
+        }).join('')}</div>` : `
+        <div style="padding:16px 20px;color:var(--text2);font-size:13px;line-height:1.6">
+          Este jugador no tiene percentiles porque su puesto no se puede puntuar
+          con esta fuente. Understat publica tiros y lo que rodea a un tiro: no
+          publica entradas, intercepciones, despejes ni nada de porteros.
+        </div>`}
+
+        <div style="padding:6px 20px 8px;border-top:1px solid var(--border)">
+          <div style="font-size:13px;font-weight:650;margin:12px 0 3px">Sus tiros</div>
+          <div style="color:var(--text3);font-size:12px;line-height:1.55;max-width:66ch">
+            Uno a uno, donde los tiró. El tamaño es el xG de cada tiro y el relleno
+            es gol. Pasa el ratón por encima de cualquiera.
+          </div>
+        </div>
+        <div id="fichaTiros" style="padding:10px 20px 20px">
+          <div class="ld"><div class="sp"></div>Pidiendo sus tiros…</div></div>
+
+        <div style="padding:12px 20px 18px;border-top:1px solid var(--border);
+          color:var(--text3);font-size:11.5px;line-height:1.6">
+          Datos de Understat, temporada ${esc(TEMPORADA || '—')}. No hay edad, ni valor
+          de mercado, ni datos defensivos: esta fuente no los publica, y un hueco
+          sin explicar es peor que no ponerlo.
+        </div>
+      </div>
+    </div>`);
+
+  // ── los tiros, que son otra petición ──
+  const id = p.player_id ?? p.understat_id;
+  if (!id) {
+    $('fichaTiros').innerHTML =
+      '<div class="al alw">No tengo el identificador de este jugador para pedir sus tiros.</div>';
+    return;
+  }
+  try {
+    let tiros = FICHA.tiros[id];
+    if (!tiros) {
+      const r = await fetch(`${API}/api/player/${id}/shots`);
+      const d = await r.json();
+      if (!r.ok) throw new Error((d && (d.detail || d.message)) || `HTTP ${r.status}`);
+      tiros = d.shots || [];
+      FICHA.tiros[id] = tiros;
+    }
+    pintaTirosFicha(tiros);
+  } catch (e) {
+    const n = $('fichaTiros');
+    if (n) n.innerHTML = `<div class="al alw">No he podido traer sus tiros: ${esc(e.message)}</div>`;
+  }
+}
+
+function puestoLargo(p) {
+  return ({ FW: 'Delantero', MF: 'Centrocampista', DF: 'Defensa', GK: 'Portero' })[p]
+    || ({ F: 'Delantero', M: 'Centrocampista', D: 'Defensa' })[(p || '')[0]] || p || '—';
+}
+
+// El campo de Understat va de 0 a 1 en las dos direcciones, con el
+// ataque hacia x = 1. Se lleva a las medidas de un campo real para que
+// las distancias se vean como son.
+function pintaTirosFicha(tiros) {
+  const n = $('fichaTiros');
+  if (!n) return;
+  if (!tiros.length) {
+    n.innerHTML = '<div class="empty" style="padding:20px"><p>No ha tirado esta temporada.</p></div>';
+    return;
+  }
+  const maxXg = Math.max(0.05, ...tiros.map(t => t.xG || 0));
+  const circulos = tiros.map(t => {
+    const x = (t.x ?? 0) * 120, y = (t.y ?? 0) * 80;
+    const gol = t.result === 'Goal';
+    const r = 1 + 3.6 * Math.sqrt((t.xG || 0) / maxXg);
+    return `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${r.toFixed(2)}"
+      fill="${gol ? '#e3b341' : 'none'}" fill-opacity="${gol ? .9 : 0}"
+      stroke="${gol ? '#e3b341' : '#0ea5e9'}" stroke-width=".45"
+      opacity="${gol ? 1 : .7}" style="cursor:crosshair">
+      <title>min ${t.minute} · xG ${(t.xG || 0).toFixed(3)} · ${esc(trad(t.result))}
+${esc(t.shot_type || '')} · ${esc(trad(t.situation))}
+${esc(t.home_team || '')} ${esc(t.date || '')} ${esc(t.away_team || '')}</title></circle>`;
+  }).join('');
+
+  const goles = tiros.filter(t => t.result === 'Goal').length;
+  const xgTotal = tiros.reduce((a, t) => a + (t.xG || 0), 0);
+  const dif = goles - xgTotal;
+
+  n.innerHTML = infCampo(circulos) + `
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12.5px">
+      <span><b style="font-family:var(--fm)">${tiros.length}</b>
+        <span style="color:var(--text2)">tiros</span></span>
+      <span><b style="font-family:var(--fm);color:#e3b341">${goles}</b>
+        <span style="color:var(--text2)">goles</span></span>
+      <span><b style="font-family:var(--fm)">${xgTotal.toFixed(2)}</b>
+        <span style="color:var(--text2)">xG acumulado</span></span>
+      <span title="Goles menos xG. Positivo = ha metido más de lo que valían sus tiros.
+Con pocos tiros esto es casi todo suerte y se corrige solo con el tiempo."
+        style="color:${dif > 0 ? '#10b981' : dif < 0 ? '#f43f5e' : 'var(--text2)'}">
+        <b style="font-family:var(--fm)">${dif > 0 ? '+' : ''}${dif.toFixed(2)}</b>
+        <span style="color:var(--text2)">respecto a lo esperado</span></span>
+    </div>
+    <div style="color:var(--text3);font-size:11.5px;margin-top:6px;line-height:1.55;max-width:66ch">
+      Lo de «respecto a lo esperado» con pocos tiros es sobre todo suerte: quien
+      mete más de lo que valen sus tiros suele volver a su sitio, y al revés.
+    </div>`;
+}
+
+function trad(s) {
+  return ({
+    Goal: 'gol', SavedShot: 'parada', MissedShots: 'fuera',
+    BlockedShot: 'bloqueado', ShotOnPost: 'al palo', OwnGoal: 'en propia',
+    OpenPlay: 'jugada', FromCorner: 'de córner', SetPiece: 'balón parado',
+    DirectFreekick: 'falta directa', Penalty: 'penalti',
+  })[s] || s || '';
+}
+
+
+// ══════════════════════════════════════════════════════════
+// EL COMPARADOR
+// ══════════════════════════════════════════════════════════
+//
+// DOS COSAS ESTABAN MAL
+//
+// 1. No cargaba nada. Usaba PLAYERS, que sólo se llena al pasar por
+//    Cartas FIFA, así que entrando directo aquí salía «selecciona dos
+//    jugadores» para siempre. Ahora carga si hace falta.
+//
+// 2. La rueda comparaba a los dos entre sí: cada eje se escalaba al
+//    mayor de los dos. Eso contesta «cuál de estos dos tira más», que
+//    no es lo que uno quiere saber. Si los dos son malos tirando, uno
+//    de ellos sale con el eje al 100 %.
+//
+//    Ahora cada eje es el PERCENTIL dentro de su puesto en la liga. Si
+//    los dos están en el 30, los dos salen en el 30, que es la verdad.
+//
+// Y sólo se comparan jugadores del MISMO PUESTO, porque un percentil
+// de delantero y uno de centrocampista no se miden con las mismas
+// métricas: ponerlos en la misma rueda es dibujar una mentira.
+
+const CMP = { porPuesto: {}, puesto: 'FW', liga: 'PD' };
+
+async function initCmp() {
+  const selPos = $('cmpPos'), selLg = $('cmpLg');
+  if (selPos && !selPos.dataset.listo) {
+    selPos.dataset.listo = '1';
+    selPos.onchange = initCmp;
+    if (selLg) selLg.onchange = initCmp;
+  }
+  CMP.puesto = selPos ? selPos.value : 'FW';
+  CMP.liga = selLg ? selLg.value : 'PD';
+
+  const llave = `${CMP.liga}/${CMP.puesto}`;
+  if (!CMP.porPuesto[llave]) {
+    $('cOut').innerHTML = '<div class="ld"><div class="sp"></div>Pidiendo jugadores…</div>';
+    try {
+      const r = await fetch(`${API}/api/scouting/${CMP.liga === 'all' ? 'ALL' : CMP.liga}` +
+                            `?position=${CMP.puesto}&min_minutes=270`);
+      const d = await r.json();
+      if (!r.ok) {
+        const det = (d && d.detail) || {};
+        $('cOut').innerHTML = `<div class="empty" style="padding:26px 20px">
+          <h3>Aquí no hay nada que comparar</h3>
+          <p style="max-width:62ch;margin:8px auto 0">${esc(det.detalle ||
+            'La fuente no ha contestado.')}</p></div>`;
+        $('c1').innerHTML = $('c2').innerHTML = '';
+        return;
+      }
+      CMP.porPuesto[llave] = d.players || [];
+    } catch (e) {
+      $('cOut').innerHTML = `<div class="al alw">No he podido pedir los jugadores: ${esc(e.message)}</div>`;
+      return;
+    }
+  }
+
+  const pl = CMP.porPuesto[llave];
+  if (pl.length < 2) {
+    $('cOut').innerHTML = '<div class="al alw">Hacen falta al menos dos jugadores.</div>';
+    return;
+  }
+  const opts = pl.map(p =>
+    `<option value="${esc(String(p.player_id))}">${esc(p.name)} (${esc(p.team)}) · ${p.score}</option>`).join('');
+  $('c1').innerHTML = opts;
+  $('c2').innerHTML = opts;
+  $('c2').selectedIndex = Math.min(1, pl.length - 1);
+  runCompare();
+}
+
+function runCompare() {
+  const pl = CMP.porPuesto[`${CMP.liga}/${CMP.puesto}`] || [];
+  const dame = sel => pl.find(p => String(p.player_id) === $(sel).value);
+  const p1 = dame('c1'), p2 = dame('c2');
+  if (!p1 || !p2 || p1.player_id === p2.player_id) {
+    $('cOut').innerHTML = '<div class="al alw">Elige dos jugadores distintos.</div>';
+    return;
+  }
+
+  const etiquetas = Object.keys(p1.percentiles || {});
+  const col1 = '#0ea5e9', col2 = '#f97316';
+
+  const ficha = (p, col) => `
+    <div class="card" style="cursor:pointer" onclick="abrirFichaComparador('${esc(String(p.player_id))}')"
+      title="Pincha para ver su ficha entera">
+      <div style="padding:14px 16px">
+        <div style="font-family:var(--fh);font-size:19px;font-weight:750;color:${col}">${esc(p.name)}</div>
+        <div style="font-size:11.5px;color:var(--text2);margin-bottom:11px">
+          ${esc(p.team)} · ${esc(p.league || '')} · ${p.time} min · ${p.games} PJ</div>
+        ${etiquetas.map(e => {
+          const v = (p.percentiles || {})[e] ?? 0;
+          return `<div style="margin-bottom:6px" title="${esc(e)}: ${(p.por_90 || {})[e] ?? '—'} por 90 min">
+            <div style="display:flex;justify-content:space-between;font-size:11.5px">
+              <span style="color:var(--text2)">${esc(e)}</span>
+              <span style="font-family:var(--fm)">${(p.por_90 || {})[e] ?? '—'}
+                <b style="color:${col};margin-left:7px">${v}</b></span></div>
+            <div style="height:6px;border-radius:3px;background:rgba(255,255,255,.05);margin-top:2px">
+              <div style="width:${v}%;height:100%;background:${col};opacity:.8;border-radius:3px"></div>
+            </div></div>`;
+        }).join('')}
+        <div style="display:flex;align-items:center;gap:10px;margin-top:12px">
+          <div style="font-family:var(--ff);font-size:38px;color:${col}">${p.score}</div>
+          <div><div style="font-size:10px;color:var(--text2)">Percentil medio</div>
+            <span class="bge ${nota(p).clase}" style="margin-top:3px">${nota(p).etiqueta}</span></div>
+        </div>
+      </div></div>`;
+
+  $('cOut').innerHTML = `
+    <div class="al ali" style="margin-bottom:12px">
+      Los dos ejes son <b>percentiles dentro de ${esc(puestoLargo(CMP.puesto).toLowerCase())}s</b>
+      de ${esc(CMP.liga === 'all' ? 'las cinco grandes' : CMP.liga)}, no uno contra otro.
+      Si los dos están en el 30, los dos salen en el 30.
+    </div>
+    <div class="g2" style="margin-bottom:14px">${ficha(p1, col1)}${ficha(p2, col2)}</div>
+    <div class="card"><div class="ch"><div class="ct">🕸️ Los dos contra la liga</div></div>
+      <div class="rw"><canvas id="rC"></canvas></div></div>`;
+
+  dC('rC');
+  setTimeout(() => {
+    const ctx = $('rC') && $('rC').getContext('2d');
+    if (!ctx) return;
+    C['rC'] = new Chart(ctx, {
+      type: 'radar',
+      data: {
+        labels: etiquetas,
+        datasets: [p1, p2].map((p, i) => ({
+          label: (p.name || '').split(' ').slice(-1)[0],
+          data: etiquetas.map(e => (p.percentiles || {})[e] ?? 0),
+          backgroundColor: (i ? 'rgba(249,115,22,0.15)' : 'rgba(14,165,233,0.15)'),
+          borderColor: i ? col2 : col1,
+          pointBackgroundColor: i ? col2 : col1,
+          borderWidth: 2,
+        })),
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#7a9bbf' } },
+          tooltip: {
+            callbacks: {
+              label: c => {
+                const p = c.datasetIndex ? p2 : p1;
+                const e = etiquetas[c.dataIndex];
+                return `${p.name}: percentil ${c.formattedValue} ` +
+                       `(${(p.por_90 || {})[e] ?? '—'} por 90)`;
+              },
+            },
+          },
+        },
+        scales: {
+          r: {
+            ticks: { color: '#7a9bbf', backdropColor: 'transparent', stepSize: 25 },
+            grid: { color: 'rgba(14,165,233,0.1)' },
+            pointLabels: { color: '#7a9bbf', font: { size: 11 } },
+            min: 0, max: 100,
+          },
+        },
+      },
+    });
+  }, 50);
+}
+
+function abrirFichaComparador(id) {
+  const pl = CMP.porPuesto[`${CMP.liga}/${CMP.puesto}`] || [];
+  const p = pl.find(x => String(x.player_id) === String(id));
+  if (p) abrirFicha(p);
+}
+
+
+// ══════════════════════════════════════════════════════════
+// LA CARTA ABRE LA FICHA
+// ══════════════════════════════════════════════════════════
+//
+// Las cartas de /api/players traen los campos con otros nombres que
+// los del scouting: minutes en vez de time, pos en vez de position.
+// Se traducen aquí en vez de en la ficha, porque la ficha se abre
+// desde cuatro sitios y el que tiene que ceder es el que viene raro.
+function abrirFichaDesdeCarta(id) {
+  const p = PLAYERS.find(x => x.id === id);
+  if (!p) return;
+  abrirFicha({
+    name: p.name, team: p.team, league: p.league,
+    position: p.pos, player_id: p.understat_id,
+    time: p.minutes, games: p.games,
+    goals: p.goals, assists: p.assists, shots: p.shots,
+    key_passes: p.key_passes, xG: p.xG, xA: p.xA,
+    npxG: p.npxG, score: p.score,
+    percentiles: p.percentiles || {},
+    por_90: p.por_90 || {},
+  });
 }
 
 </script>
