@@ -95,7 +95,17 @@ async def get_standings(competition_code: str):
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
 
-    # Enriquecer con xG de Understat (async, no bloqueante)
+    # ── El xG por equipo, de Understat ──
+    #
+    # Esto estaba en un `except Exception: pass`. Probándolo con datos
+    # reales salieron CERO equipos con xG en las veinte filas, y no
+    # había forma de saber por qué: el fallo se lo comía el except y la
+    # columna se quedaba vacía como si Understat no tuviera el dato.
+    #
+    # Ahora el fallo se registra y se dice en la respuesta. Una columna
+    # vacía sin explicación es lo mismo que un número inventado: el que
+    # mira no puede saber qué está viendo.
+    aviso_xg = None
     try:
         xg_data = await get_league_teams_xg(competition_code.upper())
         xg_map = {t["team"]: t for t in xg_data}
@@ -107,9 +117,27 @@ async def get_standings(competition_code: str):
             if team_key:
                 row["xG"]  = xg_map[team_key].get("xG", None)
                 row["xGA"] = xg_map[team_key].get("xGA", None)
-    except Exception:
-        pass  # xG es adicional, no crítico
 
+        con_xg = sum(1 for r in standings["table"] if r.get("xG") is not None)
+        if not xg_data:
+            aviso_xg = ("Understat no ha devuelto datos de equipo para esta "
+                        "liga, así que la columna de xG va vacía.")
+        elif con_xg == 0:
+            aviso_xg = (
+                f"Understat ha devuelto {len(xg_data)} equipos pero ninguno "
+                f"casa por nombre con los de football-data, así que la "
+                f"columna de xG va vacía. Ejemplos de cómo los llama cada "
+                f"uno: Understat «{list(xg_map)[:3]}», football-data "
+                f"«{[r['team_name'] for r in standings['table'][:3]]}».")
+        elif con_xg < len(standings["table"]):
+            aviso_xg = (f"{con_xg} de {len(standings['table'])} equipos con "
+                        f"xG: a los demás no les encuentro la equivalencia "
+                        f"de nombre con Understat.")
+    except Exception as e:
+        logger.warning("No he podido añadir el xG de Understat: %s", e)
+        aviso_xg = f"No he podido traer el xG de Understat: {e}"
+    if aviso_xg:
+        standings["aviso_xg"] = aviso_xg
     return standings
 
 
@@ -407,11 +435,40 @@ async def get_league_players_stats(
             for p in grupo:
                 p["score"] = None
 
-    # Los que no tienen nota van detrás, no delante con un cero.
-    players.sort(key=lambda x: (x.get("score") is None,
-                                -(x.get("score") or 0)))
+    # ── EL RECORTE, POR PUESTO ─────────────────────────────────
+    #
+    # Antes esto ordenaba por nota —con los sin nota al final— y luego
+    # cortaba por `limit`. Probándolo con datos reales de La Liga
+    # salieron «200 con nota, 0 sin nota»: como hay más de 200
+    # jugadores con nota, los defensas y porteros se caían ENTEROS del
+    # corte. O sea que en la pantalla de Cartas de La Liga no aparecía
+    # ni un central.
+    #
+    # Ahora el límite se reparte entre los puestos en proporción a lo
+    # que pesa cada uno, y dentro de cada puesto se cogen los mejores.
+    # Así siempre hay de todo, y «los mejores» sigue queriendo decir
+    # algo dentro de cada puesto.
+    for grupo in por_puesto.values():
+        grupo.sort(key=lambda x: (x.get("score") is None,
+                                  -(x.get("score") or 0)))
+
+    total = len(players)
+    recortados = []
+    for pst, grupo in por_puesto.items():
+        cupo = max(1, round(limit * len(grupo) / total)) if total else 0
+        recortados.extend(grupo[:cupo])
+    recortados.sort(key=lambda x: (x.get("score") is None,
+                                   -(x.get("score") or 0)))
+    recortados = recortados[:limit]
+
+    reparto = {}
+    for p in recortados:
+        clave = puesto_de(p.get("position", ""))
+        reparto[clave] = reparto.get(clave, 0) + 1
+
     return {
-        "players": players[:limit],
+        "players": recortados,
+        "reparto_por_puesto": reparto,
         "total": len(players),
         "competition": competition_code.upper(),
         "season": season,
