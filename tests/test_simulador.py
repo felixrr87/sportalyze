@@ -508,3 +508,38 @@ def test_la_ruta_nunca_devuelve_una_tabla_a_medias(cliente, crudos):
         r = cli.get("/api/simulador/PD")
         assert r.status_code != 200, datos[:1]
         assert "motivo" in r.json()["detail"]
+
+
+def test_trocear_no_cambia_ni_un_numero(crudos):
+    """El simulador calcula por trozos para no reventar la memoria de
+    un servidor pequeño. Trocear NO puede cambiar el resultado.
+
+    La primera versión troceada sí lo cambiaba: sacaba los goles
+    locales y los visitantes de cada trozo seguidos, lo que ALTERNA las
+    dos tiradas en el generador y da otra secuencia. Cambiaba el 83 %
+    de las posiciones finales. Ahora se hace primero la tirada local
+    entera y después la visitante entera, y sale idéntico.
+
+    Esta prueba es la que justifica poder decir «misma semilla, mismo
+    resultado» después de haber tocado el motor por memoria.
+    """
+    import numpy as np
+    ps = S.desde_football_data(crudos)
+    antes = S.TROZO
+    try:
+        S.TROZO = 10 ** 9                      # de una sola tacada
+        _, entero, _ = S.simular(ps, 7, n_sim=2000)
+        for trozo in (1000, 137, 1):
+            S.TROZO = trozo
+            _, por_trozos, _ = S.simular(ps, 7, n_sim=2000)
+            assert np.array_equal(entero, por_trozos), f"trozo {trozo}"
+    finally:
+        S.TROZO = antes
+
+
+def test_los_goles_caben_en_un_byte():
+    """Se guardan en int8 para ahorrar memoria. Si alguien sube
+    MAX_GOLES por encima de 127, los goles darían la vuelta y un 5-3
+    se convertiría en algo absurdo sin avisar."""
+    assert S.MAX_GOLES <= 127
+    assert S.TROZO >= 1
