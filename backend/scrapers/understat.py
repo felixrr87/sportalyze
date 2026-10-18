@@ -22,7 +22,9 @@
 
 import asyncio
 import logging
-import pandas as pd
+# pandas se importaba aquí y no se usaba ni una vez. Son unos
+# 90 MB de memoria y medio segundo de arranque para nada, que
+# en un servidor pequeño es justo lo que no sobra.
 from cachetools import TTLCache
 from backend.config import CACHE_TTL
 from backend.errors import FuenteNoDisponible
