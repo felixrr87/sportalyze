@@ -22,6 +22,8 @@
 
 import asyncio
 import logging
+
+from backend.temporada import temporada_actual
 # pandas se importaba aquí y no se usaba ni una vez. Son unos
 # 90 MB de memoria y medio segundo de arranque para nada, que
 # en un servidor pequeño es justo lo que no sobra.
@@ -80,11 +82,13 @@ async def _pedir(que: str, llamada):
     return await asyncio.to_thread(_trabajo)
 
 
-async def get_league_players(competition_code: str, season: int = 2024) -> list:
+async def get_league_players(competition_code: str, season: int = None) -> list:
     """
     Jugadores de una liga con xG, xA, shots, goals.
-    season: 2024 = temporada 2024/25
+    season: el año en que EMPIEZA la temporada (2026 = 2026/27).
+            Si no se dice, la que se está jugando hoy.
     """
+    season = season if season is not None else temporada_actual()
     cache_key = f"understat_players_{competition_code}_{season}"
     if cache_key in _cache:
         return _cache[cache_key]
@@ -209,8 +213,9 @@ async def get_match_shots(match_id: str) -> dict:
     return result
 
 
-async def get_league_teams_xg(competition_code: str, season: int = 2024) -> list:
+async def get_league_teams_xg(competition_code: str, season: int = None) -> list:
     """xG por equipo en la liga — para el dashboard"""
+    season = season if season is not None else temporada_actual()
     cache_key = f"understat_teams_{competition_code}_{season}"
     if cache_key in _cache:
         return _cache[cache_key]
@@ -226,7 +231,15 @@ async def get_league_teams_xg(competition_code: str, season: int = 2024) -> list
     )
 
     result = []
-    for team_name, team_data in teams_data.items():
+    for clave, team_data in teams_data.items():
+        # OJO: la clave NO es el nombre del equipo, es su ID numérico
+        # ("148", "150", "154"). El nombre va dentro, en "title".
+        #
+        # Esto estaba cogiendo la clave como nombre, así que la
+        # clasificación intentaba casar «148» con «FC Barcelona» y no
+        # casaba ninguno: cero equipos con xG en las veinte filas. Y no
+        # se veía porque el fallo se lo tragaba un `except: pass`.
+        team_name = team_data.get("title") or clave
         history = team_data.get("history", [])
         if not history:
             continue
