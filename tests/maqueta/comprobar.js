@@ -154,6 +154,22 @@ w.addEventListener('load', () => {
   comprueba(d.getElementById('simTablaCard').style.display === 'none',
     'con el error visible, la tabla se esconde (no se deja media pantalla)');
 
+  // ── que ninguna pantalla esté metida dentro de otra ──
+  //
+  // Esto costó caro. Una <div class="card"> vacía SIN CERRAR dentro de
+  // page-config hacía que page-team, page-relieve, page-simulador y
+  // page-informe quedaran DENTRO de page-config. En el navegador eso
+  // significa que esas cuatro pantallas no se veían nunca: su padre
+  // estaba en display:none. Las pruebas pasaban, el HTML parecía bien,
+  // y la pantalla estaba en blanco.
+  const paginas = [...d.querySelectorAll('.page')];
+  const anidadas = paginas.filter(p => p.parentElement.closest('.page'));
+  comprueba(!anidadas.length,
+    `las ${paginas.length} pantallas cuelgan de main, ninguna dentro de otra`,
+    anidadas.map(p => `${p.id} dentro de ${p.parentElement.closest('.page').id}`).join('; '));
+  comprueba(paginas.every(p => p.id && p.id.startsWith('page-')),
+    'todas las pantallas llevan su id');
+
   // ── escapado ──
   // esc() se declara con const, así que vive en el ámbito léxico global
   // y NO en window: hay que preguntárselo a la propia página.
