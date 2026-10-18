@@ -52,6 +52,8 @@ from backend.scrapers.transfermarkt import (
 )
 from backend.ml.scouting import run_scouting_pipeline, find_similar_players
 from backend.ml import simulador as sim
+from backend.ml import informe as inf
+from backend.scrapers import statsbomb as sb
 from backend.ml.injury_prediction import build_player_risk_features, calculate_injury_risk
 
 
@@ -260,6 +262,82 @@ async def get_simulador(competition_code: str):
 
     _simulaciones[codigo] = edicion
     return edicion
+
+
+# ════════════════════════════════════════════════════════
+# RUTAS — EL INFORME POST-PARTIDO
+# ════════════════════════════════════════════════════════
+#
+# Sobre StatsBomb Open Data, y eso no es un detalle: el cuaderno del
+# que viene este informe lee los eventos del HTML de WhoScored, que por
+# dentro son de Opta. Eso vale para mirar un partido en tu ordenador y
+# NO vale para publicarlo — es licencia comercial, y las condiciones de
+# WhoScored prohíben extraerlo y redistribuirlo.
+#
+# StatsBomb Open Data es gratis, está publicado para esto y sólo pide
+# que se diga de dónde viene. Son ~3.500 partidos de verdad.
+
+
+@app.get("/api/informe/competiciones")
+async def get_informe_competiciones():
+    """Qué competiciones y temporadas hay con datos abiertos."""
+    try:
+        datos = await sb.competiciones()
+    except FuenteNoDisponible as e:
+        raise HTTPException(status_code=503, detail={
+            "motivo": "fuente_caida", "detalle": str(e)})
+    return {"competiciones": datos, "total": len(datos),
+            "fuente": "StatsBomb Open Data"}
+
+
+@app.get("/api/informe/partidos/{competition_id}/{season_id}")
+async def get_informe_partidos(competition_id: int, season_id: int):
+    """Los partidos de una competición y temporada, lo justo para el menú."""
+    try:
+        datos = await sb.partidos(competition_id, season_id)
+    except sb.PartidoNoEstaAbierto:
+        raise HTTPException(status_code=404, detail={
+            "motivo": "no_esta_abierto",
+            "detalle": "esa competición y temporada no están en los datos abiertos"})
+    except FuenteNoDisponible as e:
+        raise HTTPException(status_code=503, detail={
+            "motivo": "fuente_caida", "detalle": str(e)})
+
+    ligero = [{
+        "match_id": m["match_id"],
+        "fecha": m.get("match_date", ""),
+        "local": m["home_team"]["home_team_name"],
+        "visitante": m["away_team"]["away_team_name"],
+        "goles_local": m.get("home_score"),
+        "goles_visitante": m.get("away_score"),
+        "fase": (m.get("competition_stage") or {}).get("name", ""),
+    } for m in datos]
+    ligero.sort(key=lambda m: (m["fecha"], m["local"]))
+    return {"partidos": ligero, "total": len(ligero)}
+
+
+@app.get("/api/informe/{match_id}")
+async def get_informe(match_id: int):
+    """El informe entero de un partido.
+
+    Se niega, con su motivo, cuando no puede hacerlo bien:
+
+      no_esta_abierto    ese partido no está en los datos abiertos
+      partido_incompleto los eventos no dan para un informe, o el
+                         marcador que sale no cuadra con el oficial
+      fuente_caida       StatsBomb no ha contestado
+    """
+    try:
+        return await sb.informe_de(match_id)
+    except sb.PartidoNoEstaAbierto as e:
+        raise HTTPException(status_code=404, detail={
+            "motivo": "no_esta_abierto", "detalle": str(e)})
+    except inf.PartidoIncompleto as e:
+        raise HTTPException(status_code=503, detail={
+            "motivo": "partido_incompleto", "detalle": str(e)})
+    except FuenteNoDisponible as e:
+        raise HTTPException(status_code=503, detail={
+            "motivo": "fuente_caida", "detalle": str(e)})
 
 
 # ════════════════════════════════════════════════════════

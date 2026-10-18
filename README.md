@@ -67,6 +67,35 @@ API Docs: **http://localhost:8000/docs**
 | `GET /api/viz/shotmap/123` | Shot Map (PNG) |
 | `GET /api/simulador/PD` | El Simulador: rangos de posición final |
 
+### El informe post-partido
+
+| Ruta | Qué hace |
+|---|---|
+| `GET /api/informe/competiciones` | Qué hay con datos abiertos |
+| `GET /api/informe/partidos/43/106` | Los partidos de una temporada |
+| `GET /api/informe/3869685` | El informe entero de un partido |
+
+Red de pases, mapa de tiros con su xG, la carrera de xG minuto a
+minuto, las dos alineaciones cifra a cifra y quién hizo qué. Todo
+calculado de los eventos y dibujado en SVG en el navegador: ni una
+imagen generada en el servidor.
+
+**La fuente es StatsBomb Open Data, y no es un detalle.** El cuaderno
+del que viene este informe lee los eventos del HTML de WhoScored, que
+por dentro son de Opta. Eso vale para mirar un partido en tu ordenador
+y no vale para publicarlo: es licencia comercial, y las condiciones de
+WhoScored prohíben extraerlo y redistribuirlo. StatsBomb Open Data es
+gratis, está publicado justo para esto y sólo pide atribución — por eso
+«StatsBomb Open Data» sale en la pantalla y no en letra pequeña.
+
+La tanda de penaltis **no entra en ninguna cifra**. Viene como eventos
+normales en el periodo 5, y contarla deja la final del Mundial 2022 en
+7-5 y le regala 1,57 de xG a Francia sin haber tirado a puerta.
+
+Y antes de publicar nada, el informe comprueba que los goles que salen
+de los eventos cuadran con el marcador oficial. Si no cuadran, no hay
+informe.
+
 ### El Simulador
 
 Una sola llamada trae el calendario entero de la liga —jugado y por
