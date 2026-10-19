@@ -186,7 +186,15 @@ body {
 .ks { font-size:11px; color:var(--text3) }
 
 /* ── Table ── */
-.tw { overflow-x:auto }
+.tw { overflow-x:auto; min-width:0 }
+/* Un hijo de grid o de flex NO encoge por debajo de su contenido a
+   menos que se le diga, porque min-width vale «auto» por defecto. Sin
+   esto, una tabla ancha dentro de una tarjeta estira la tarjeta hasta
+   598px en una pantalla de 375 y se sale de su columna: el .tw de
+   dentro nunca llega a hacer de carril porque la tarjeta le deja
+   todo el sitio que pide.
+   Medido en un navegador de verdad a 375px, antes y después. */
+.card, .kpi { min-width:0 }
 table { width:100%; border-collapse:collapse; font-size:12px }
 th { padding:8px 10px; text-align:left; font-size:9px; font-weight:600; letter-spacing:1.5px;
   text-transform:uppercase; color:var(--text3); border-bottom:1px solid var(--border); white-space:nowrap }
@@ -405,10 +413,70 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
 .team-row-link { cursor:pointer }
 .team-row-link:hover td { background:rgba(14,165,233,0.08) !important; }
 
-/* ── Responsive ── */
+/* ── La barra de arriba, sólo en móvil ──────────────────────
+   No existía. Por debajo de 820px la barra lateral estaba en
+   display:none y NO HABÍA NADA que la sustituyera: quien entraba
+   desde el móvil se encontraba una pantalla sin manera de ir a otra.
+   Y como esto se comparte por enlace, la mayoría entra desde el
+   móvil.
+
+   En vez de duplicar el menú se reutiliza la misma barra lateral: en
+   pantalla estrecha se convierte en un cajón que entra desde la
+   izquierda. Así el menú es uno solo y no hay dos sitios que se
+   puedan quedar descuadrados. */
+.topbar { display:none }
+
 @media(max-width:820px) {
   .app { grid-template-columns:1fr }
-  .sidebar { display:none }
+
+  .topbar {
+    display:flex; align-items:center; gap:12px;
+    position:sticky; top:0; z-index:120;
+    padding:10px 14px;
+    background:var(--surface);
+    border-bottom:1px solid var(--border);
+  }
+  .topbar .logo-img { width:28px; height:28px }
+  .topbar-name { font-family:var(--fh); font-size:15px; font-weight:800;
+    letter-spacing:-0.3px; flex:1 }
+  .burger {
+    width:40px; height:40px; flex-shrink:0;
+    display:flex; flex-direction:column; justify-content:center;
+    align-items:center; gap:4px;
+    background:none; border:1px solid var(--border2); border-radius:9px;
+    cursor:pointer; padding:0;
+  }
+  .burger span { display:block; width:17px; height:2px; border-radius:2px;
+    background:var(--text); transition:transform .2s, opacity .2s }
+  body.menu-abierto .burger span:nth-child(1) { transform:translateY(6px) rotate(45deg) }
+  body.menu-abierto .burger span:nth-child(2) { opacity:0 }
+  body.menu-abierto .burger span:nth-child(3) { transform:translateY(-6px) rotate(-45deg) }
+
+  /* El cajón. Se mueve con transform y no con display para que la
+     animación no dé tirones, y queda fuera de la pantalla con
+     visibility:hidden para que el lector de pantalla y el tabulador
+     no se metan ahí cuando está cerrado. */
+  .sidebar {
+    position:fixed; top:0; left:0; bottom:0;
+    width:252px; max-width:82vw;
+    transform:translateX(-100%); visibility:hidden;
+    transition:transform .22s ease, visibility .22s;
+    box-shadow:none;
+  }
+  body.menu-abierto .sidebar {
+    transform:translateX(0); visibility:visible;
+    box-shadow:0 0 40px rgba(0,0,0,.6);
+  }
+  .tapa-menu {
+    position:fixed; inset:0; z-index:99;
+    background:rgba(3,8,16,.6); backdrop-filter:blur(2px);
+    opacity:0; pointer-events:none; transition:opacity .22s;
+  }
+  body.menu-abierto .tapa-menu { opacity:1; pointer-events:auto }
+
+  /* Los márgenes de 28px se comían media pantalla en un móvil. */
+  .cont { padding:16px 14px 40px }
+  .page-header { padding:14px }
   /* En pantalla estrecha el título y los selectores se peleaban por el
      mismo renglón: «Informe post-partido» salía partido en tres líneas
      al lado de dos desplegables. Se ponen uno debajo del otro. */
@@ -418,6 +486,21 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
   .g4,.g3 { grid-template-columns:repeat(2,1fr) }
   .g2 { grid-template-columns:1fr }
   .pgrid { grid-template-columns:repeat(auto-fill,minmax(150px,1fr)) }
+  .squad-grid { grid-template-columns:1fr }
+  /* Las tablas anchas se arrastran de lado en vez de desbordar la
+     página entera, que es lo que rompe el diseño en móvil. */
+  .tw { -webkit-overflow-scrolling:touch }
+  .tw table { min-width:560px }
+  /* Los dos cuadros de la ficha y del informe, a pantalla completa */
+  #fichaJug > div, #infPartido > div { border-radius:12px }
+  #fichaJug, #infPartido { padding:10px 8px }
+}
+
+/* Entre 821 y 1100 la barra lateral se estrecha un poco para dejar
+   sitio a las tablas, que es donde está la información. */
+@media(min-width:821px) and (max-width:1100px) {
+  .app { grid-template-columns:186px 1fr }
+  .cont { padding:20px 18px 44px }
 }
 
 /* ── La explicación de cada pantalla ──────────────────────
@@ -458,7 +541,7 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
 .hero-logo { width:80px; height:80px;  margin-bottom:24px; animation:float 4s ease-in-out infinite }
 @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
 .hero-title {
-  font-family:var(--fh); font-size:clamp(40px,7vw,80px); font-weight:800;
+  font-family:var(--fh); font-size:clamp(28px,8.5vw,80px); font-weight:800;
   letter-spacing:-2px; line-height:0.95; margin-bottom:16px;
   background:linear-gradient(135deg,#fff 30%,var(--electric)); -webkit-background-clip:text; -webkit-text-fill-color:transparent;
 }
@@ -490,6 +573,9 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
 <div class="app" id="app">
 
 <!-- ══ SIDEBAR ══ -->
+<!-- La barra de arriba y la tapa, las dos sólo se ven en móvil -->
+<div class="tapa-menu" onclick="menuMovil(false)" aria-hidden="true"></div>
+
 <aside class="sidebar">
   <div class="logo-wrap">
     <img id="sidebarLogo" class="logo-img" alt="Sportalyze">
@@ -569,6 +655,17 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
 
 <!-- ══ MAIN ══ -->
 <main class="main">
+
+<!-- ══ LA BARRA DE ARRIBA (sólo en móvil) ══ -->
+<div class="topbar">
+  <button class="burger" onclick="menuMovil()" aria-label="Abrir el menú"
+          aria-expanded="false" id="burger">
+    <span></span><span></span><span></span>
+  </button>
+  <img class="logo-img" id="topbarLogo" alt="">
+  <div class="topbar-name" id="topbarTitulo">SPORTALYZE</div>
+</div>
+
 
 <!-- LANDING -->
 <div class="page" id="page-landing">
@@ -1383,8 +1480,36 @@ function nav(page) {
     informe: loadInforme
   };
   pintaExplicacion(page);
+  // En móvil, al elegir pantalla el cajón se cierra solo. Si no, el
+  // menú se queda encima de lo que acabas de pedir.
+  menuMovil(false);
+  const t = $('topbarTitulo');
+  if (t) t.textContent = TITULOS[page] || 'Sportalyze';
   actions[page]?.();
 }
+
+// ── el menú del móvil ─────────────────────────────────────
+//
+// No hay dos menús: el cajón ES la misma barra lateral de siempre,
+// que en pantalla estrecha entra desde la izquierda. Un solo menú no
+// se puede quedar descuadrado respecto al otro.
+function menuMovil(abrir) {
+  const b = document.body;
+  const quiero = abrir === undefined ? !b.classList.contains('menu-abierto') : !!abrir;
+  b.classList.toggle('menu-abierto', quiero);
+  const btn = $('burger');
+  if (btn) btn.setAttribute('aria-expanded', quiero ? 'true' : 'false');
+}
+
+// El nombre de la pantalla en la barra de arriba: en el móvil no se
+// ve la barra lateral, así que sin esto no sabes dónde estás.
+const TITULOS = {
+  landing: 'Sportalyze', dashboard: 'Dashboard', standings: 'Clasificación',
+  matches: 'Partidos', scorers: 'Goleadores', players: 'Jugadores',
+  scouting: 'Scouting', compare: 'Comparador', watchlist: 'Seguidos',
+  config: 'Configuración', relieve: 'El relieve', simulador: 'El Simulador',
+  informe: 'Informe post-partido', team: 'Equipo',
+};
 
 function dC(id) { if (C[id]) { C[id].destroy(); delete C[id]; } }
 
@@ -1927,6 +2052,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Set logo
   $('sidebarLogo').src = LOGO_B64;
   $('heroLogo').src = LOGO_B64;
+  if ($('topbarLogo')) $('topbarLogo').src = LOGO_B64;
+  // Escape cierra el cajón, y también los dos cuadros grandes.
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (document.body.classList.contains('menu-abierto')) return menuMovil(false);
+    if ($('fichaJug')) return cerrarFicha();
+    if ($('infPartido')) return cerrarInformePartido();
+  });
   // Check backend
   fetch(API + '/health').then(r=>r.json()).then(()=>setStatus(true)).catch(()=>setStatus(false));
   // Init compare selects

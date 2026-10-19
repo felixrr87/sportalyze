@@ -136,6 +136,22 @@ def test_el_informe_del_partido_pintado_es_el_dato():
             "Todo el informe del partido cuadra con el dato")
 
 
+@pytest.mark.skipif(not _node(), reason="no hay node instalado")
+@pytest.mark.skipif(not _jsdom(),
+                    reason="falta jsdom: cd tests/maqueta && npm install")
+def test_en_el_movil_se_puede_navegar():
+    """El fallo que no se ve nunca desarrollando.
+
+    La barra lateral estaba en display:none por debajo de 820px y NO
+    HABÍA NADA en su sitio: quien entraba desde el móvil aterrizaba en
+    una pantalla sin manera de ir a ninguna otra. Y esto se comparte
+    por enlace, así que la mayoría entra desde el móvil.
+
+    No se ve trabajando en un portátil con la ventana ancha.
+    """
+    _correr("comprobar_movil.js", None, "En el móvil se puede navegar")
+
+
 def _correr(script, datos, frase, datos2=None):
     index = os.path.join(os.path.dirname(AQUI), "frontend", "index.html")
     argumentos = [_node(), os.path.join(MAQ, script), index]
