@@ -159,6 +159,52 @@ w.addEventListener('load', async () => {
       conNumeros[0]);
   }
 
+  // ── los cuatro bloques nuevos ──
+  console.log('');
+
+  const peso = D.quien_peso_mas || [];
+  comprueba(/Qui\u00e9n pes\u00f3 m\u00e1s/.test(txt),
+    'sale el bloque de quién pesó más en las ocasiones');
+  comprueba(!/\bMVP\b/i.test(txt) && !/mejor jugador del partido/i.test(txt),
+    'y NO lo llama «el mejor del partido»',
+    'con datos de tiro no se puede decir eso, y además pondría siempre a un delantero');
+  comprueba(/un central|defensa casi nunca/i.test(txt),
+    'avisa de que un defensa no saldrá arriba y no es que jugara mal');
+  if (peso.length) {
+    comprueba(txt.includes(peso[0].nombre) &&
+              txt.indexOf(peso[0].nombre) < txt.indexOf(peso[peso.length - 1].nombre),
+      `el primero del ranking (${peso[0].nombre}) sale antes que el último`);
+    comprueba(txt.includes(peso[0].aportacion.toFixed(2)),
+      `pinta la aportación que calculó el motor (${peso[0].aportacion.toFixed(2)})`);
+    comprueba(txt.includes(String(D.peso_cadena)),
+      'enseña el peso de la cadena para que se pueda discutir');
+  }
+
+  const tramos = D.por_tramos || [];
+  comprueba(/En qu\u00e9 ratos mand\u00f3/.test(txt),
+    'sale el bloque de los tramos de quince minutos');
+  comprueba(tramos.every(b => txt.includes(b.etiqueta)),
+    `están los ${tramos.length} tramos`);
+
+  comprueba(/Desde d\u00f3nde tiraron/.test(txt), 'sale el bloque de las zonas');
+  const zonasLocal = D.por_zonas && D.por_zonas[L];
+  if (zonasLocal) {
+    const faltan = Object.values(zonasLocal).filter(z => !txt.includes(z.nombre));
+    comprueba(faltan.length === 0, 'cada zona con tiros sale nombrada',
+      faltan.map(z => z.nombre).join(', '));
+  }
+
+  const pg = D.primer_gol || {};
+  if (pg.hubo_gol) {
+    comprueba(/Antes y despu\u00e9s del primer gol/.test(txt),
+      'sale el bloque del antes y el después del primer gol');
+    comprueba(txt.includes(pg.jugador) && txt.includes(String(pg.minuto)),
+      `dice quién lo metió (${pg.jugador}) y en qué minuto (${pg.minuto})`);
+    comprueba(txt.includes(pg.antes.local.toFixed(2)) &&
+              txt.includes(pg.despues.local.toFixed(2)),
+      'y el xG de cada mitad del partido');
+  }
+
   // ── 5. honestidad ──
   comprueba(/Understat/.test(txt), 'dice que los datos son de Understat');
   comprueba(/red de pases/i.test(txt),

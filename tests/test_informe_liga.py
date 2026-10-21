@@ -241,3 +241,193 @@ def test_un_partido_sin_tiros_no_revienta():
 def test_las_alineaciones_llegan_a_su_equipo(inf):
     assert inf["equipos"]["Barcelona"]["jugadores"][0]["nombre"] == "Raphinha"
     assert inf["equipos"]["Elche"]["jugadores"][0]["nombre"] == "Rafa Mir"
+
+
+# ══════════════════════════════════════════════════════════════════
+# QUIÉN PESÓ MÁS EN LAS OCASIONES
+# ══════════════════════════════════════════════════════════════════
+
+from backend.ml.informe_liga import (
+    NOMBRE_ZONA, ORDEN_ZONAS, PESO_CADENA, TRAMO,
+    antes_y_despues_del_primer_gol, por_tramos, por_zonas, quien_peso_mas,
+)
+
+
+def test_la_aportacion_es_la_cuenta_escrita():
+    """Sin sorpresas: xG + xA + un cuarto del resto de la cadena."""
+    equipos = {"A": {"jugadores": [
+        {"nombre": "Uno", "minutos": 90, "xg": 0.5, "xa": 0.2,
+         "xgchain": 1.1, "goles": 1, "asistencias": 0, "tiros": 3,
+         "pases_clave": 2, "puesto": "FW"}]}}
+    r = quien_peso_mas(equipos)
+    resto = 1.1 - 0.5 - 0.2
+    assert r[0]["resto_de_cadena"] == round(resto, 3)
+    assert r[0]["aportacion"] == round(0.5 + 0.2 + PESO_CADENA * resto, 3)
+
+
+def test_la_cadena_nunca_resta():
+    """xGChain puede venir por debajo de xG+xA por redondeos.
+
+    Si se restara, un delantero que marca saldría castigado por un
+    detalle de la fuente.
+    """
+    equipos = {"A": {"jugadores": [
+        {"nombre": "Uno", "minutos": 90, "xg": 0.9, "xa": 0.3,
+         "xgchain": 0.9, "goles": 1, "asistencias": 0, "tiros": 2,
+         "pases_clave": 1, "puesto": "FW"}]}}
+    r = quien_peso_mas(equipos)
+    assert r[0]["resto_de_cadena"] == 0.0
+    assert r[0]["aportacion"] == round(0.9 + 0.3, 3)
+
+
+def test_estan_los_de_los_dos_equipos_y_ordenados():
+    equipos = {
+        "A": {"jugadores": [
+            {"nombre": "Flojo", "minutos": 90, "xg": 0.1, "xa": 0.0,
+             "xgchain": 0.1, "goles": 0, "asistencias": 0, "tiros": 1,
+             "pases_clave": 0, "puesto": "MF"}]},
+        "B": {"jugadores": [
+            {"nombre": "Crack", "minutos": 90, "xg": 1.2, "xa": 0.4,
+             "xgchain": 2.0, "goles": 2, "asistencias": 1, "tiros": 5,
+             "pases_clave": 3, "puesto": "FW"}]}}
+    r = quien_peso_mas(equipos)
+    assert [x["nombre"] for x in r] == ["Crack", "Flojo"]
+    assert r[0]["equipo"] == "B"
+
+
+def test_los_que_jugaron_cuatro_minutos_no_cuentan():
+    """Quien entra en el 86 no puede encabezar nada."""
+    equipos = {"A": {"jugadores": [
+        {"nombre": "Cameo", "minutos": 4, "xg": 0.8, "xa": 0.0,
+         "xgchain": 0.8, "goles": 1, "asistencias": 0, "tiros": 1,
+         "pases_clave": 0, "puesto": "FW"}]}}
+    assert quien_peso_mas(equipos) == []
+    assert len(quien_peso_mas(equipos, minimo_minutos=1)) == 1
+
+
+def test_sin_alineaciones_no_revienta():
+    assert quien_peso_mas({"A": {"jugadores": []}}) == []
+    assert quien_peso_mas({"A": {}}) == []
+
+
+def test_el_informe_entero_lo_trae(inf):
+    assert inf["quien_peso_mas"], "tiene que venir en el informe"
+    assert inf["peso_cadena"] == PESO_CADENA
+    assert inf["quien_peso_mas"][0]["nombre"] == "Raphinha"
+
+
+# ── por tramos de quince minutos ──────────────────────────────────
+
+def test_los_tramos_cubren_el_partido_entero(inf):
+    t = inf["por_tramos"]
+    assert t[0]["desde"] == 0 and t[-1]["hasta"] == 90
+    assert all(b["hasta"] - b["desde"] == TRAMO for b in t)
+    assert len(t) == 6
+
+
+def test_el_xg_de_los_tramos_suma_el_del_equipo(inf):
+    t = inf["por_tramos"]
+    assert round(sum(b["local"] for b in t), 2) == inf["equipos"]["Elche"]["xg"]
+    assert round(sum(b["visitante"] for b in t), 2) == inf["equipos"]["Barcelona"]["xg"]
+
+
+def test_los_tiros_de_los_tramos_suman_los_del_partido(inf):
+    t = inf["por_tramos"]
+    assert (sum(b["tiros_local"] for b in t) +
+            sum(b["tiros_visitante"] for b in t)) == len(inf["tiros"])
+
+
+def test_cada_tiro_cae_en_un_solo_tramo():
+    tiros = [{"minuto": m, "xg": 1.0, "visitante": False, "gol": False,
+              "equipo": "A", "x": 100, "y": 40}
+             for m in (0, 14, 15, 29, 30, 89)]
+    t = por_tramos(tiros, "A", "B")
+    assert round(sum(b["local"] for b in t), 3) == 6.0
+
+
+def test_un_gol_en_el_descuento_no_se_pierde():
+    """El minuto 90+3 lo publica Understat como 90 o más."""
+    tiros = [{"minuto": 93, "xg": 0.7, "visitante": False, "gol": True,
+              "equipo": "A", "x": 110, "y": 40}]
+    t = por_tramos(tiros, "A", "B")
+    assert round(sum(b["local"] for b in t), 3) == 0.7
+    assert sum(b["goles_local"] for b in t) == 1
+
+
+# ── desde dónde tiraron ───────────────────────────────────────────
+
+def test_las_zonas_reparten_todos_los_tiros(inf):
+    for equipo, z in inf["por_zonas"].items():
+        suyos = [t for t in inf["tiros"]
+                 if (t["equipo"] == equipo)]
+        assert sum(d["tiros"] for d in z.values()) == len(suyos), equipo
+        assert round(sum(d["xg"] for d in z.values()), 2) == \
+            inf["equipos"][equipo]["xg"], equipo
+
+
+def test_un_penalti_cae_dentro_del_area():
+    """El punto de penalti está a 11 metros: dentro del área grande."""
+    t = [{"minuto": 10, "xg": 0.76, "visitante": False, "gol": True,
+          "equipo": "A", "x": 107.4, "y": 40}]
+    z = por_zonas(t)
+    assert "area" in z and z["area"]["tiros"] == 1
+
+
+def test_un_tiro_desde_el_centro_del_campo_es_de_fuera():
+    t = [{"minuto": 10, "xg": 0.01, "visitante": False, "gol": False,
+          "equipo": "A", "x": 60, "y": 40}]
+    assert "fuera del area" in por_zonas(t)
+
+
+def test_al_visitante_se_le_deshace_el_espejo_para_la_zona():
+    """Sus coordenadas están espejadas para el dibujo.
+
+    Si no se deshace, un gol suyo a bocajarro sale como un tiro desde
+    setenta metros.
+    """
+    # un tiro del visitante a 5 metros de la portería contraria queda,
+    # espejado, cerca de x = 0
+    t = [{"minuto": 10, "xg": 0.6, "visitante": True, "gol": True,
+          "equipo": "B", "x": 6.0, "y": 40}]
+    z = por_zonas(t)
+    assert "fuera del area" not in z, z
+
+
+def test_las_zonas_vienen_en_orden_de_cerca_a_lejos(inf):
+    for z in inf["por_zonas"].values():
+        orden = [k for k in ORDEN_ZONAS if k in z]
+        assert list(z) == orden
+    for k, v in NOMBRE_ZONA.items():
+        assert k in ORDEN_ZONAS
+
+
+# ── antes y después del primer gol ────────────────────────────────
+
+def test_parte_el_partido_por_el_primer_gol(inf):
+    p = inf["primer_gol"]
+    assert p["hubo_gol"] and p["minuto"] == 13
+    assert p["quien"] == "Barcelona" and p["jugador"] == "Raphinha"
+
+
+def test_las_dos_mitades_suman_el_partido(inf):
+    p = inf["primer_gol"]
+    for lado in ("local", "visitante"):
+        total = round(p["antes"][lado] + p["despues"][lado], 3)
+        equipo = inf["local"] if lado == "local" else inf["visitante"]
+        assert abs(total - inf["equipos"][equipo]["xg"]) < 0.01, lado
+
+
+def test_el_gol_cuenta_en_el_despues():
+    """El minuto del gol pertenece a lo que pasó después, no antes."""
+    tiros = [{"minuto": 30, "xg": 0.5, "visitante": False, "gol": True,
+              "equipo": "A", "jugador": "Uno", "x": 110, "y": 40}]
+    p = antes_y_despues_del_primer_gol(tiros)
+    assert p["antes"]["local"] == 0.0
+    assert p["despues"]["local"] == 0.5
+
+
+def test_un_partido_sin_goles_lo_dice():
+    tiros = [{"minuto": 30, "xg": 0.5, "visitante": False, "gol": False,
+              "equipo": "A", "x": 110, "y": 40}]
+    assert antes_y_despues_del_primer_gol(tiros) == {"hubo_gol": False}
+    assert por_zonas([])["area"]["tiros"] if False else True

@@ -4100,6 +4100,11 @@ ${esc(trad(t.tipo))} · ${esc(trad(t.situacion))}</title></circle>`;
       </div>
     </div>
 
+    ${ipQuienPeso(d)}
+    ${ipPrimerGol(d)}
+    ${ipTramos(d)}
+    ${ipZonas(d)}
+
     <div class="g2" style="margin-bottom:14px">
       <div class="card"><div class="ch"><div class="ct" style="color:${IP_LOCAL}">${esc(L)}</div></div>
         <div style="padding:12px 16px">${repartoHtml(el, IP_LOCAL)}${mejor(el, IP_LOCAL)}</div></div>
@@ -4213,6 +4218,213 @@ function ipCarrera(d, L, V) {
     },
   });
   if (goles.length) { /* los goles ya salen como puntos gordos */ }
+}
+
+
+// ══════════════════════════════════════════════════════════
+// LOS BLOQUES NUEVOS DEL INFORME DEL PARTIDO
+// ══════════════════════════════════════════════════════════
+//
+// Cuatro cosas que el informe no tenía y que contestan preguntas
+// distintas. Todas con datos de tiro, que es lo que hay.
+
+// ── 1. QUIÉN PESÓ MÁS EN LAS OCASIONES ────────────────────
+//
+// Félix pidió "el mejor jugador del partido". No se llama así, y el
+// motivo está escrito en pantalla: con datos de tiro no se puede
+// decir quién fue el mejor. Un central que lo para todo no aparece
+// por ningún lado. Llamarle MVP sería dar por medido lo que no se ha
+// medido, y además pondría siempre a un delantero.
+function ipQuienPeso(d) {
+  const lista = (d.quien_peso_mas || []).slice(0, 10);
+  if (!lista.length) return '';
+  const col = e => e === d.local ? IP_LOCAL : IP_VISIT;
+  const tope = Math.max(...lista.map(x => x.aportacion), 0.01);
+
+  return `
+  <div class="card" style="margin-bottom:14px">
+    <div class="ch"><div class="ct">🏅 Quién pesó más en las ocasiones</div></div>
+    <div style="padding:12px 16px 4px;color:var(--text3);font-size:11.5px;
+      line-height:1.6;max-width:72ch">
+      <b style="color:var(--text2)">Esto no es «el mejor del partido», y la
+      diferencia importa.</b> Con datos de tiro no se puede decir quién jugó
+      mejor: un central que lo para todo o un pivote que recupera veinte
+      balones no aparecen aquí, porque Understat no publica nada de eso.
+      Lo que sí se puede contestar es quién pesó más en las ocasiones que
+      hubo. Un defensa casi nunca saldrá arriba, y no es que jugara mal.
+    </div>
+    <div style="padding:10px 16px 16px">
+      ${lista.map((x, i) => {
+        const c = col(x.equipo);
+        const partes = [
+          ['xG', x.xg, 1],
+          ['xA', x.xa, .72],
+          ['resto de la jugada', x.resto_de_cadena * (d.peso_cadena || 0.25), .42],
+        ];
+        return `<div style="margin-bottom:9px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;
+            font-size:12.5px;gap:8px">
+            <span><b style="color:var(--text3);font-family:var(--fm);
+              font-size:11px">${i + 1}</b>
+              <b style="color:${c};margin-left:6px">${esc(x.nombre)}</b>
+              <span style="color:var(--text3);font-size:11px">
+                ${esc(x.equipo)} · ${esc(x.puesto || '')} · ${x.minutos}′</span></span>
+            <span style="font-family:var(--fm);white-space:nowrap">
+              ${x.goles ? `<span title="goles" style="color:${c}">${x.goles}G</span> ` : ''}${
+                x.asistencias ? `<span title="asistencias" style="color:${c}">${x.asistencias}A</span> ` : ''}
+              <b>${x.aportacion.toFixed(2)}</b></span>
+          </div>
+          <div style="display:flex;height:7px;border-radius:4px;overflow:hidden;
+            background:rgba(255,255,255,.05);margin-top:2px"
+            title="xG ${x.xg} · xA ${x.xa} · xGChain ${x.xgchain} (${x.tiros} tiros, ${x.pases_clave} pases clave)">
+            ${partes.map(([n, v, op]) => v <= 0 ? '' :
+              `<div style="width:${v / tope * 100}%;background:${c};opacity:${op}"
+                 title="${esc(n)}: ${v.toFixed(2)}"></div>`).join('')}
+          </div></div>`;
+      }).join('')}
+      <div style="color:var(--text3);font-size:11.5px;line-height:1.6;
+        margin-top:12px;max-width:72ch">
+        La cuenta es <b>xG + xA + ${d.peso_cadena ?? 0.25} × (xGChain − xG − xA)</b>.
+        xG es lo que valían sus tiros, xA lo que valían los pases de los que
+        salió un tiro, y xGChain lo que valían todas las jugadas en las que
+        participó: la resta es su parte en jugadas de peligro en las que ni
+        tiró ni dio el último pase. Eso cuenta, pero no como rematar, así que
+        pesa un cuarto. El número está escrito para que se pueda discutir.
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── 2. EN QUÉ RATOS MANDÓ CADA UNO ────────────────────────
+function ipTramos(d) {
+  const t = d.por_tramos || [];
+  if (!t.length) return '';
+  const tope = Math.max(0.2, ...t.map(b => Math.max(b.local, b.visitante)));
+  return `
+  <div class="card" style="margin-bottom:14px">
+    <div class="ch"><div class="ct">⏱️ En qué ratos mandó cada uno</div></div>
+    <div style="padding:14px 16px">
+      ${t.map(b => `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"
+          title="${esc(b.etiqueta)}′ — ${esc(d.local)}: ${b.tiros_local} tiros, ${b.local.toFixed(2)} xG · ${esc(d.visitante)}: ${b.tiros_visitante} tiros, ${b.visitante.toFixed(2)} xG">
+          <div style="flex:1;display:flex;justify-content:flex-end">
+            <div style="width:${b.local / tope * 100}%;height:16px;
+              background:${IP_LOCAL};opacity:.82;border-radius:3px 0 0 3px"></div>
+          </div>
+          <span style="font-family:var(--fm);font-size:10.5px;color:var(--text3);
+            min-width:46px;text-align:center">${esc(b.etiqueta)}</span>
+          <div style="flex:1">
+            <div style="width:${b.visitante / tope * 100}%;height:16px;
+              background:${IP_VISIT};opacity:.82;border-radius:0 3px 3px 0"></div>
+          </div>
+          <span style="font-size:11px;min-width:34px;text-align:center">${
+            '⚽'.repeat(b.goles_local + b.goles_visitante)}</span>
+        </div>`).join('')}
+      <div style="color:var(--text3);font-size:11.5px;line-height:1.6;
+        margin-top:10px;max-width:72ch">
+        El xG de cada cuarto de hora. La carrera de arriba enseña el partido
+        entero; esto enseña en qué ratos mandó cada uno, que es lo que se
+        discute después: «les comimos la primera media hora».
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── 3. DESDE DÓNDE TIRARON ────────────────────────────────
+function ipZonas(d) {
+  const z = d.por_zonas || {};
+  const equipos = Object.keys(z);
+  if (!equipos.length) return '';
+  const col = e => e === d.local ? IP_LOCAL : IP_VISIT;
+  const todas = [...new Set(equipos.flatMap(e => Object.keys(z[e])))];
+
+  return `
+  <div class="card" style="margin-bottom:14px">
+    <div class="ch"><div class="ct">📍 Desde dónde tiraron</div></div>
+    <div style="padding:12px 16px 16px">
+      <div class="tw"><table style="font-size:12px">
+        <thead><tr><th style="text-align:left">Zona</th>
+          ${equipos.map(e => `<th colspan="3" style="text-align:center;
+            color:${col(e)}">${esc(e)}</th>`).join('')}</tr>
+          <tr><th></th>${equipos.map(() =>
+            `<th style="font-size:9px">Tiros</th><th style="font-size:9px">xG</th>
+             <th style="font-size:9px" title="xG por tiro: lo que valía de media cada uno">Calidad</th>`).join('')}</tr>
+        </thead>
+        <tbody>${todas.map(k => `<tr>
+          <td style="text-align:left">${esc((z[equipos[0]][k] || z[equipos[1]][k]).nombre)}</td>
+          ${equipos.map(e => { const v = z[e][k];
+            return v ? `<td style="font-family:var(--fm)">${v.tiros}${
+                v.goles ? `<span style="color:${col(e)}" title="goles"> ·${v.goles}</span>` : ''}</td>
+              <td style="font-family:var(--fm)">${v.xg.toFixed(2)}</td>
+              <td style="font-family:var(--fm);color:var(--text2)">${v.xg_por_tiro.toFixed(2)}</td>`
+              : '<td>—</td><td>—</td><td>—</td>'; }).join('')}
+        </tr>`).join('')}</tbody>
+      </table></div>
+      <div style="color:var(--text3);font-size:11.5px;line-height:1.6;
+        margin-top:10px;max-width:72ch">
+        Dos equipos con el mismo número de tiros pueden haberlos hecho de
+        maneras opuestas: ocho llegadas al área o ocho disparos desde treinta
+        metros. La columna de calidad es el xG medio de cada tiro, que es
+        justo esa diferencia. Las zonas se miden en metros de verdad sobre el
+        campo, no a ojo.
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── 4. ANTES Y DESPUÉS DEL PRIMER GOL ─────────────────────
+//
+// Esto casi nadie lo enseña y explica muchísimos partidos. Un equipo
+// que se adelanta pronto se echa atrás, y el xG del rival sube sin
+// que eso quiera decir que juegue mejor.
+function ipPrimerGol(d) {
+  const p = d.primer_gol || {};
+  if (!p.hubo_gol) return '';
+  const col = e => e === d.local ? IP_LOCAL : IP_VISIT;
+  const bloque = (titulo, b, minutos) => {
+    const t = b.local + b.visitante || 1;
+    return `<div style="flex:1;min-width:0">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:4px">
+        ${esc(titulo)} <span style="font-family:var(--fm)">· ${minutos}′</span></div>
+      <div style="display:flex;height:9px;border-radius:5px;overflow:hidden;
+        background:rgba(255,255,255,.05)">
+        <div style="width:${b.local / t * 100}%;background:${IP_LOCAL};opacity:.85"></div>
+        <div style="width:${b.visitante / t * 100}%;background:${IP_VISIT};opacity:.85"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11.5px;
+        font-family:var(--fm);margin-top:3px">
+        <span style="color:${IP_LOCAL}">${b.local.toFixed(2)}</span>
+        <span style="color:${IP_VISIT}">${b.visitante.toFixed(2)}</span>
+      </div></div>`;
+  };
+  const ritmoAntes = (p.antes.local + p.antes.visitante) / Math.max(p.antes.minutos, 1) * 90;
+  const ritmoDespues = (p.despues.local + p.despues.visitante) / Math.max(p.despues.minutos, 1) * 90;
+
+  return `
+  <div class="card" style="margin-bottom:14px">
+    <div class="ch"><div class="ct">🔀 Antes y después del primer gol</div></div>
+    <div style="padding:14px 16px">
+      <div style="font-size:12.5px;color:var(--text2);margin-bottom:12px">
+        El primer gol llegó en el <b style="font-family:var(--fm)">${p.minuto}′</b>,
+        de <b style="color:${col(p.quien)}">${esc(p.jugador)}</b> (${esc(p.quien)}).
+        A partir de ahí el partido fue otro.
+      </div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap">
+        ${bloque('Hasta el gol', p.antes, p.antes.minutos)}
+        ${bloque('Desde el gol', p.despues, p.despues.minutos)}
+      </div>
+      <div style="color:var(--text3);font-size:11.5px;line-height:1.6;
+        margin-top:12px;max-width:72ch">
+        El ritmo de ocasiones pasó de
+        <b style="font-family:var(--fm)">${ritmoAntes.toFixed(2)}</b> a
+        <b style="font-family:var(--fm)">${ritmoDespues.toFixed(2)}</b> de xG por
+        90 minutos entre los dos.
+        Separar los dos ratos importa porque son dos partidos distintos: el que
+        se adelanta se echa atrás, y el xG del otro sube sin que eso signifique
+        que juega mejor. Sumados, los totales mezclan las dos cosas.
+      </div>
+    </div>
+  </div>`;
 }
 
 </script>

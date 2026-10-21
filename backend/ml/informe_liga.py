@@ -194,6 +194,12 @@ def informe(partido: dict, tiros_crudos: dict, roster: dict = None) -> dict:
                 f"tiro. El marcador bueno es el del calendario.")
 
     r = roster or {}
+    equipos = {
+        local: _resumen_equipo([t for t in tiros if not t["visitante"]],
+                               r.get("local", [])),
+        visitante: _resumen_equipo([t for t in tiros if t["visitante"]],
+                                   r.get("visitante", [])),
+    }
     return {
         "match_id": partido.get("match_id", ""),
         "fecha": partido.get("fecha", ""),
@@ -204,15 +210,221 @@ def informe(partido: dict, tiros_crudos: dict, roster: dict = None) -> dict:
         "aviso_marcador": aviso_marcador,
         "tiros": sorted(tiros, key=lambda t: t["minuto"]),
         "carrera": carrera_xg(tiros, local, visitante),
-        "equipos": {
-            local: _resumen_equipo([t for t in tiros if not t["visitante"]],
-                                   r.get("local", [])),
-            visitante: _resumen_equipo([t for t in tiros if t["visitante"]],
-                                       r.get("visitante", [])),
+        "equipos": equipos,
+        "quien_peso_mas": quien_peso_mas(equipos),
+        "por_tramos": por_tramos(tiros, local, visitante),
+        "por_zonas": {
+            local: por_zonas([t for t in tiros if not t["visitante"]]),
+            visitante: por_zonas([t for t in tiros if t["visitante"]]),
         },
+        "primer_gol": antes_y_despues_del_primer_gol(tiros),
+        "peso_cadena": PESO_CADENA,
         "fuente": "Understat",
         "sin_datos_de": [
             "red de pases", "mapa de posiciones", "presiones",
             "recuperaciones", "duelos", "paradas del portero",
         ],
+    }
+
+
+# ══════════════════════════════════════════════════════════════════
+# QUIÉN PESÓ MÁS EN LAS OCASIONES
+# ══════════════════════════════════════════════════════════════════
+#
+# Félix pidió "el mejor jugador del partido". No lo llamo así, y el
+# motivo importa.
+#
+# Con datos de tiro no se puede decir quién fue el mejor. Un central
+# que lo para todo y un pivote que recupera veinte balones no aparecen
+# por ningún lado: Understat no publica nada de eso. Llamarle MVP
+# sería dar por medido lo que no se ha medido, y además pondría
+# siempre a un delantero, que es justo la crítica que se le hace a
+# media prensa deportiva.
+#
+# Así que esto contesta una pregunta más pequeña y verdadera: de las
+# ocasiones que hubo, ¿quién pesó más? Con los componentes a la vista
+# para que cada uno juzgue.
+#
+# LA CUENTA
+#
+#     aportación = xG + xA + PESO_CADENA · (xGChain − xG − xA)
+#
+# xG es lo que valían sus tiros y xA lo que valían los pases de los
+# que salió un tiro. xGChain es lo que valían TODAS las jugadas en las
+# que participó, así que la resta es su parte en jugadas de peligro en
+# las que ni tiró ni dio el último pase: el que saca el balón, el que
+# conduce, el que abre a la banda.
+#
+# Eso vale, pero no vale lo mismo que rematar, así que pesa un cuarto.
+# El número está escrito aquí para que se pueda discutir en vez de
+# estar escondido en medio de una cuenta.
+
+PESO_CADENA = 0.25
+
+
+def quien_peso_mas(equipos: dict, minimo_minutos: int = 20) -> list:
+    """Ordena a los jugadores de los dos equipos por aportación.
+
+    `equipos` es el bloque que devuelve `informe`. Devuelve la lista
+    entera ordenada, con los componentes de cada uno, para que la
+    pantalla pueda enseñar de dónde sale cada cifra.
+    """
+    fila = []
+    for nombre_equipo, datos in equipos.items():
+        for j in datos.get("jugadores") or []:
+            minutos = j.get("minutos") or 0
+            if minutos < minimo_minutos:
+                continue
+            xg = float(j.get("xg") or 0)
+            xa = float(j.get("xa") or 0)
+            cadena = float(j.get("xgchain") or 0)
+            resto = max(0.0, cadena - xg - xa)
+            fila.append({
+                "nombre": j.get("nombre"),
+                "equipo": nombre_equipo,
+                "puesto": j.get("puesto"),
+                "minutos": minutos,
+                "goles": j.get("goles") or 0,
+                "asistencias": j.get("asistencias") or 0,
+                "tiros": j.get("tiros") or 0,
+                "pases_clave": j.get("pases_clave") or 0,
+                "xg": round(xg, 3),
+                "xa": round(xa, 3),
+                "xgchain": round(cadena, 3),
+                "resto_de_cadena": round(resto, 3),
+                "aportacion": round(xg + xa + PESO_CADENA * resto, 3),
+            })
+    fila.sort(key=lambda x: (-x["aportacion"], -x["goles"], -x["minutos"]))
+    return fila
+
+
+# ══════════════════════════════════════════════════════════════════
+# CUÁNDO Y DESDE DÓNDE
+# ══════════════════════════════════════════════════════════════════
+
+TRAMO = 15
+
+
+def por_tramos(tiros: list, local: str, visitante: str, tramo: int = TRAMO) -> list:
+    """El xG de cada equipo por tramos de quince minutos.
+
+    La carrera de xG enseña el partido entero de un vistazo; esto
+    enseña en qué ratos mandó cada uno, que es lo que de verdad se
+    discute después: «les comimos la primera media hora».
+    """
+    n = (90 + tramo - 1) // tramo
+    bloques = []
+    for k in range(n):
+        desde, hasta = k * tramo, min((k + 1) * tramo, 90)
+        dentro = [t for t in tiros if desde <= t["minuto"] < hasta or
+                  (hasta == 90 and t["minuto"] >= 90)]
+        bloques.append({
+            "desde": desde, "hasta": hasta,
+            "etiqueta": f"{desde}–{hasta}",
+            "local": round(sum(t["xg"] for t in dentro if not t["visitante"]), 3),
+            "visitante": round(sum(t["xg"] for t in dentro if t["visitante"]), 3),
+            "tiros_local": sum(1 for t in dentro if not t["visitante"]),
+            "tiros_visitante": sum(1 for t in dentro if t["visitante"]),
+            "goles_local": sum(1 for t in dentro if t["gol"] and not t["visitante"]),
+            "goles_visitante": sum(1 for t in dentro if t["gol"] and t["visitante"]),
+        })
+    return bloques
+
+
+# Las zonas se miden en el campo ya convertido (120 × 80).
+#
+# El área grande son 16,5 metros de los 105 de largo, o sea el 15,7 %:
+# en un campo de 120 eso es desde x = 101,2. El área pequeña son 5,5
+# metros, el 5,2 %: desde x = 113,7. De ancho, el área va de 20,2 a
+# 59,8 y la pequeña de 30,2 a 49,8.
+#
+# Se calculan, no se escriben a ojo, para que si algún día el campo
+# del dibujo cambia de medidas las zonas cambien con él.
+LARGO_REAL, ANCHO_REAL = 105.0, 68.0
+AREA_FONDO = 16.5
+AREA_ANCHO = 40.3
+PEQUENA_FONDO = 5.5
+PEQUENA_ANCHO = 18.3
+
+
+def _zona(x: float, y: float) -> str:
+    """En qué parte del campo cayó un tiro, mirándolo desde el ataque."""
+    fondo = (LARGO - x) / LARGO * LARGO_REAL          # metros hasta la línea
+    desvio = abs(y - ANCHO / 2) / ANCHO * ANCHO_REAL  # metros al centro
+    if fondo <= PEQUENA_FONDO and desvio <= PEQUENA_ANCHO / 2:
+        return "area pequena"
+    if fondo <= AREA_FONDO and desvio <= AREA_ANCHO / 2:
+        return "area"
+    if fondo <= AREA_FONDO:
+        return "costado del area"
+    return "fuera del area"
+
+
+ORDEN_ZONAS = ["area pequena", "area", "costado del area", "fuera del area"]
+
+NOMBRE_ZONA = {
+    "area pequena": "Área pequeña",
+    "area": "Dentro del área",
+    "costado del area": "Al costado del área",
+    "fuera del area": "Desde fuera del área",
+}
+
+
+def por_zonas(tiros: list) -> dict:
+    """Cuántos tiros, cuánto xG y cuántos goles desde cada zona.
+
+    Contesta «¿llegaron o tiraron de lejos?», que es otra cosa que dos
+    equipos con el mismo número de tiros pueden haber hecho de maneras
+    opuestas.
+    """
+    salida = {}
+    for t in tiros:
+        # Las coordenadas del visitante están espejadas para el dibujo,
+        # así que hay que deshacerlo para saber a qué distancia de la
+        # portería contraria tiró.
+        x = LARGO - t["x"] if t["visitante"] else t["x"]
+        y = ANCHO - t["y"] if t["visitante"] else t["y"]
+        z = _zona(x, y)
+        d = salida.setdefault(z, {"zona": z, "nombre": NOMBRE_ZONA[z],
+                                  "tiros": 0, "xg": 0.0, "goles": 0})
+        d["tiros"] += 1
+        d["xg"] = round(d["xg"] + t["xg"], 3)
+        d["goles"] += 1 if t["gol"] else 0
+    for d in salida.values():
+        d["xg_por_tiro"] = round(d["xg"] / d["tiros"], 3) if d["tiros"] else 0.0
+    return {z: salida[z] for z in ORDEN_ZONAS if z in salida}
+
+
+def antes_y_despues_del_primer_gol(tiros: list) -> dict:
+    """El partido partido en dos por el primer gol.
+
+    Esto casi nadie lo enseña y explica muchísimos partidos. Un equipo
+    que se adelanta pronto se echa atrás, y a partir de ahí el xG del
+    rival sube sin que eso quiera decir que juega mejor. Sin separar
+    los dos ratos, los totales mezclan dos partidos distintos.
+    """
+    goles = [t for t in tiros if t["gol"]]
+    if not goles:
+        return {"hubo_gol": False}
+    primero = min(goles, key=lambda t: t["minuto"])
+    corte = primero["minuto"]
+
+    def suma(lista, visitante):
+        return round(sum(t["xg"] for t in lista if t["visitante"] == visitante), 3)
+
+    antes = [t for t in tiros if t["minuto"] < corte]
+    despues = [t for t in tiros if t["minuto"] >= corte]
+    return {
+        "hubo_gol": True,
+        "minuto": corte,
+        "quien": primero["equipo"],
+        "jugador": primero["jugador"],
+        "antes": {"minutos": corte,
+                  "local": suma(antes, False), "visitante": suma(antes, True),
+                  "tiros_local": sum(1 for t in antes if not t["visitante"]),
+                  "tiros_visitante": sum(1 for t in antes if t["visitante"])},
+        "despues": {"minutos": 90 - corte,
+                    "local": suma(despues, False), "visitante": suma(despues, True),
+                    "tiros_local": sum(1 for t in despues if not t["visitante"]),
+                    "tiros_visitante": sum(1 for t in despues if t["visitante"])},
     }
