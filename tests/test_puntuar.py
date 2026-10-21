@@ -363,3 +363,143 @@ async def test_dentro_de_cada_puesto_salen_los_mejores(monkeypatch):
     salen = {p["name"] for p in pocos}
     assert len(mejores & salen) >= 8, (
         "al recortar se están perdiendo los mejores")
+
+
+# ══════════════════════════════════════════════════════════════════
+# EL ENCOGIDO POR MINUTOS
+# ══════════════════════════════════════════════════════════════════
+#
+# Dani Olmo salía con un 97,8 habiendo jugado 323 minutos. Un analista
+# ve eso el primero de la lista y cierra la pestaña, con razón: tres
+# partidos y medio no son una muestra.
+
+from backend.ml.puntuar import K_MINUTOS, encoger
+
+
+def test_sin_minutos_la_nota_es_la_media():
+    assert encoger(98.0, 0) == 50.0
+
+
+def test_a_la_K_pesa_la_mitad_cada_uno():
+    assert encoger(90.0, K_MINUTOS) == 70.0
+    assert encoger(10.0, K_MINUTOS) == 30.0
+
+
+def test_cuantos_mas_minutos_menos_se_mueve():
+    poco = encoger(95.0, 300)
+    mucho = encoger(95.0, 3000)
+    assert poco < mucho < 95.0
+    assert abs(mucho - 95) < abs(poco - 95)
+
+
+def test_el_encogido_nunca_cambia_el_lado_de_la_media():
+    """Un bueno no puede pasar a malo por encogerlo, ni al revés."""
+    for m in (0, 90, 323, 540, 1500, 3000):
+        assert encoger(80.0, m) >= 50.0
+        assert encoger(20.0, m) <= 50.0
+    assert encoger(50.0, 777) == 50.0
+
+
+def test_el_caso_de_dani_olmo():
+    """97,8 con 323 minutos tiene que bajar bastante."""
+    ajustado = encoger(97.8, 323)
+    assert ajustado < 80, ajustado
+    # y alguien con los mismos 97,8 pero media temporada, casi no baja
+    assert encoger(97.8, 1800) > 85
+
+
+def _grupo(n=30, semilla=3):
+    """Delanteros inventados con la forma real de Understat."""
+    import random
+    r = random.Random(semilla)
+    out = []
+    for i in range(n):
+        minutos = r.choice([200, 300, 500, 900, 1400, 1800])
+        out.append({
+            "player_id": str(i), "name": f"J{i}", "position": "F S",
+            "time": minutos, "games": max(1, minutos // 85),
+            "goals": r.randint(0, 9), "assists": r.randint(0, 6),
+            "shots": r.randint(3, 45), "key_passes": r.randint(0, 40),
+            "xG": round(r.uniform(0.3, 9.0), 2),
+            "xA": round(r.uniform(0.1, 6.0), 2),
+            "npxG": round(r.uniform(0.2, 8.0), 2),
+            "xGChain": round(r.uniform(0.5, 12.0), 2),
+            "xGBuildup": round(r.uniform(0.2, 8.0), 2),
+        })
+    return out
+
+
+def test_la_respuesta_trae_el_crudo_al_lado_del_ajustado():
+    """No se esconde nada: se ordena mejor."""
+    jug = _grupo()
+    puntuar(jug, "FW")
+    for j in jug:
+        assert "score" in j and "score_crudo" in j
+        assert "percentiles" in j and "percentiles_crudos" in j
+        assert j["k_minutos"] == K_MINUTOS
+        assert j["minutos_para_el_ajuste"] == j["time"]
+
+
+def _jugador(nombre, minutos, goles, asis, tiros, pc, xg, xa, npxg, chain):
+    return {"player_id": nombre, "name": nombre, "position": "F S",
+            "time": minutos, "games": max(1, minutos // 90),
+            "goals": goles, "assists": asis, "shots": tiros,
+            "key_passes": pc, "xG": xg, "xA": xa, "npxG": npxg,
+            "xGChain": chain, "xGBuildup": round(chain * 0.35, 2)}
+
+
+def test_el_de_pocos_minutos_deja_de_mandar():
+    """La prueba que de verdad importa, con un grupo hecho a mano.
+
+    Dos jugadores: uno espectacular en 270 minutos —tres partidos— y
+    otro bueno en 1.800. Las tasas por 90 del primero son más altas en
+    TODAS las métricas, así que sin encoger manda él. Con el encogido
+    manda el que lo ha demostrado.
+
+    (Dos versiones anteriores de esta prueba estaban mal: una usaba un
+    grupo aleatorio que tenía otros de 200 minutos aún mejores, y otra
+    construía los totales con una fórmula que al redondear los goles a
+    entero se cargaba la diferencia. El encogido estaba bien las dos
+    veces.)
+    """
+    # tasas por 90 de cada uno, para que se vea de dónde sale:
+    #   Fugaz  1,00 goles · 0,67 asist · 4,00 tiros · 0,90 xG
+    #   Fijo   0,60 goles · 0,30 asist · 3,50 tiros · 0,55 xG
+    fugaz = _jugador("Fugaz", 270, 3, 2, 12, 8, 2.7, 1.2, 2.4, 3.6)
+    fijo = _jugador("Fijo", 1800, 12, 6, 70, 45, 11.0, 5.0, 9.5, 20.0)
+    relleno = [_jugador(f"Normal{i}", 900, 3 + i // 4, 2, 25 + i, 15 + i,
+                        3.0 + i * 0.25, 1.5, 2.6, 6.0 + i * 0.3)
+               for i in range(16)]
+
+    todos = relleno + [fugaz, fijo]
+    puntuar(todos, "FW")
+
+    assert fugaz["score_crudo"] > fijo["score_crudo"], (
+        "sin encoger, el de tres partidos va por delante "
+        f"({fugaz['score_crudo']} contra {fijo['score_crudo']})")
+    assert fijo["score"] > fugaz["score"], (
+        "con el encogido tiene que mandar el que lo ha demostrado "
+        f"({fijo['score']} contra {fugaz['score']})")
+    assert fugaz["score"] < fugaz["score_crudo"] - 15, (
+        f"el de 270 minutos tiene que bajar mucho: "
+        f"{fugaz['score_crudo']} → {fugaz['score']}")
+
+
+def test_el_que_lleva_media_temporada_apenas_se_mueve():
+    jug = _grupo()
+    veterano = {
+        "player_id": "v", "name": "Fijo", "position": "F S",
+        "time": 1800, "games": 20,
+        "goals": 14, "assists": 7, "shots": 70, "key_passes": 45,
+        "xG": 13.0, "xA": 6.0, "npxG": 11.5, "xGChain": 18.0, "xGBuildup": 7.0,
+    }
+    jug.append(veterano)
+    puntuar(jug, "FW")
+    assert abs(veterano["score"] - veterano["score_crudo"]) < 12, (
+        f"crudo {veterano['score_crudo']} vs ajustado {veterano['score']}")
+
+
+def test_la_ficha_dice_que_ha_encogido_y_con_que_K():
+    ficha = puntuar(_grupo(), "FW")
+    assert ficha["k_minutos"] == K_MINUTOS
+    assert "encogido" in ficha["metodo"]

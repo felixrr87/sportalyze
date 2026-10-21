@@ -139,6 +139,31 @@ def test_el_informe_del_partido_pintado_es_el_dato():
 @pytest.mark.skipif(not _node(), reason="no hay node instalado")
 @pytest.mark.skipif(not _jsdom(),
                     reason="falta jsdom: cd tests/maqueta && npm install")
+def test_el_ranking_pintado_es_el_dato():
+    """El ranking de goles y asistencias, donde estaban las Cartas FIFA.
+
+    La respuesta se saca de la ruta de verdad —/api/goles-asistencias,
+    con Understat sustituido por una plantilla pequeña— así que si la
+    ruta cambia de forma, esto se entera.
+
+    Lo que de verdad busca: que la pantalla NO reordene. El orden lo
+    decide el servidor porque el recorte de `limit` tiene que caer
+    después de ordenar; si la pantalla reordenara, la lista saldría
+    ordenada pero recortada por otro criterio, y el jugador que se
+    busca —el que lleva poco y mucho más de lo que le tocaba— se
+    quedaría fuera sin que nadie lo viera.
+    """
+    from tests.fabricar_fixture_ranking import main as fabricar
+    fabricar()
+    _correr("comprobar_ranking.js",
+            os.path.join(AQUI, "datos", "ranking_fixture.json"),
+            "Todo el ranking pintado es el dato",
+            os.path.join(AQUI, "datos", "ranking_fixture_dif.json"))
+
+
+@pytest.mark.skipif(not _node(), reason="no hay node instalado")
+@pytest.mark.skipif(not _jsdom(),
+                    reason="falta jsdom: cd tests/maqueta && npm install")
 def test_en_el_movil_se_puede_navegar():
     """El fallo que no se ve nunca desarrollando.
 

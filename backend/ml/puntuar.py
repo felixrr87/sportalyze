@@ -31,6 +31,41 @@ LO QUE NO HACE, Y ANTES SÍ
 """
 import numpy as np
 
+# ══════════════════════════════════════════════════════════════════
+# EL ENCOGIDO POR MINUTOS
+# ══════════════════════════════════════════════════════════════════
+#
+# Dani Olmo salía con un 97,8 habiendo jugado 323 minutos. Tres
+# partidos y medio. Un analista abre el Scouting, ve eso el primero de
+# la lista, y cierra la pestaña: no es un hallazgo, es que no ha
+# jugado lo bastante como para saberlo.
+#
+# Una tasa por 90 minutos con pocos minutos es casi toda ruido. El que
+# mete dos en media hora va a 6 goles por 90; el que mete dos en
+# novecientos minutos va a 0,2. El primero no es treinta veces mejor.
+#
+# Así que cada percentil se acerca al 50 —la media del grupo— en
+# proporción a lo poco que ha jugado:
+#
+#     ajustado = (minutos · suyo + K · 50) / (minutos + K)
+#
+# Con K = 540 minutos, seis partidos. Alguien con 540 pesa la mitad él
+# y la mitad la media; con 1.620 pesa el 75 % él. En octubre, con
+# nueve jornadas, eso ordena la lista por quien lo ha demostrado y no
+# por quien ha tenido una buena tarde.
+#
+# K está aquí escrito para que se pueda discutir, y la respuesta
+# devuelve el percentil crudo al lado del ajustado: no se esconde
+# nada, se ordena mejor.
+K_MINUTOS = 540
+
+
+def encoger(percentil: float, minutos: int, k: int = K_MINUTOS) -> float:
+    """Acerca un percentil a 50 según lo poco que ha jugado."""
+    minutos = max(0, int(minutos or 0))
+    return round((minutos * percentil + k * 50.0) / (minutos + k), 1)
+
+
 from backend.ml.metricas import (METRICAS_POR_PUESTO, MINIMO_PARA_PERCENTILES,
                                  PUESTOS_SIN_DATOS)
 
@@ -147,12 +182,25 @@ def puntuar(jugadores: list, puesto: str) -> dict:
 
     suma_pesos = sum(m[2] for m in ficha["metricas"])
     for i, j in enumerate(jugadores):
-        total = sum(columnas[c]["percentiles"][i] * columnas[c]["peso"]
-                    for c in columnas)
+        minutos = int(j.get("time", 0) or 0)
+        # Cada percentil se encoge ANTES de promediarlos. Encoger sólo
+        # la nota final daría otra cosa: el promedio de los percentiles
+        # encogidos y el encogido del promedio no coinciden cuando los
+        # pesos no son iguales.
+        crudos = {c: columnas[c]["percentiles"][i] for c in columnas}
+        ajustados = {c: encoger(crudos[c], minutos) for c in columnas}
+
+        total = sum(ajustados[c] * columnas[c]["peso"] for c in columnas)
         j["score"] = round(total / suma_pesos, 1)
+        j["score_crudo"] = round(
+            sum(crudos[c] * columnas[c]["peso"] for c in columnas)
+            / suma_pesos, 1)
+        j["minutos_para_el_ajuste"] = minutos
+        j["k_minutos"] = K_MINUTOS
         j["percentiles"] = {
-            columnas[c]["etiqueta"]: round(columnas[c]["percentiles"][i], 1)
-            for c in columnas}
+            columnas[c]["etiqueta"]: round(ajustados[c], 1) for c in columnas}
+        j["percentiles_crudos"] = {
+            columnas[c]["etiqueta"]: round(crudos[c], 1) for c in columnas}
         j["por_90"] = {
             columnas[c]["etiqueta"]: round(columnas[c]["valores"][i], 3)
             for c in columnas}
@@ -167,6 +215,8 @@ def puntuar(jugadores: list, puesto: str) -> dict:
         "metricas": [{"clave": c, "etiqueta": e, "peso": p}
                      for c, e, p, _ in ficha["metricas"]],
         "avisos": avisos,
+        "k_minutos": K_MINUTOS,
         "metodo": ("percentil dentro de este grupo, por 90 minutos, "
+                   "encogido hacia 50 según los minutos jugados y "
                    "promediado con los pesos de arriba"),
     }

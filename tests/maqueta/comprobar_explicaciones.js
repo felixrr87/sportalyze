@@ -43,8 +43,16 @@ w.addEventListener('load', async ()=>{
   // la de scouting TIENE que decir lo de defensas y porteros
   ok(/defensa/i.test(EX.scouting.metodo) && /portero/i.test(EX.scouting.metodo),
      'la de scouting avisa de que no puntúa defensas ni porteros');
-  ok(/Understat no publica/i.test(EX.players.metodo) || /SIN NOTA/.test(EX.players.metodo),
-     'la de cartas avisa de los que salen sin nota');
+  // Ésta decía «la de cartas avisa de los que salen sin nota» y
+  // buscaba «Understat no publica». La pantalla ya no son las Cartas
+  // FIFA: es el ranking de goles y asistencias, que no pone nota a
+  // nadie. Lo que tiene que decir ahora es otra cosa.
+  ok(/xG\+xA/.test(EX.players.metodo),
+     'la del ranking dice contra qué se compara');
+  ok(/recort/i.test(EX.players.metodo),
+     'la del ranking dice que el recorte va después de ordenar');
+  ok(/no mide lo bueno que es nadie|no hay nota/i.test(EX.players.metodo),
+     'la del ranking avisa de que no es una nota');
   // ── frases que el código ya no cumple ──
   //
   // Una explicación que describe cómo se hacía antes es peor que no

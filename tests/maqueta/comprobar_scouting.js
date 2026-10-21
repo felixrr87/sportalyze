@@ -93,8 +93,11 @@ w.addEventListener('load', async () => {
   montaFetch();
   montaChart();
 
+  // abrirFichaDesdeCarta estaba en esta lista. Se fue con las Cartas
+  // FIFA; ahora la ficha se abre desde el ranking de goles y
+  // asistencias, y eso lo comprueba comprobar_ranking.js.
   for (const f of ['runScouting', 'scPinta', 'abrirFicha', 'initCmp',
-                   'runCompare', 'abrirFichaDesdeCarta', 'pintaTirosFicha']) {
+                   'runCompare', 'pintaTirosFicha']) {
     comprueba(typeof w[f] === 'function', `${f} existe`);
   }
   if (typeof w.runScouting !== 'function') return fin();

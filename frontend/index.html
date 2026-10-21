@@ -280,49 +280,6 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
 .mi:hover { border-color:var(--border2) }
 .mscore { font-family:var(--fm); font-size:15px; font-weight:700; color:var(--electric); min-width:40px; text-align:center }
 
-/* ═══════════════════════════════
-   FIFA CARDS
-═══════════════════════════════ */
-.pgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(168px,1fr)); gap:16px }
-.fc {
-  width:168px; height:238px; border-radius:14px;
-  cursor:pointer; transition:transform 0.25s cubic-bezier(0.4,0,0.2,1),box-shadow 0.25s;
-  user-select:none; overflow:hidden; position:relative;
-}
-.fc:hover { transform:translateY(-8px) scale(1.04); box-shadow:0 24px 60px rgba(0,0,0,0.7),0 0 40px rgba(14,165,233,0.15) }
-.fci {
-  width:100%; height:100%; border-radius:14px;
-  padding:11px 10px 9px; display:flex; flex-direction:column; align-items:center;
-  position:relative; overflow:hidden;
-}
-.fci::before {
-  content:''; position:absolute; inset:0;
-  background:radial-gradient(ellipse at 50% 15%,rgba(255,255,255,0.13) 0%,transparent 65%);
-  pointer-events:none;
-}
-.fci::after {
-  content:''; position:absolute; bottom:0; left:0; right:0; height:45%;
-  background:linear-gradient(to top,rgba(0,0,0,0.5),transparent);
-  pointer-events:none;
-}
-.fscore { font-family:var(--ff); font-size:36px; letter-spacing:1px; line-height:1; align-self:flex-start; text-shadow:0 2px 8px rgba(0,0,0,0.5) }
-.fpos { font-family:var(--ff); font-size:13px; color:rgba(255,255,255,0.65); align-self:flex-start }
-.fflag { font-size:16px; align-self:flex-start; line-height:1 }
-.fav {
-  width:82px; height:82px; border-radius:50%;
-  background:rgba(0,0,0,0.2); border:2px solid rgba(255,255,255,0.2);
-  display:flex; align-items:center; justify-content:center;
-  font-family:var(--ff); font-size:26px; color:rgba(255,255,255,0.9);
-  margin:3px 0 5px; text-shadow:0 2px 8px rgba(0,0,0,0.5); flex-shrink:0;
-}
-.fn { font-family:var(--ff); font-size:14px; letter-spacing:1.5px; color:#fff; text-align:center; z-index:1; text-transform:uppercase; line-height:1.1 }
-.fteam { font-size:9px; color:rgba(255,255,255,0.5); text-align:center; margin-top:1px; z-index:1 }
-.fstats { display:flex; gap:8px; margin-top:4px; z-index:1 }
-.fst { display:flex; flex-direction:column; align-items:center }
-.fstv { font-family:var(--ff); font-size:14px; color:#fff; line-height:1 }
-.fstl { font-size:7px; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:0.5px; margin-top:1px }
-.fc.starred .fci { box-shadow:inset 0 0 0 2px rgba(245,158,11,0.7) }
-
 /* ── Liga tabs ── */
 .liga-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px }
 .liga-tab {
@@ -495,7 +452,6 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
   .header-row select { flex:1; min-width:140px; max-width:none !important }
   .g4,.g3 { grid-template-columns:repeat(2,1fr) }
   .g2 { grid-template-columns:1fr }
-  .pgrid { grid-template-columns:repeat(auto-fill,minmax(150px,1fr)) }
   .squad-grid { grid-template-columns:1fr }
   /* Las tablas anchas se arrastran de lado en vez de desbordar la
      página entera, que es lo que rompe el diseño en móvil. */
@@ -624,8 +580,8 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
     </a>
     <div class="nav-sec">Jugadores</div>
     <a class="ni" onclick="nav('players')">
-      <svg fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><rect x="2" y="2" width="9" height="9" rx="1"/><rect x="13" y="2" width="9" height="9" rx="1"/><rect x="2" y="13" width="9" height="9" rx="1"/><rect x="13" y="13" width="9" height="9" rx="1"/></svg>
-      Cartas FIFA
+      <svg fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M3 21h18"/><rect x="4" y="12" width="4" height="7"/><rect x="10" y="7" width="4" height="12"/><rect x="16" y="14" width="4" height="5"/></svg>
+      Goles y asistencias
     </a>
     <a class="ni" onclick="nav('scouting')">
       <svg fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -638,10 +594,6 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
     <a class="ni" onclick="nav('compare')">
       <svg fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M10 3H6a2 2 0 00-2 2v14c0 1.1.9 2 2 2h4M16 17l5-5-5-5M21 12H9"/></svg>
       Comparador
-    </a>
-    <a class="ni" onclick="nav('watchlist')">
-      <svg fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-      Watchlist
     </a>
     <div class="nav-sec">Sistema</div>
     <a class="ni" onclick="nav('config')">
@@ -686,7 +638,7 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
     <div class="hero-sub">De los datos al gol. Análisis deportivo profesional con Machine Learning, datos en tiempo real y visualizaciones estilo Opta.</div>
     <div class="hero-cta">
       <button class="btn bp" onclick="nav('dashboard')" style="padding:12px 28px;font-size:14px">⚡ Abrir Dashboard</button>
-      <button class="btn bg" onclick="nav('players')" style="padding:12px 28px;font-size:14px">🃏 Ver Cartas FIFA</button>
+      <button class="btn bg" onclick="nav('players')" style="padding:12px 28px;font-size:14px">⚽ Goles y asistencias</button>
     </div>
     <div class="hero-features">
       <div class="hf"><div class="hf-icon">📊</div><div class="hf-title">Datos en Tiempo Real</div><div class="hf-desc">Clasificaciones, partidos y goleadores live de las 5 grandes ligas + Champions</div></div>
@@ -789,23 +741,25 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
   </div>
 </div>
 
-<!-- PLAYERS FIFA -->
+<!-- GOLES Y ASISTENCIAS -->
 <div class="page" id="page-players">
   <div class="page-header">
     <div class="header-row">
-      <div><div class="ptitle">Cartas FIFA</div><div class="psub">Estilo Ultimate Team · ⭐ para añadir a Watchlist</div></div>
+      <div><div class="ptitle">Goles y asistencias</div><div class="psub">Las cinco grandes ligas · lo que lleva y lo que le tocaba</div></div>
     </div>
   </div>
   <div class="cont">
-    <div class="fr">
-      <div class="fg"><label class="fl">Liga</label><select id="pL" onchange="cargarJugadores(this.value)"><option value="all">Todas</option><option value="PL">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier</option><option value="PD">🇪🇸 La Liga</option><option value="BL1">🇩🇪 Bundesliga</option><option value="SA">🇮🇹 Serie A</option><option value="FL1">🇫🇷 Ligue 1</option></select></div>
-      <div class="fg"><label class="fl">Posición</label><select id="pP" onchange="renderCards()"><option value="all">Todas</option><option value="FW">Delantero</option><option value="MF">Centrocampista</option><option value="DF">Defensa</option><option value="GK">Portero</option></select></div>
-      <div class="fg"><label class="fl">Ordenar</label><select id="pS" onchange="renderCards()"><option value="score">Score ML</option><option value="goals">Goles</option><option value="assists">Asistencias</option><option value="xG">xG</option><option value="shots">Tiros</option></select></div>
-      
-      <div style="align-self:flex-end"><button class="btn bg bs" onclick="expCSV()">⬇ CSV</button></div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="ch"><div class="ct">⚙️ Parámetros</div></div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Liga</label><select id="gaLg" onchange="renderGA()"><option value="all">Las cinco grandes</option><option value="PL">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier</option><option value="PD">🇪🇸 La Liga</option><option value="BL1">🇩🇪 Bundesliga</option><option value="SA">🇮🇹 Serie A</option><option value="FL1">🇫🇷 Ligue 1</option></select></div>
+        <div class="fg"><label class="fl">Ordenar por</label><select id="gaOrd" onchange="renderGA()"><option value="ga">Goles + asistencias</option><option value="diferencia">Lo que lleva menos lo que le tocaba</option><option value="ga_90">Goles + asistencias por 90</option><option value="goles">Goles</option><option value="asistencias">Asistencias</option></select></div>
+        <div class="fg"><label class="fl">Minutos mín.</label><select id="gaMin" onchange="renderGA()"><option value="90">≥90 (1 partido)</option><option value="270" selected>≥270 (3 partidos)</option><option value="450">≥450 (5 partidos)</option><option value="720">≥720 (8 partidos)</option></select></div>
+        <div style="align-self:flex-end"><button class="btn bg bs" onclick="expGA()">⬇ CSV</button></div>
+      </div>
     </div>
-    <div class="sh"><span class="st" id="pCnt">Cargando jugadores…</span></div>
-    <div class="pgrid" id="pGrid"></div>
+    <div class="sh"><span class="st" id="gaCnt">Cargando…</span></div>
+    <div class="card"><div class="tw" id="gaTbl"></div></div>
   </div>
 </div>
 
@@ -854,17 +808,6 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
   </div>
 </div>
 
-<!-- WATCHLIST -->
-<div class="page" id="page-watchlist">
-  <div class="page-header">
-    <div class="header-row">
-      <div><div class="ptitle">Watchlist</div><div class="psub">Tus jugadores guardados · Persiste entre sesiones</div></div>
-      <button class="btn bg bs" onclick="clrWL()">🗑 Limpiar</button>
-    </div>
-  </div>
-  <div class="cont" id="wlCont"></div>
-</div>
-
 <!-- CONFIG -->
 <div class="page" id="page-config">
   <div class="page-header">
@@ -886,7 +829,6 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
         <div>
           <div class="pw"><div class="pm"><span>Jugadores cargados</span><span style="font-family:var(--fm)" id="cfgJug">—</span></div><div class="pb"><div class="pf" id="cfgJugB" style="width:0%;background:var(--electric)"></div></div></div>
           <div class="pw"><div class="pm"><span>Ligas activas</span><span style="font-family:var(--fm)">6</span></div><div class="pb"><div class="pf" style="width:100%;background:var(--green)"></div></div></div>
-          <div class="pw"><div class="pm"><span>Watchlist</span><span id="cfgWL" style="font-family:var(--fm)">0</span></div><div class="pb"><div class="pf" id="cfgWLB" style="width:0%;background:var(--gold)"></div></div></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div class="kpi"><div class="kl">Temporada</div><div class="kv" style="font-size:18px" id="cfgTemp">—</div><div class="ks">Understat</div></div>
@@ -1172,17 +1114,18 @@ const guarda = {
 // Puestos que la fuente no permite puntuar, con su motivo. Llega del
 // servidor para que la explicación de pantalla sea la misma que la del
 // código y no dos textos que un día dejan de coincidir.
-let SIN_NOTA = {};
+let SIN_NOTA = {
+  DF: 'Understat publica tiros: goles, xG, asistencias y pases clave. '
+    + 'De un defensa no hay entradas, ni intercepciones, ni despejes. '
+    + 'Para medirlo hay otra cuenta: «con él y sin él», el xG que '
+    + 'encaja el equipo mientras está en el campo.',
+  GK: 'Understat no publica paradas, ni goles evitados, ni salidas. '
+    + 'Con datos de tiro no se puede puntuar a un portero.',
+};
 // La temporada que está usando el servidor. Nadie la escribe a
 // mano: la dice la respuesta, y así la pantalla no puede quedarse
 // anunciando un año distinto del de las cifras que enseña.
 let TEMPORADA = '';
-// Minutos del que más ha jugado. Sin esto, un filtro de minutos
-// no se puede interpretar: 400 es suave en mayo y durísimo en
-// octubre, cuando nadie pasa de 720.
-let MINUTOS_MAX = 0;
-let AVISOS_JUGADORES = [];
-
 // Cómo se pinta una nota que puede no existir.
 function nota(p) {
   if (p.score === null || p.score === undefined) {
@@ -1201,8 +1144,6 @@ function nota(p) {
 }
 
 let API = guarda.leer('sp_api') || (location.protocol.startsWith('http') ? location.origin : 'http://localhost:8000');
-const WL = () => { try { return JSON.parse(guarda.leer('sp_wl') || '[]'); } catch (e) { return []; } };
-const sWL = w => guarda.escribir('sp_wl', JSON.stringify(w));
 const $ = id => document.getElementById(id);
 const C = {};
 
@@ -1220,96 +1161,24 @@ const LEAGUES = {
 
 const TC = ['#0ea5e9','#10b981','#f97316','#8b5cf6','#f59e0b','#f43f5e','#06b6d4','#84cc16','#ec4899','#6366f1'];
 
-// Card themes by league
-const GRAD = {
-  elite: ['#92400e','#451a03'],
-  PL:  ['#2d1b69','#0d0526'], PD:  ['#7f1d1d','#3b0000'],
-  BL1: ['#450a0a','#1a0000'], SA:  ['#1e3a5f','#0c1a2e'],
-  FL1: ['#172554','#060b1f'], CL:  ['#451a03','#1c0a00'],
-};
-
-// Player data (local — will be enriched from API)
-// ── LOS JUGADORES, AHORA DE VERDAD ──────────────────────────
+// ── LOS JUGADORES, Y LAS DOS VECES QUE SE HAN IDO DE AQUÍ ──
 //
-// Aquí había 40 jugadores ESCRITOS A MANO: Haaland con 22 goles y
-// 19,2 de xG, tecleados, de una temporada que ya no es ésta. De ese
-// array vivían las cuatro pantallas: Cartas, Scouting, Comparador y
-// Watchlist.
+// PRIMERO había 40 jugadores ESCRITOS A MANO: Haaland con 22 goles y
+// 19,2 de xG, tecleados, de una temporada que ya no era ésta. De ese
+// array vivían cuatro pantallas. Se cambió por /api/players/{liga},
+// que lee Understat, y tres campos desaparecieron porque Understat
+// no los da: la edad, la nacionalidad y un «rating» del 1 al 100
+// puesto a ojo.
 //
-// Ahora salen de /api/players/{liga}, que lee Understat.
+// AHORA se ha ido también esa lista en memoria (PLAYERS), con las
+// Cartas FIFA que la usaban. Cada pantalla pide lo suyo al servidor
+// cuando se abre: el ranking a /api/goles-asistencias, el Scouting a
+// /api/scouting/{liga}, el Comparador a la misma. Una lista global
+// que se llenaba al visitar una pantalla y que las demás heredaban
+// es cómo el Scouting acabó enseñando sólo la Premier sin decirlo.
 //
-// TRES CAMPOS DESAPARECIERON, Y ES LO CORRECTO:
-//   edad          Understat no la da -> fuera el filtro de edad
-//   nacionalidad  Understat no la da -> fuera la banderita
-//   rating        número del 1 al 100 puesto a ojo -> fuera
-//
-// (La nacionalidad de la PLANTILLA de un equipo sí es real: la da
-// football-data y se queda donde estaba.)
-let PLAYERS = [];
-let CARGANDO_JUGADORES = false;
-
-function puestoDesdeUnderstat(cadena) {
-  for (const l of String(cadena || "").toUpperCase().split(" ")) {
-    if (l === "GK") return "GK";
-    if (l === "F") return "FW";
-    if (l === "M") return "MF";
-    if (l === "D") return "DF";
-  }
-  return "";
-}
-
-async function cargarJugadores(liga) {
-  if (CARGANDO_JUGADORES) return;
-  CARGANDO_JUGADORES = true;
-  const lg = (liga && liga !== "all") ? liga : "PL";
-  if ($("pCnt")) $("pCnt").textContent = "Cargando jugadores reales…";
-  if ($("pGrid")) $("pGrid").innerHTML = '<div class="ld" style="grid-column:1/-1"><div class="sp"></div>Pidiendo datos a Understat…</div>';
-  let fallo = "";
-  try {
-    const r = await fetch(`/api/players/${lg}?limit=200&min_minutes=270`);
-    if (!r.ok) { fallo = `${r.status} — ${(await r.text()).slice(0,140)}`; PLAYERS = []; }
-    else {
-      const d = await r.json();
-      PLAYERS = (d.players || []).map((x, n) => ({
-        id: `${lg}-${x.player_id || n}`, understat_id: x.player_id,
-        name: x.name, team: x.team, league: lg,
-        pos: puestoDesdeUnderstat(x.position),
-        goals: x.goals, assists: x.assists, xG: x.xG, xA: x.xA,
-        npxG: x.npxG, xGChain: x.xGChain, xGBuildup: x.xGBuildup,
-        // Las tasas por 90 las calcula el servidor al puntuar. Sin
-        // traerlas, la ficha enseñaba el percentil sin la cifra de la
-        // que sale, que es justo lo que hay que poder comprobar.
-        por_90: x.por_90 || null,
-        shots: x.shots, key_passes: x.key_passes,
-        minutes: x.time, games: x.games,
-        xG90: x.xG_per90, dif: x.goals_diff,
-        // OJO: null, no cero. Un defensa no tiene un cero de nota:
-        // no tiene nota, porque Understat no publica con qué dársela.
-        // Redondear null a 0 lo pondría el último de la lista como si
-        // fuera malísimo, que es otra forma de inventarse el dato.
-        score: (x.score === null || x.score === undefined)
-          ? null : Math.round(x.score),
-        percentiles: x.percentiles || null,
-      }));
-      SIN_NOTA = d.puestos_sin_nota || {};
-      recuerdaTemporada(d);
-      MINUTOS_MAX = d.minutos_maximos || 0;
-      ['stTemp'].forEach(i => { const n = $(i);
-        if (n && TEMPORADA) n.textContent = 'Temporada ' + TEMPORADA; });
-      if ($('cfgTemp') && TEMPORADA) $('cfgTemp').textContent = TEMPORADA;
-      AVISOS_JUGADORES = d.avisos || [];
-    }
-  } catch (e) { fallo = e.message; PLAYERS = []; }
-  CARGANDO_JUGADORES = false;
-  if (!PLAYERS.length) {
-    if ($("pCnt")) $("pCnt").textContent = "Sin datos";
-    if ($("pGrid")) $("pGrid").innerHTML = `<div class="empty" style="grid-column:1/-1">
-      <h3>No se han podido cargar los jugadores</h3><p>${fallo || "La fuente no ha respondido."}</p>
-      <p style="opacity:.7;font-size:12px">No se enseñan datos de ejemplo a propósito.</p></div>`;
-    return;
-  }
-  renderCards();
-}
+// (La nacionalidad y la edad de la PLANTILLA de un equipo sí son
+// reales: las da football-data y se quedan donde estaban.)
 
 // ── API fetch helper ──────────────────────────────────────
 async function apiFetch(endpoint) {
@@ -1484,8 +1353,8 @@ function nav(page) {
   const actions = {
     dashboard: loadDash, standings: loadStandings,
     matches: loadMatches, scorers: loadScorers,
-    players: renderCards, scouting: runScouting,
-    compare: initCmp, watchlist: renderWL, config: renderCfg,
+    players: renderGA, scouting: runScouting,
+    compare: initCmp, config: renderCfg,
     relieve: loadRelieve, simulador: loadSimulador,
     informe: loadInforme
   };
@@ -1515,8 +1384,8 @@ function menuMovil(abrir) {
 // ve la barra lateral, así que sin esto no sabes dónde estás.
 const TITULOS = {
   landing: 'Sportalyze', dashboard: 'Dashboard', standings: 'Clasificación',
-  matches: 'Partidos', scorers: 'Goleadores', players: 'Jugadores',
-  scouting: 'Scouting', compare: 'Comparador', watchlist: 'Seguidos',
+  matches: 'Partidos', scorers: 'Goleadores', players: 'Goles y asistencias',
+  scouting: 'Scouting', compare: 'Comparador',
   config: 'Configuración', relieve: 'El relieve', simulador: 'El Simulador',
   informe: 'Informe post-partido', team: 'Equipo',
 };
@@ -1737,39 +1606,6 @@ async function loadScorers() {
   } catch (e) { $('scorersTable').innerHTML = `<div class="al alw">❌ ${e.message}</div>`; }
 }
 
-// ── FIFA CARDS ────────────────────────────────────────────
-function gGrad(p) { return (p.score || 0) >= 88 ? GRAD.elite : GRAD[p.league] || ['#0d1520','#080f1a']; }
-function gInit(n) { const p = n.split(' '); return p.length >= 2 ? p[p.length-2][0] + p[p.length-1][0] : n.slice(0, 2); }
-function pStat(v, l) { return `<div class="fst"><div class="fstv">${v}</div><div class="fstl">${l}</div></div>`; }
-
-function renderCards() {
-  const lg = $('pL').value, pos = $('pP').value, sort = $('pS').value;
-  const wl = WL();
-  if (!PLAYERS.length && !CARGANDO_JUGADORES) { cargarJugadores(lg); return; }
-  let fp = PLAYERS.filter(p => (pos === 'all' || p.pos === pos));
-  fp.sort((a, b) => (b[sort] ?? b.score) - (a[sort] ?? a.score));
-  $('pCnt').textContent = `${fp.length} jugadores`;
-  if (!fp.length) { $('pGrid').innerHTML = '<div class="empty" style="grid-column:1/-1"><h3>Sin resultados</h3><p>Cambia los filtros</p></div>'; return; }
-  $('pGrid').innerHTML = fp.map(p => {
-    const [top, bot] = gGrad(p), starred = wl.some(w => w.id === p.id);
-    const nt = nota(p); const sc = nt.color;
-    const stats = p.pos !== 'GK' ? pStat(p.goals,'GOL') + pStat(p.assists,'ASI') + pStat(p.xG.toFixed(1),'xG') : pStat(p.minutes,'MIN') + pStat(p.games,'PJ') + pStat(p.key_passes,'PC');
-    return `<div class="fc${starred?' starred':''}" onclick="abrirFichaDesdeCarta('${p.id}')" title="Pincha para ver la ficha de ${p.name}">
-      <div class="fci" style="background:linear-gradient(160deg,${top} 0%,${bot} 100%)">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%">
-          <div title="${nt.porque}"><div class="fscore" style="color:${sc}">${nt.txt}</div><div class="fpos">${p.pos || '—'}</div></div>
-          <div onclick="event.stopPropagation();toggleWL('${p.id}')" title="Seguir a este jugador"
-            style="font-size:13px;opacity:0.85;cursor:pointer;padding:2px 4px;margin:-2px -4px">${starred?'⭐':'☆'}</div>
-        </div>
-        <div class="fav">${gInit(p.name)}</div>
-        <div class="fn">${p.name.split(' ').slice(-1)[0]}</div>
-        <div class="fteam">${p.team}</div>
-        <div class="fstats">${stats}</div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
 // ── SCOUTING ML ───────────────────────────────────────────
 // kMeans() ESTABA AQUÍ. Agrupaba en el navegador sobre goles,
 // asistencias y xG. Ahora agrupa el servidor sobre los percentiles
@@ -1777,26 +1613,6 @@ function renderCards() {
 // pruebas. Aquí ya no se calcula nada.
 
 // ── COMPARE ───────────────────────────────────────────────
-// ── WATCHLIST ─────────────────────────────────────────────
-function toggleWL(id) {
-  const p = PLAYERS.find(x=>x.id===id); if(!p) return;
-  let wl = WL(); const i = wl.findIndex(x=>x.id===id);
-  if (i>=0) wl.splice(i,1); else wl.push(p);
-  sWL(wl); renderCards();
-  if (document.querySelector('#page-watchlist.active')) renderWL();
-}
-function renderWL() {
-  const wl = WL();
-  if (!wl.length) { $('wlCont').innerHTML=`<div class="empty"><div style="font-size:48px;margin-bottom:12px">⭐</div><h3>Watchlist vacía</h3><p>Haz clic en ☆ en cualquier carta</p><button class="btn bp" onclick="nav('players')" style="margin-top:16px">Ver cartas →</button></div>`; return; }
-  $('wlCont').innerHTML=`<div class="sh"><span class="st">${wl.length} jugadores seguidos</span><button class="btn bg bs" onclick="expWL()">⬇ CSV</button></div>
-  <div class="pgrid">${wl.map(p=>{
-    const [top,bot]=gGrad(p),sc=nota(p).color;
-    const stats=p.pos!=='GK'?pStat(p.goals,'GOL')+pStat(p.assists,'ASI')+pStat(p.xG.toFixed(1),'xG'):pStat(p.minutes,'MIN')+pStat(p.games,'PJ')+pStat(p.score,'SCO');
-    return `<div class="fc starred" onclick="toggleWL('${p.id}')"><div class="fci" style="background:linear-gradient(160deg,${top} 0%,${bot} 100%)"><div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%"><div><div class="fscore" style="color:${sc}" title="${nota(p).porque}">${nota(p).txt}</div><div class="fpos">${p.pos || '—'}</div></div><div style="font-size:13px">⭐</div></div><div class="fav">${gInit(p.name)}</div><div class="fn">${p.name.split(' ').slice(-1)[0]}</div><div class="fteam">${p.team}</div><div class="fstats">${stats}</div></div></div>`;
-  }).join('')}</div>`;
-}
-function clrWL() { sWL([]); renderWL(); }
-
 // ── CONFIG ────────────────────────────────────────────────
 function saveBackendUrl() {
   API = $('backendUrl').value.trim().replace(/\/$/, '');
@@ -1809,14 +1625,14 @@ function saveBackendUrl() {
 }
 function renderCfg() {
   $('backendUrl').value = API;
-  const wl = WL();
-  $('cfgWL').textContent = wl.length;
-  $('cfgWLB').style.width = Math.min(100, wl.length / 20 * 100) + '%';
   // Aquí había un 40 escrito a mano, de cuando los jugadores estaban
-  // dentro del HTML. Ahora se cargan de Understat y el número depende
-  // de la liga y del filtro de minutos, así que se cuenta.
-  $('cfgJug').textContent = PLAYERS.length || '—';
-  $('cfgJugB').style.width = Math.min(100, PLAYERS.length / 2) + '%';
+  // dentro del HTML. Ahora se cuentan los que de verdad se han
+  // traído, y si no se ha abierto ninguna lista todavía pone una
+  // raya, no un cero: cero jugadores y ninguna consulta hecha no son
+  // la misma cosa.
+  const n = ((GA.ultima && GA.ultima.jugadores) || []).length;
+  $('cfgJug').textContent = n || '—';
+  $('cfgJugB').style.width = Math.min(100, n / 2) + '%';
 }
 
 // ── EXPORTS ───────────────────────────────────────────────
@@ -1824,9 +1640,29 @@ function doExp(data, name) {
   const k=Object.keys(data[0]), csv=[k.join(','),...data.map(r=>k.map(k=>JSON.stringify(r[k]??'')).join(','))].join('\n');
   const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download=name; a.click();
 }
-function expCSV() { doExp(PLAYERS.map(p=>({Nombre:p.name,Equipo:p.team,Liga:p.league,Pos:p.pos,Minutos:p.minutes,PJ:p.games,Goles:p.goals,Asist:p.assists,xG:p.xG,Min:p.minutes,Score:p.score})),'sportalyze_jugadores.csv'); }
-function expScout() { doExp(PLAYERS.filter(p=>p.cluster!==undefined).map(p=>({Nombre:p.name,Equipo:p.team,Liga:p.league,Pos:p.pos,Minutos:p.minutes,PJ:p.games,Score:p.score,Cluster:p.cluster})),'sportalyze_scouting.csv'); }
-function expWL() { doExp(WL().map(p=>({Nombre:p.name,Equipo:p.team,Liga:p.league,Pos:p.pos,Minutos:p.minutes,PJ:p.games,Score:p.score,Goles:p.goals,Asist:p.assists})),'sportalyze_watchlist.csv'); }
+// El CSV del ranking: las mismas columnas que se ven en pantalla,
+// ni una calculada aparte. Si la tabla y el CSV no dan lo mismo, uno
+// de los dos miente y no se sabe cuál.
+function expGA() {
+  const f = (GA.ultima && GA.ultima.jugadores) || [];
+  if (!f.length) { alert('Todavía no hay lista que exportar.'); return; }
+  doExp(f.map(p => ({
+    Nombre: p.name, Equipo: p.team, Liga: p.league, Puesto: p.position,
+    Minutos: p.minutos, PJ: p.partidos, Goles: p.goles,
+    Asistencias: p.asistencias, GA: p.ga, xG: p.xg, xA: p.xa,
+    xGA: p.xga, Diferencia: p.diferencia,
+    GA_por_90: p.ga_90, xGA_por_90: p.xga_90,
+  })), 'sportalyze_goles_asistencias.csv');
+}
+function expScout() {
+  const f = (SC.ultima && SC.ultima.players) || [];
+  if (!f.length) { alert('Todavía no hay scouting que exportar.'); return; }
+  doExp(f.map(p => ({
+    Nombre: p.name, Equipo: p.team, Puesto: p.position,
+    Minutos: p.time, PJ: p.games, Score: p.score,
+    Score_crudo: p.score_crudo, Grupo: p.cluster,
+  })), 'sportalyze_scouting.csv');
+}
 
 
 // ── TEAM PROFILE ─────────────────────────────────────────
@@ -2789,18 +2625,24 @@ const EXPLICA = {
   players: {
     fuente: 'Understat',
     metodo:
-      'Jugadores de la liga con sus cifras de tiro de Understat: goles, ' +
-      'asistencias, xG, npxG, xA, tiros y pases clave. La nota es el ' +
-      'percentil medio dentro de su puesto en esta misma comparación, ' +
-      'calculado por 90 minutos. Defensas y porteros salen SIN NOTA, ' +
-      'con una raya: Understat no publica datos defensivos ni de ' +
-      'portería, y un número inventado para un central es peor que no ' +
-      'tener número.',
+      'Goles y asistencias de las cinco grandes ligas, sumados por ' +
+      'jugador en la temporada. Al lado va el xG+xA de Understat, que ' +
+      'es lo que valían sus ocasiones y sus pases, y la DIFERENCIA ' +
+      'entre las dos cosas. El orden y el recorte de la lista los hace ' +
+      'el servidor en el mismo paso: si se recortara por G+A y luego ' +
+      'se reordenara aquí por diferencia, el que lleva 2 con 0,3 de ' +
+      'xG+xA —que es justo el hallazgo— se habría quedado fuera sin ' +
+      'que lo viera nadie. Cuando hay más jugadores que sitio, se ' +
+      'dice cuántos cumplen el filtro y cuántos se enseñan. No hay ' +
+      'Champions ni copas: sólo liga. Y no hay nota: esto no mide lo ' +
+      'bueno que es nadie.',
     cristiano:
-      'Una carta por jugador, como las de un videojuego, pero con sus ' +
-      'cifras de verdad. La nota quiere decir: «de los delanteros de ' +
-      'esta liga, es mejor que este porcentaje». Pincha una para verla ' +
-      'entera, y la estrella la guarda en tu lista.',
+      'Quién lleva más goles y asistencias, y sobre todo quién lleva ' +
+      'MÁS DE LOS QUE LE TOCABAN. La diferencia en verde quiere decir ' +
+      'que está metiendo más de lo que valen sus ocasiones; en rojo, ' +
+      'que está fallando lo que debería meter. Ninguna de las dos ' +
+      'cosas dura para siempre, y eso es justo por lo que mirarla ' +
+      'sirve de algo. Pincha en una fila y se abre la ficha.',
   },
 
   scouting: {
@@ -2852,17 +2694,6 @@ const EXPLICA = {
       'goles y el otro hacia los pases clave, son dos jugadores ' +
       'distintos aunque los totales se parezcan. Pincha cualquiera de ' +
       'los dos para abrir su ficha entera.',
-  },
-
-  watchlist: {
-    fuente: 'Tu navegador',
-    metodo:
-      'Se guarda en el navegador que estés usando (localStorage): no ' +
-      'sale de tu ordenador, no se sube a ningún sitio y no se comparte ' +
-      'entre dispositivos. Si borras los datos del navegador, se borra.',
-    cristiano:
-      'Tu lista de jugadores a seguir. Dale a la estrella de cualquier ' +
-      'carta y aparece aquí. Es tuya y sólo tuya: nadie más la ve.',
   },
 
   team: {
@@ -2968,6 +2799,150 @@ function pintaExplicacion(pagina) {
 
 
 // ══════════════════════════════════════════════════════════
+// GOLES Y ASISTENCIAS
+// ══════════════════════════════════════════════════════════
+//
+// Esta pantalla está donde estaban las Cartas FIFA, y la cambia por
+// una razón: un número grande encima de un retrato no contesta
+// ninguna pregunta. La que sí se puede contestar con tiros de
+// Understat es quién lleva más de lo que le tocaba, y ésa necesita
+// las dos columnas juntas y la resta a la vista.
+//
+// Aquí no se ordena ni se recorta nada: lo hace el servidor en el
+// mismo paso, porque recortar antes de ordenar esconde justo a quien
+// se está buscando.
+const GA = { ultima: null, cargando: false, peticion: 0 };
+
+const ORDENES_GA = {
+  ga: 'goles + asistencias',
+  diferencia: 'lo que lleva menos lo que le tocaba',
+  ga_90: 'goles + asistencias por 90',
+  goles: 'goles',
+  asistencias: 'asistencias',
+};
+
+async function renderGA() {
+  const liga = $('gaLg') ? $('gaLg').value : 'all';
+  const orden = $('gaOrd') ? $('gaOrd').value : 'ga';
+  const minutos = $('gaMin') ? $('gaMin').value : '270';
+
+  // Si el usuario cambia un selector mientras la anterior está en el
+  // aire, la respuesta vieja llega después y pinta una lista que no
+  // corresponde a lo que pone en los filtros. Cada petición lleva su
+  // número y sólo se pinta la última pedida.
+  const mio = ++GA.peticion;
+  GA.cargando = true;
+  $('gaCnt').textContent = 'Pidiendo a Understat…';
+  $('gaTbl').innerHTML = '<div class="ld"><div class="sp"></div>Trayendo la liga…</div>';
+
+  const q = new URLSearchParams({ orden: orden, min_minutes: minutos, limit: '150' });
+  if (liga !== 'all') q.set('liga', liga);
+
+  let d = null, fallo = null;
+  try {
+    const r = await fetch(`${API}/api/goles-asistencias?${q}`);
+    if (!r.ok) fallo = `${r.status} — ${(await r.text()).slice(0, 240)}`;
+    else d = await r.json();
+  } catch (e) { fallo = e.message; }
+
+  if (mio !== GA.peticion) return;
+  GA.cargando = false;
+
+  if (fallo) {
+    GA.ultima = null;
+    $('gaCnt').textContent = 'No ha salido';
+    $('gaTbl').innerHTML = `<div class="al ale" style="margin:14px">
+      <strong>No he podido traer la lista.</strong><br>${esc(fallo)}</div>`;
+    return;
+  }
+
+  GA.ultima = d;
+  recuerdaTemporada(d);
+  const j = d.jugadores || [];
+
+  $('gaCnt').textContent =
+    `${j.length} jugadores · ${d.temporada} · ordenados por ` +
+    `${ORDENES_GA[d.orden] || d.orden} · ${d.minutos_minimos} minutos o ` +
+    `más · ${d.cuantos_cumplen} cumplen ese filtro`;
+
+  if (!j.length) {
+    $('gaTbl').innerHTML = `<div class="empty" style="padding:30px">
+      <h3>Nadie llega a esos minutos</h3>
+      <p>Con ${d.minutos_minimos} minutos o más no hay ningún jugador en lo
+      que ha dado la fuente. Baja el mínimo.</p></div>`;
+    return;
+  }
+
+  const avisos = (d.avisos || []).map(a =>
+    `<div class="al alw" style="margin:0 0 10px">⚠ ${esc(a)}</div>`).join('');
+
+  // Verde si mete más de lo que valen sus ocasiones, rojo si menos, y
+  // el color de texto normal cuando está en su sitio: ahí no hay nada
+  // que señalar y pintarlo de un color sería señalarlo igual.
+  const col = v => v > 0.05 ? 'var(--green)' : (v < -0.05 ? '#f43f5e' : 'var(--text2)');
+  const mas = v => (v > 0 ? '+' : '') + d2c(v);
+
+  $('gaTbl').innerHTML = avisos + `
+  <table class="tbl">
+    <thead><tr>
+      <th style="width:38px">#</th><th>Jugador</th><th>Equipo</th>
+      <th title="La competición de la que salen estas cifras">Liga</th>
+      <th title="Minutos jugados en liga">Min</th>
+      <th>G</th><th>A</th>
+      <th title="Goles más asistencias">G+A</th>
+      <th title="Lo que valían sus ocasiones y sus pases, según Understat">xG+xA</th>
+      <th title="G+A menos xG+xA: lo que lleva menos lo que le tocaba">Dif.</th>
+      <th title="Goles más asistencias por cada 90 minutos jugados">G+A/90</th>
+    </tr></thead>
+    <tbody>${j.map((p, i) => `
+      <tr onclick="abrirFichaDesdeGA('${esc(String(p.player_id))}')"
+          style="cursor:pointer" title="Pincha para ver la ficha de ${esc(p.name)}">
+        <td style="color:var(--text3)">${i + 1}</td>
+        <td><strong>${esc(p.name)}</strong>
+            <div style="font-size:11px;color:var(--text3)">${esc(puestoLargo(p.position))}</div></td>
+        <td>${esc(p.team)}</td>
+        <td><span class="bge">${esc(p.league)}</span></td>
+        <td style="font-family:var(--fm);color:var(--text2)">${p.minutos}</td>
+        <td style="font-family:var(--fm)">${p.goles}</td>
+        <td style="font-family:var(--fm)">${p.asistencias}</td>
+        <td style="font-family:var(--fm);font-weight:700">${p.ga}</td>
+        <td style="font-family:var(--fm);color:var(--text2)">${d2c(p.xga)}</td>
+        <td style="font-family:var(--fm);font-weight:650;color:${col(p.diferencia)}">${mas(p.diferencia)}</td>
+        <td style="font-family:var(--fm);color:var(--text2)">${d2c(p.ga_90)}</td>
+      </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+// Número con coma, como se escribe en español, y una raya si no
+// viene. Un 0,00 dibujado donde falta el dato es un dato inventado.
+function d2c(v) {
+  if (v === null || v === undefined || v === '') return '—';
+  return (+v).toFixed(2).replace('.', ',');
+}
+
+// La fila abre la ficha. El ranking trae los campos con los nombres
+// de su ruta (minutos, goles, xg…) y la ficha los espera con los de
+// Understat, así que se traducen aquí: la ficha se abre desde varios
+// sitios y el que cede es el que viene con nombres propios.
+//
+// Lo que esta ruta NO trae —tiros, pases clave, npxG, percentiles—
+// no se rellena con ceros: la ficha pinta una raya donde falta.
+function abrirFichaDesdeGA(id) {
+  const f = (GA.ultima && GA.ultima.jugadores) || [];
+  const p = f.find(x => String(x.player_id) === String(id));
+  if (!p) return;
+  abrirFicha({
+    name: p.name, team: p.team, league: p.league,
+    position: p.position, player_id: p.player_id,
+    time: p.minutos, games: p.partidos,
+    goals: p.goles, assists: p.asistencias,
+    xG: p.xg, xA: p.xa,
+    percentiles: {}, por_90: {},
+  });
+}
+
+
+// ══════════════════════════════════════════════════════════
 // SCOUTING
 // ══════════════════════════════════════════════════════════
 //
@@ -3041,6 +3016,9 @@ async function runScouting() {
   }
 
   SC.ultima = d;
+  // El servidor dice por qué un puesto se ha quedado sin nota. Si lo
+  // manda, manda él: es más concreto que el texto de partida.
+  if (d.puestos_sin_nota) Object.assign(SIN_NOTA, d.puestos_sin_nota);
   recuerdaTemporada(d);
   scPinta(d);
 }
@@ -3727,30 +3705,6 @@ function abrirFichaComparador(id) {
   const pl = CMP.porPuesto[`${CMP.liga}/${CMP.puesto}`] || [];
   const p = pl.find(x => String(x.player_id) === String(id));
   if (p) abrirFicha(p);
-}
-
-
-// ══════════════════════════════════════════════════════════
-// LA CARTA ABRE LA FICHA
-// ══════════════════════════════════════════════════════════
-//
-// Las cartas de /api/players traen los campos con otros nombres que
-// los del scouting: minutes en vez de time, pos en vez de position.
-// Se traducen aquí en vez de en la ficha, porque la ficha se abre
-// desde cuatro sitios y el que tiene que ceder es el que viene raro.
-function abrirFichaDesdeCarta(id) {
-  const p = PLAYERS.find(x => x.id === id);
-  if (!p) return;
-  abrirFicha({
-    name: p.name, team: p.team, league: p.league,
-    position: p.pos, player_id: p.understat_id,
-    time: p.minutes, games: p.games,
-    goals: p.goals, assists: p.assists, shots: p.shots,
-    key_passes: p.key_passes, xG: p.xG, xA: p.xA,
-    npxG: p.npxG, score: p.score,
-    percentiles: p.percentiles || {},
-    por_90: p.por_90 || {},
-  });
 }
 
 

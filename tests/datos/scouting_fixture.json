@@ -21,8 +21,20 @@
    "xA_per90": 1.501,
    "goals_diff": -2.64,
    "league": "PD",
-   "score": 87.0,
+   "score": 63.3,
+   "score_crudo": 87.0,
+   "minutos_para_el_ajuste": 301,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 67.9,
+    "Goles/90": 65.2,
+    "xA/90": 67.9,
+    "Asistencias/90": 48.0,
+    "Pases clave/90": 46.7,
+    "Tiros/90": 67.9,
+    "xGChain/90": 67.9
+   },
+   "percentiles_crudos": {
     "npxG/90": 100.0,
     "Goles/90": 92.6,
     "xA/90": 100.0,
@@ -44,9 +56,9 @@
    "cluster": 0,
    "cluster_label": "🌟 Élite",
    "cluster_color": "#e3b341",
-   "pca_x": 3.005,
-   "pca_y": 1.301,
-   "pca_variance": 46.6
+   "pca_x": -0.49,
+   "pca_y": 2.186,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1015",
@@ -69,8 +81,20 @@
    "xA_per90": 1.389,
    "goals_diff": 5.3,
    "league": "PD",
-   "score": 78.7,
+   "score": 61.7,
+   "score_crudo": 78.7,
+   "minutos_para_el_ajuste": 372,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 53.8,
+    "Goles/90": 68.9,
+    "xA/90": 68.9,
+    "Asistencias/90": 65.9,
+    "Pases clave/90": 70.4,
+    "Tiros/90": 53.8,
+    "xGChain/90": 40.2
+   },
+   "percentiles_crudos": {
     "npxG/90": 59.3,
     "Goles/90": 96.3,
     "xA/90": 96.3,
@@ -92,9 +116,9 @@
    "cluster": 0,
    "cluster_label": "🌟 Élite",
    "cluster_color": "#e3b341",
-   "pca_x": 1.096,
-   "pca_y": 1.47,
-   "pca_variance": 46.6
+   "pca_x": 0.302,
+   "pca_y": 1.553,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1018",
@@ -117,8 +141,20 @@
    "xA_per90": 0.738,
    "goals_diff": -2.15,
    "league": "PD",
-   "score": 69.2,
+   "score": 59.0,
+   "score_crudo": 69.2,
+   "minutos_para_el_ajuste": 471,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 57.8,
+    "Goles/90": 45.7,
+    "xA/90": 61.2,
+    "Asistencias/90": 66.4,
+    "Pases clave/90": 71.6,
+    "Tiros/90": 59.5,
+    "xGChain/90": 69.8
+   },
+   "percentiles_crudos": {
     "npxG/90": 66.7,
     "Goles/90": 40.7,
     "xA/90": 74.1,
@@ -140,9 +176,9 @@
    "cluster": 0,
    "cluster_label": "🌟 Élite",
    "cluster_color": "#e3b341",
-   "pca_x": 1.276,
-   "pca_y": 0.338,
-   "pca_variance": 46.6
+   "pca_x": -0.605,
+   "pca_y": 0.782,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1024",
@@ -165,8 +201,20 @@
    "xA_per90": 1.104,
    "goals_diff": -2.23,
    "league": "PD",
-   "score": 68.4,
+   "score": 57.9,
+   "score_crudo": 68.4,
+   "minutos_para_el_ajuste": 405,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 63.5,
+    "Goles/90": 39.7,
+    "xA/90": 68.3,
+    "Asistencias/90": 57.1,
+    "Pases clave/90": 55.6,
+    "Tiros/90": 66.7,
+    "xGChain/90": 54.0
+   },
+   "percentiles_crudos": {
     "npxG/90": 81.5,
     "Goles/90": 25.9,
     "xA/90": 92.6,
@@ -188,9 +236,9 @@
    "cluster": 0,
    "cluster_label": "🌟 Élite",
    "cluster_color": "#e3b341",
-   "pca_x": 1.151,
-   "pca_y": 1.08,
-   "pca_variance": 46.6
+   "pca_x": 0.011,
+   "pca_y": 1.119,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1003",
@@ -213,8 +261,20 @@
    "xA_per90": 0.092,
    "goals_diff": 5.11,
    "league": "PD",
-   "score": 66.6,
+   "score": 56.7,
+   "score_crudo": 66.6,
+   "minutos_para_el_ajuste": 363,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 59.7,
+    "Goles/90": 70.1,
+    "xA/90": 35.9,
+    "Asistencias/90": 58.2,
+    "Pases clave/90": 44.8,
+    "Tiros/90": 68.6,
+    "xGChain/90": 64.1
+   },
+   "percentiles_crudos": {
     "npxG/90": 74.1,
     "Goles/90": 100.0,
     "xA/90": 14.8,
@@ -236,9 +296,9 @@
    "cluster": 0,
    "cluster_label": "🌟 Élite",
    "cluster_color": "#e3b341",
-   "pca_x": 1.504,
-   "pca_y": 0.393,
-   "pca_variance": 46.6
+   "pca_x": -0.495,
+   "pca_y": 1.067,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1019",
@@ -261,8 +321,20 @@
    "xA_per90": 1.005,
    "goals_diff": 3.22,
    "league": "PD",
-   "score": 61.7,
+   "score": 55.9,
+   "score_crudo": 61.7,
+   "minutos_para_el_ajuste": 532,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 52.8,
+    "Goles/90": 67.5,
+    "xA/90": 67.5,
+    "Asistencias/90": 28.9,
+    "Pases clave/90": 54.6,
+    "Tiros/90": 41.7,
+    "xGChain/90": 61.9
+   },
+   "percentiles_crudos": {
     "npxG/90": 55.6,
     "Goles/90": 85.2,
     "xA/90": 85.2,
@@ -284,9 +356,9 @@
    "cluster": 2,
    "cluster_label": "📈 Promedio",
    "cluster_color": "#39c5cf",
-   "pca_x": 1.148,
-   "pca_y": -0.359,
-   "pca_variance": 46.6
+   "pca_x": -0.819,
+   "pca_y": 1.101,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1023",
@@ -309,8 +381,20 @@
    "xA_per90": 0.462,
    "goals_diff": 1.11,
    "league": "PD",
-   "score": 60.0,
+   "score": 55.9,
+   "score_crudo": 60.0,
+   "minutos_para_el_ajuste": 776,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 62.0,
+    "Goles/90": 68.6,
+    "xA/90": 48.9,
+    "Asistencias/90": 66.4,
+    "Pases clave/90": 51.1,
+    "Tiros/90": 27.1,
+    "xGChain/90": 22.7
+   },
+   "percentiles_crudos": {
     "npxG/90": 70.4,
     "Goles/90": 81.5,
     "xA/90": 48.1,
@@ -332,9 +416,9 @@
    "cluster": 1,
    "cluster_label": "🔥 Alto rendimiento",
    "cluster_color": "#f0883e",
-   "pca_x": -1.268,
-   "pca_y": 1.495,
-   "pca_variance": 46.6
+   "pca_x": 2.154,
+   "pca_y": 0.173,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1011",
@@ -357,8 +441,20 @@
    "xA_per90": 0.6,
    "goals_diff": -3.37,
    "league": "PD",
-   "score": 58.6,
+   "score": 55.3,
+   "score_crudo": 58.6,
+   "minutos_para_el_ajuste": 863,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 73.9,
+    "Goles/90": 48.9,
+    "xA/90": 60.3,
+    "Asistencias/90": 55.7,
+    "Pases clave/90": 30.6,
+    "Tiros/90": 35.2,
+    "xGChain/90": 28.4
+   },
+   "percentiles_crudos": {
     "npxG/90": 88.9,
     "Goles/90": 48.1,
     "xA/90": 66.7,
@@ -380,9 +476,9 @@
    "cluster": 1,
    "cluster_label": "🔥 Alto rendimiento",
    "cluster_color": "#f0883e",
-   "pca_x": -1.018,
-   "pca_y": 1.793,
-   "pca_variance": 46.6
+   "pca_x": 2.408,
+   "pca_y": 0.485,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1013",
@@ -405,8 +501,20 @@
    "xA_per90": 0.267,
    "goals_diff": -1.57,
    "league": "PD",
-   "score": 55.0,
+   "score": 53.0,
+   "score_crudo": 55.0,
+   "minutos_para_el_ajuste": 827,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 66.8,
+    "Goles/90": 53.4,
+    "xA/90": 42.2,
+    "Asistencias/90": 57.8,
+    "Pases clave/90": 53.4,
+    "Tiros/90": 19.8,
+    "xGChain/90": 44.4
+   },
+   "percentiles_crudos": {
     "npxG/90": 77.8,
     "Goles/90": 55.6,
     "xA/90": 37.0,
@@ -428,9 +536,9 @@
    "cluster": 1,
    "cluster_label": "🔥 Alto rendimiento",
    "cluster_color": "#f0883e",
-   "pca_x": -1.413,
-   "pca_y": 0.678,
-   "pca_variance": 46.6
+   "pca_x": 1.548,
+   "pca_y": -0.799,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1007",
@@ -453,8 +561,20 @@
    "xA_per90": 0.519,
    "goals_diff": -9.15,
    "league": "PD",
-   "score": 54.9,
+   "score": 52.9,
+   "score_crudo": 54.9,
+   "minutos_para_el_ajuste": 800,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 77.6,
+    "Goles/90": 21.3,
+    "xA/90": 53.3,
+    "Asistencias/90": 33.4,
+    "Pases clave/90": 68.8,
+    "Tiros/90": 48.9,
+    "xGChain/90": 42.3
+   },
+   "percentiles_crudos": {
     "npxG/90": 96.3,
     "Goles/90": 1.9,
     "xA/90": 55.6,
@@ -473,12 +593,12 @@
     "xGChain/90": 0.51
    },
    "ajustado_por_edad": false,
-   "cluster": 3,
-   "cluster_label": "🌱 En desarrollo",
-   "cluster_color": "#3fb950",
-   "pca_x": -0.872,
-   "pca_y": -0.096,
-   "pca_variance": 46.6
+   "cluster": 1,
+   "cluster_label": "🔥 Alto rendimiento",
+   "cluster_color": "#f0883e",
+   "pca_x": 0.296,
+   "pca_y": -1.176,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1001",
@@ -501,8 +621,20 @@
    "xA_per90": 0.706,
    "goals_diff": -0.25,
    "league": "PD",
-   "score": 53.7,
+   "score": 52.0,
+   "score_crudo": 53.7,
+   "minutos_para_el_ajuste": 631,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 57.0,
+    "Goles/90": 57.0,
+    "xA/90": 61.0,
+    "Asistencias/90": 39.0,
+    "Pases clave/90": 29.0,
+    "Tiros/90": 35.0,
+    "xGChain/90": 65.0
+   },
+   "percentiles_crudos": {
     "npxG/90": 63.0,
     "Goles/90": 63.0,
     "xA/90": 70.4,
@@ -524,9 +656,9 @@
    "cluster": 2,
    "cluster_label": "📈 Promedio",
    "cluster_color": "#39c5cf",
-   "pca_x": 0.318,
-   "pca_y": 0.379,
-   "pca_variance": 46.6
+   "pca_x": 0.266,
+   "pca_y": 0.838,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1009",
@@ -549,8 +681,20 @@
    "xA_per90": 0.027,
    "goals_diff": -2.45,
    "league": "PD",
-   "score": 53.3,
+   "score": 51.9,
+   "score_crudo": 53.3,
+   "minutos_para_el_ajuste": 756,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 74.8,
+    "Goles/90": 51.1,
+    "xA/90": 20.8,
+    "Asistencias/90": 53.2,
+    "Pases clave/90": 61.9,
+    "Tiros/90": 42.4,
+    "xGChain/90": 20.8
+   },
+   "percentiles_crudos": {
     "npxG/90": 92.6,
     "Goles/90": 51.9,
     "xA/90": 0.0,
@@ -572,9 +716,9 @@
    "cluster": 1,
    "cluster_label": "🔥 Alto rendimiento",
    "cluster_color": "#f0883e",
-   "pca_x": -1.947,
-   "pca_y": 0.469,
-   "pca_variance": 46.6
+   "pca_x": 1.493,
+   "pca_y": -1.556,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1027",
@@ -597,8 +741,20 @@
    "xA_per90": 1.006,
    "goals_diff": -3.23,
    "league": "PD",
-   "score": 52.5,
+   "score": 51.1,
+   "score_crudo": 52.5,
+   "minutos_para_el_ajuste": 423,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 49.2,
+    "Goles/90": 28.9,
+    "xA/90": 67.1,
+    "Asistencias/90": 72.0,
+    "Pases clave/90": 39.4,
+    "Tiros/90": 68.7,
+    "xGChain/90": 50.8
+   },
+   "percentiles_crudos": {
     "npxG/90": 48.1,
     "Goles/90": 1.9,
     "xA/90": 88.9,
@@ -620,9 +776,9 @@
    "cluster": 0,
    "cluster_label": "🌟 Élite",
    "cluster_color": "#e3b341",
-   "pca_x": 0.724,
-   "pca_y": 1.4,
-   "pca_variance": 46.6
+   "pca_x": 0.443,
+   "pca_y": 1.093,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1022",
@@ -645,8 +801,20 @@
    "xA_per90": 0.528,
    "goals_diff": 3.99,
    "league": "PD",
-   "score": 50.6,
+   "score": 50.3,
+   "score_crudo": 50.6,
+   "minutos_para_el_ajuste": 482,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 36.9,
+    "Goles/90": 63.1,
+    "xA/90": 54.4,
+    "Asistencias/90": 71.8,
+    "Pases clave/90": 33.4,
+    "Tiros/90": 63.1,
+    "xGChain/90": 36.9
+   },
+   "percentiles_crudos": {
     "npxG/90": 22.2,
     "Goles/90": 77.8,
     "xA/90": 59.3,
@@ -665,12 +833,12 @@
     "xGChain/90": 0.366
    },
    "ajustado_por_edad": false,
-   "cluster": 1,
-   "cluster_label": "🔥 Alto rendimiento",
-   "cluster_color": "#f0883e",
-   "pca_x": 0.596,
-   "pca_y": 1.278,
-   "pca_variance": 46.6
+   "cluster": 0,
+   "cluster_label": "🌟 Élite",
+   "cluster_color": "#e3b341",
+   "pca_x": 0.563,
+   "pca_y": 1.528,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1017",
@@ -693,8 +861,20 @@
    "xA_per90": 0.806,
    "goals_diff": 3.44,
    "league": "PD",
-   "score": 49.6,
+   "score": 49.8,
+   "score_crudo": 49.6,
+   "minutos_para_el_ajuste": 510,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 34.7,
+    "Goles/90": 59.9,
+    "xA/90": 65.3,
+    "Asistencias/90": 29.3,
+    "Pases clave/90": 58.1,
+    "Tiros/90": 65.3,
+    "xGChain/90": 47.3
+   },
+   "percentiles_crudos": {
     "npxG/90": 18.5,
     "Goles/90": 70.4,
     "xA/90": 81.5,
@@ -716,9 +896,9 @@
    "cluster": 2,
    "cluster_label": "📈 Promedio",
    "cluster_color": "#39c5cf",
-   "pca_x": 1.536,
-   "pca_y": -1.008,
-   "pca_variance": 46.6
+   "pca_x": -1.613,
+   "pca_y": 1.129,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1002",
@@ -741,8 +921,20 @@
    "xA_per90": 0.777,
    "goals_diff": 5.15,
    "league": "PD",
-   "score": 47.6,
+   "score": 49.0,
+   "score_crudo": 47.6,
+   "minutos_para_el_ajuste": 388,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 29.9,
+    "Goles/90": 66.3,
+    "xA/90": 61.6,
+    "Asistencias/90": 46.1,
+    "Pases clave/90": 32.2,
+    "Tiros/90": 64.7,
+    "xGChain/90": 66.3
+   },
+   "percentiles_crudos": {
     "npxG/90": 1.9,
     "Goles/90": 88.9,
     "xA/90": 77.8,
@@ -764,9 +956,9 @@
    "cluster": 2,
    "cluster_label": "📈 Promedio",
    "cluster_color": "#39c5cf",
-   "pca_x": 2.431,
-   "pca_y": -0.396,
-   "pca_variance": 46.6
+   "pca_x": -1.314,
+   "pca_y": 1.912,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1008",
@@ -789,8 +981,20 @@
    "xA_per90": 0.494,
    "goals_diff": -7.99,
    "league": "PD",
-   "score": 47.6,
+   "score": 48.6,
+   "score_crudo": 47.6,
+   "minutos_para_el_ajuste": 767,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 70.6,
+    "Goles/90": 27.2,
+    "xA/90": 51.1,
+    "Asistencias/90": 68.5,
+    "Pases clave/90": 22.8,
+    "Tiros/90": 22.8,
+    "xGChain/90": 40.2
+   },
+   "percentiles_crudos": {
     "npxG/90": 85.2,
     "Goles/90": 11.1,
     "xA/90": 51.9,
@@ -812,9 +1016,9 @@
    "cluster": 1,
    "cluster_label": "🔥 Alto rendimiento",
    "cluster_color": "#f0883e",
-   "pca_x": -1.957,
-   "pca_y": 1.758,
-   "pca_variance": 46.6
+   "pca_x": 2.859,
+   "pca_y": -0.655,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1010",
@@ -837,8 +1041,20 @@
    "xA_per90": 0.088,
    "goals_diff": -0.9,
    "league": "PD",
-   "score": 43.3,
+   "score": 46.5,
+   "score_crudo": 43.3,
+   "minutos_para_el_ajuste": 594,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 45.1,
+    "Goles/90": 39.3,
+    "xA/90": 29.6,
+    "Asistencias/90": 72.3,
+    "Pases clave/90": 68.4,
+    "Tiros/90": 33.5,
+    "xGChain/90": 66.5
+   },
+   "percentiles_crudos": {
     "npxG/90": 40.7,
     "Goles/90": 29.6,
     "xA/90": 11.1,
@@ -860,9 +1076,9 @@
    "cluster": 3,
    "cluster_label": "🌱 En desarrollo",
    "cluster_color": "#3fb950",
-   "pca_x": -1.03,
-   "pca_y": -0.639,
-   "pca_variance": 46.6
+   "pca_x": -0.099,
+   "pca_y": -1.466,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1006",
@@ -885,8 +1101,20 @@
    "xA_per90": 0.397,
    "goals_diff": -1.98,
    "league": "PD",
-   "score": 40.6,
+   "score": 44.3,
+   "score_crudo": 40.6,
+   "minutos_para_el_ajuste": 837,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 51.1,
+    "Goles/90": 42.1,
+    "xA/90": 46.6,
+    "Asistencias/90": 51.1,
+    "Pases clave/90": 19.6,
+    "Tiros/90": 53.4,
+    "xGChain/90": 26.4
+   },
+   "percentiles_crudos": {
     "npxG/90": 51.9,
     "Goles/90": 37.0,
     "xA/90": 44.4,
@@ -908,9 +1136,9 @@
    "cluster": 1,
    "cluster_label": "🔥 Alto rendimiento",
    "cluster_color": "#f0883e",
-   "pca_x": -0.846,
-   "pca_y": 0.825,
-   "pca_variance": 46.6
+   "pca_x": 1.33,
+   "pca_y": 0.145,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1016",
@@ -933,8 +1161,20 @@
    "xA_per90": 0.081,
    "goals_diff": 3.9,
    "league": "PD",
-   "score": 38.3,
+   "score": 43.1,
+   "score_crudo": 38.3,
+   "minutos_para_el_ajuste": 777,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 38.0,
+    "Goles/90": 55.5,
+    "xA/90": 24.9,
+    "Asistencias/90": 42.4,
+    "Pases clave/90": 48.9,
+    "Tiros/90": 57.6,
+    "xGChain/90": 59.8
+   },
+   "percentiles_crudos": {
     "npxG/90": 29.6,
     "Goles/90": 59.3,
     "xA/90": 7.4,
@@ -953,12 +1193,12 @@
     "xGChain/90": 0.98
    },
    "ajustado_por_edad": false,
-   "cluster": 2,
-   "cluster_label": "📈 Promedio",
-   "cluster_color": "#39c5cf",
-   "pca_x": 0.096,
-   "pca_y": -1.296,
-   "pca_variance": 46.6
+   "cluster": 3,
+   "cluster_label": "🌱 En desarrollo",
+   "cluster_color": "#3fb950",
+   "pca_x": -1.3,
+   "pca_y": -0.586,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1028",
@@ -981,8 +1221,20 @@
    "xA_per90": 0.299,
    "goals_diff": 7.54,
    "league": "PD",
-   "score": 38.0,
+   "score": 42.8,
+   "score_crudo": 38.0,
+   "minutos_para_el_ajuste": 819,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 21.0,
+    "Goles/90": 60.0,
+    "xA/90": 44.4,
+    "Asistencias/90": 31.0,
+    "Pases clave/90": 73.4,
+    "Tiros/90": 51.1,
+    "xGChain/90": 48.9
+   },
+   "percentiles_crudos": {
     "npxG/90": 1.9,
     "Goles/90": 66.7,
     "xA/90": 40.7,
@@ -1004,9 +1256,9 @@
    "cluster": 2,
    "cluster_label": "📈 Promedio",
    "cluster_color": "#39c5cf",
-   "pca_x": 0.37,
-   "pca_y": -1.921,
-   "pca_variance": 46.6
+   "pca_x": -2.109,
+   "pca_y": -0.422,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1005",
@@ -1029,8 +1281,20 @@
    "xA_per90": 0.238,
    "goals_diff": 0.47,
    "league": "PD",
-   "score": 37.4,
+   "score": 42.3,
+   "score_crudo": 37.4,
+   "minutos_para_el_ajuste": 844,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 39.8,
+    "Goles/90": 39.8,
+    "xA/90": 39.8,
+    "Asistencias/90": 64.7,
+    "Pases clave/90": 39.8,
+    "Tiros/90": 46.6,
+    "xGChain/90": 30.8
+   },
+   "percentiles_crudos": {
     "npxG/90": 33.3,
     "Goles/90": 33.3,
     "xA/90": 33.3,
@@ -1052,9 +1316,9 @@
    "cluster": 1,
    "cluster_label": "🔥 Alto rendimiento",
    "cluster_color": "#f0883e",
-   "pca_x": -1.119,
-   "pca_y": 0.322,
-   "pca_variance": 46.6
+   "pca_x": 0.951,
+   "pca_y": -0.585,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1004",
@@ -1077,8 +1341,20 @@
    "xA_per90": 0.237,
    "goals_diff": -4.61,
    "league": "PD",
-   "score": 36.2,
+   "score": 41.5,
+   "score_crudo": 36.2,
+   "minutos_para_el_ajuste": 873,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 46.6,
+    "Goles/90": 23.7,
+    "xA/90": 37.4,
+    "Asistencias/90": 48.9,
+    "Pases clave/90": 64.9,
+    "Tiros/90": 28.3,
+    "xGChain/90": 53.4
+   },
+   "percentiles_crudos": {
     "npxG/90": 44.4,
     "Goles/90": 7.4,
     "xA/90": 29.6,
@@ -1100,57 +1376,9 @@
    "cluster": 3,
    "cluster_label": "🌱 En desarrollo",
    "cluster_color": "#3fb950",
-   "pca_x": -1.469,
-   "pca_y": -0.93,
-   "pca_variance": 46.6
-  },
-  {
-   "player_id": "1026",
-   "name": "Jugador 26 Apellido26",
-   "team": "Equipo 5",
-   "position": "F S",
-   "games": 9,
-   "time": 813,
-   "goals": 8,
-   "xG": 1.61,
-   "assists": 0,
-   "xA": 5.25,
-   "shots": 10,
-   "key_passes": 11,
-   "npg": 8,
-   "npxG": 0.68,
-   "xGChain": 2.22,
-   "xGBuildup": 1.3,
-   "xG_per90": 0.178,
-   "xA_per90": 0.581,
-   "goals_diff": 6.39,
-   "league": "PD",
-   "score": 32.2,
-   "percentiles": {
-    "npxG/90": 7.4,
-    "Goles/90": 74.1,
-    "xA/90": 63.0,
-    "Asistencias/90": 7.4,
-    "Pases clave/90": 22.2,
-    "Tiros/90": 7.4,
-    "xGChain/90": 7.4
-   },
-   "por_90": {
-    "npxG/90": 0.075,
-    "Goles/90": 0.886,
-    "xA/90": 0.581,
-    "Asistencias/90": 0.0,
-    "Pases clave/90": 1.218,
-    "Tiros/90": 1.107,
-    "xGChain/90": 0.246
-   },
-   "ajustado_por_edad": false,
-   "cluster": 2,
-   "cluster_label": "📈 Promedio",
-   "cluster_color": "#39c5cf",
-   "pca_x": -0.829,
-   "pca_y": -0.548,
-   "pca_variance": 46.6
+   "pca_x": -0.015,
+   "pca_y": -2.124,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1014",
@@ -1173,8 +1401,20 @@
    "xA_per90": 0.123,
    "goals_diff": 0.78,
    "league": "PD",
-   "score": 32.1,
+   "score": 41.3,
+   "score_crudo": 32.1,
+   "minutos_para_el_ajuste": 513,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 32.9,
+    "Goles/90": 34.7,
+    "xA/90": 36.5,
+    "Asistencias/90": 29.2,
+    "Pases clave/90": 70.8,
+    "Tiros/90": 61.7,
+    "xGChain/90": 72.6
+   },
+   "percentiles_crudos": {
     "npxG/90": 14.8,
     "Goles/90": 18.5,
     "xA/90": 22.2,
@@ -1196,105 +1436,69 @@
    "cluster": 3,
    "cluster_label": "🌱 En desarrollo",
    "cluster_color": "#3fb950",
-   "pca_x": 0.643,
-   "pca_y": -2.922,
-   "pca_variance": 46.6
+   "pca_x": -2.695,
+   "pca_y": -1.126,
+   "pca_variance": 47.2
   },
   {
-   "player_id": "1025",
-   "name": "Jugador 25 Apellido25",
-   "team": "Equipo 4",
-   "position": "F S",
-   "games": 10,
-   "time": 900,
-   "goals": 4,
-   "xG": 5.26,
-   "assists": 2,
-   "xA": 0.46,
-   "shots": 22,
-   "key_passes": 22,
-   "npg": 3,
-   "npxG": 4.47,
-   "xGChain": 9.87,
-   "xGBuildup": 4.23,
-   "xG_per90": 0.526,
-   "xA_per90": 0.046,
-   "goals_diff": -1.26,
-   "league": "PD",
-   "score": 29.6,
-   "percentiles": {
-    "npxG/90": 37.0,
-    "Goles/90": 22.2,
-    "xA/90": 3.7,
-    "Asistencias/90": 33.3,
-    "Pases clave/90": 44.4,
-    "Tiros/90": 29.6,
-    "xGChain/90": 70.4
-   },
-   "por_90": {
-    "npxG/90": 0.447,
-    "Goles/90": 0.4,
-    "xA/90": 0.046,
-    "Asistencias/90": 0.2,
-    "Pases clave/90": 2.2,
-    "Tiros/90": 2.2,
-    "xGChain/90": 0.987
-   },
-   "ajustado_por_edad": false,
-   "cluster": 3,
-   "cluster_label": "🌱 En desarrollo",
-   "cluster_color": "#3fb950",
-   "pca_x": -1.11,
-   "pca_y": -1.449,
-   "pca_variance": 46.6
-  },
-  {
-   "player_id": "1012",
-   "name": "Jugador 12 Apellido12",
+   "player_id": "1026",
+   "name": "Jugador 26 Apellido26",
    "team": "Equipo 5",
    "position": "F S",
    "games": 9,
-   "time": 796,
-   "goals": 2,
-   "xG": 2.64,
+   "time": 813,
+   "goals": 8,
+   "xG": 1.61,
    "assists": 0,
-   "xA": 0.96,
-   "shots": 39,
-   "key_passes": 34,
-   "npg": 1,
-   "npxG": 1.91,
-   "xGChain": 4.16,
-   "xGBuildup": 1.18,
-   "xG_per90": 0.298,
-   "xA_per90": 0.109,
-   "goals_diff": -0.64,
+   "xA": 5.25,
+   "shots": 10,
+   "key_passes": 11,
+   "npg": 8,
+   "npxG": 0.68,
+   "xGChain": 2.22,
+   "xGBuildup": 1.3,
+   "xG_per90": 0.178,
+   "xA_per90": 0.581,
+   "goals_diff": 6.39,
    "league": "PD",
-   "score": 28.7,
+   "score": 39.3,
+   "score_crudo": 32.2,
+   "minutos_para_el_ajuste": 813,
+   "k_minutos": 540,
    "percentiles": {
-    "npxG/90": 25.9,
-    "Goles/90": 14.8,
-    "xA/90": 18.5,
+    "npxG/90": 24.4,
+    "Goles/90": 64.5,
+    "xA/90": 57.8,
+    "Asistencias/90": 24.4,
+    "Pases clave/90": 33.3,
+    "Tiros/90": 24.4,
+    "xGChain/90": 24.4
+   },
+   "percentiles_crudos": {
+    "npxG/90": 7.4,
+    "Goles/90": 74.1,
+    "xA/90": 63.0,
     "Asistencias/90": 7.4,
-    "Pases clave/90": 77.8,
-    "Tiros/90": 66.7,
-    "xGChain/90": 29.6
+    "Pases clave/90": 22.2,
+    "Tiros/90": 7.4,
+    "xGChain/90": 7.4
    },
    "por_90": {
-    "npxG/90": 0.216,
-    "Goles/90": 0.226,
-    "xA/90": 0.109,
+    "npxG/90": 0.075,
+    "Goles/90": 0.886,
+    "xA/90": 0.581,
     "Asistencias/90": 0.0,
-    "Pases clave/90": 3.844,
-    "Tiros/90": 4.41,
-    "xGChain/90": 0.47
+    "Pases clave/90": 1.218,
+    "Tiros/90": 1.107,
+    "xGChain/90": 0.246
    },
    "ajustado_por_edad": false,
-   "cluster": 3,
-   "cluster_label": "🌱 En desarrollo",
-   "cluster_color": "#3fb950",
-   "pca_x": -0.743,
-   "pca_y": -2.0,
-   "pca_variance": 46.6
+   "cluster": 2,
+   "cluster_label": "📈 Promedio",
+   "cluster_color": "#39c5cf",
+   "pca_x": 0.221,
+   "pca_y": 0.002,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1020",
@@ -1317,8 +1521,20 @@
    "xA_per90": 0.171,
    "goals_diff": 4.05,
    "league": "PD",
-   "score": 28.4,
+   "score": 37.4,
+   "score_crudo": 28.4,
+   "minutos_para_el_ajuste": 757,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 27.3,
+    "Goles/90": 46.8,
+    "xA/90": 35.9,
+    "Asistencias/90": 35.9,
+    "Pases clave/90": 38.1,
+    "Tiros/90": 44.6,
+    "xGChain/90": 57.6
+   },
+   "percentiles_crudos": {
     "npxG/90": 11.1,
     "Goles/90": 44.4,
     "xA/90": 25.9,
@@ -1337,25 +1553,145 @@
     "xGChain/90": 0.913
    },
    "ajustado_por_edad": false,
-   "cluster": 2,
-   "cluster_label": "📈 Promedio",
-   "cluster_color": "#39c5cf",
-   "pca_x": -0.273,
-   "pca_y": -1.419,
-   "pca_variance": 46.6
+   "cluster": 3,
+   "cluster_label": "🌱 En desarrollo",
+   "cluster_color": "#3fb950",
+   "pca_x": -1.076,
+   "pca_y": -0.718,
+   "pca_variance": 47.2
+  },
+  {
+   "player_id": "1012",
+   "name": "Jugador 12 Apellido12",
+   "team": "Equipo 5",
+   "position": "F S",
+   "games": 9,
+   "time": 796,
+   "goals": 2,
+   "xG": 2.64,
+   "assists": 0,
+   "xA": 0.96,
+   "shots": 39,
+   "key_passes": 34,
+   "npg": 1,
+   "npxG": 1.91,
+   "xGChain": 4.16,
+   "xGBuildup": 1.18,
+   "xG_per90": 0.298,
+   "xA_per90": 0.109,
+   "goals_diff": -0.64,
+   "league": "PD",
+   "score": 37.3,
+   "score_crudo": 28.7,
+   "minutos_para_el_ajuste": 796,
+   "k_minutos": 540,
+   "percentiles": {
+    "npxG/90": 35.7,
+    "Goles/90": 29.0,
+    "xA/90": 31.2,
+    "Asistencias/90": 24.6,
+    "Pases clave/90": 66.6,
+    "Tiros/90": 59.9,
+    "xGChain/90": 37.9
+   },
+   "percentiles_crudos": {
+    "npxG/90": 25.9,
+    "Goles/90": 14.8,
+    "xA/90": 18.5,
+    "Asistencias/90": 7.4,
+    "Pases clave/90": 77.8,
+    "Tiros/90": 66.7,
+    "xGChain/90": 29.6
+   },
+   "por_90": {
+    "npxG/90": 0.216,
+    "Goles/90": 0.226,
+    "xA/90": 0.109,
+    "Asistencias/90": 0.0,
+    "Pases clave/90": 3.844,
+    "Tiros/90": 4.41,
+    "xGChain/90": 0.47
+   },
+   "ajustado_por_edad": false,
+   "cluster": 3,
+   "cluster_label": "🌱 En desarrollo",
+   "cluster_color": "#3fb950",
+   "pca_x": -1.531,
+   "pca_y": -1.847,
+   "pca_variance": 47.2
+  },
+  {
+   "player_id": "1025",
+   "name": "Jugador 25 Apellido25",
+   "team": "Equipo 4",
+   "position": "F S",
+   "games": 10,
+   "time": 900,
+   "goals": 4,
+   "xG": 5.26,
+   "assists": 2,
+   "xA": 0.46,
+   "shots": 22,
+   "key_passes": 22,
+   "npg": 3,
+   "npxG": 4.47,
+   "xGChain": 9.87,
+   "xGBuildup": 4.23,
+   "xG_per90": 0.526,
+   "xA_per90": 0.046,
+   "goals_diff": -1.26,
+   "league": "PD",
+   "score": 37.2,
+   "score_crudo": 29.6,
+   "minutos_para_el_ajuste": 900,
+   "k_minutos": 540,
+   "percentiles": {
+    "npxG/90": 41.9,
+    "Goles/90": 32.6,
+    "xA/90": 21.1,
+    "Asistencias/90": 39.6,
+    "Pases clave/90": 46.5,
+    "Tiros/90": 37.3,
+    "xGChain/90": 62.7
+   },
+   "percentiles_crudos": {
+    "npxG/90": 37.0,
+    "Goles/90": 22.2,
+    "xA/90": 3.7,
+    "Asistencias/90": 33.3,
+    "Pases clave/90": 44.4,
+    "Tiros/90": 29.6,
+    "xGChain/90": 70.4
+   },
+   "por_90": {
+    "npxG/90": 0.447,
+    "Goles/90": 0.4,
+    "xA/90": 0.046,
+    "Asistencias/90": 0.2,
+    "Pases clave/90": 2.2,
+    "Tiros/90": 2.2,
+    "xGChain/90": 0.987
+   },
+   "ajustado_por_edad": false,
+   "cluster": 3,
+   "cluster_label": "🌱 En desarrollo",
+   "cluster_color": "#3fb950",
+   "pca_x": -0.682,
+   "pca_y": -2.05,
+   "pca_variance": 47.2
   }
  ],
  "summary": {
   "total_players": 28,
-  "avg_score": 50.0,
-  "max_score": 87.0,
-  "elite_count": 6,
+  "avg_score": 49.2,
+  "max_score": 63.3,
+  "elite_count": 7,
   "high_count": 8,
   "cluster_dist": {
-   "🌟 Élite": 6,
+   "🌟 Élite": 7,
    "🔥 Alto rendimiento": 8,
-   "📈 Promedio": 8,
-   "🌱 En desarrollo": 6
+   "📈 Promedio": 6,
+   "🌱 En desarrollo": 7
   },
   "top_player": "Jugador 21 Apellido21",
   "position": "FW"
@@ -1382,8 +1718,20 @@
    "xA_per90": 1.501,
    "goals_diff": -2.64,
    "league": "PD",
-   "score": 87.0,
+   "score": 63.3,
+   "score_crudo": 87.0,
+   "minutos_para_el_ajuste": 301,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 67.9,
+    "Goles/90": 65.2,
+    "xA/90": 67.9,
+    "Asistencias/90": 48.0,
+    "Pases clave/90": 46.7,
+    "Tiros/90": 67.9,
+    "xGChain/90": 67.9
+   },
+   "percentiles_crudos": {
     "npxG/90": 100.0,
     "Goles/90": 92.6,
     "xA/90": 100.0,
@@ -1405,9 +1753,9 @@
    "cluster": 0,
    "cluster_label": "🌟 Élite",
    "cluster_color": "#e3b341",
-   "pca_x": 3.005,
-   "pca_y": 1.301,
-   "pca_variance": 46.6
+   "pca_x": -0.49,
+   "pca_y": 2.186,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1015",
@@ -1430,8 +1778,20 @@
    "xA_per90": 1.389,
    "goals_diff": 5.3,
    "league": "PD",
-   "score": 78.7,
+   "score": 61.7,
+   "score_crudo": 78.7,
+   "minutos_para_el_ajuste": 372,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 53.8,
+    "Goles/90": 68.9,
+    "xA/90": 68.9,
+    "Asistencias/90": 65.9,
+    "Pases clave/90": 70.4,
+    "Tiros/90": 53.8,
+    "xGChain/90": 40.2
+   },
+   "percentiles_crudos": {
     "npxG/90": 59.3,
     "Goles/90": 96.3,
     "xA/90": 96.3,
@@ -1453,9 +1813,9 @@
    "cluster": 0,
    "cluster_label": "🌟 Élite",
    "cluster_color": "#e3b341",
-   "pca_x": 1.096,
-   "pca_y": 1.47,
-   "pca_variance": 46.6
+   "pca_x": 0.302,
+   "pca_y": 1.553,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1018",
@@ -1478,8 +1838,20 @@
    "xA_per90": 0.738,
    "goals_diff": -2.15,
    "league": "PD",
-   "score": 69.2,
+   "score": 59.0,
+   "score_crudo": 69.2,
+   "minutos_para_el_ajuste": 471,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 57.8,
+    "Goles/90": 45.7,
+    "xA/90": 61.2,
+    "Asistencias/90": 66.4,
+    "Pases clave/90": 71.6,
+    "Tiros/90": 59.5,
+    "xGChain/90": 69.8
+   },
+   "percentiles_crudos": {
     "npxG/90": 66.7,
     "Goles/90": 40.7,
     "xA/90": 74.1,
@@ -1501,9 +1873,9 @@
    "cluster": 0,
    "cluster_label": "🌟 Élite",
    "cluster_color": "#e3b341",
-   "pca_x": 1.276,
-   "pca_y": 0.338,
-   "pca_variance": 46.6
+   "pca_x": -0.605,
+   "pca_y": 0.782,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1024",
@@ -1526,8 +1898,20 @@
    "xA_per90": 1.104,
    "goals_diff": -2.23,
    "league": "PD",
-   "score": 68.4,
+   "score": 57.9,
+   "score_crudo": 68.4,
+   "minutos_para_el_ajuste": 405,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 63.5,
+    "Goles/90": 39.7,
+    "xA/90": 68.3,
+    "Asistencias/90": 57.1,
+    "Pases clave/90": 55.6,
+    "Tiros/90": 66.7,
+    "xGChain/90": 54.0
+   },
+   "percentiles_crudos": {
     "npxG/90": 81.5,
     "Goles/90": 25.9,
     "xA/90": 92.6,
@@ -1549,9 +1933,9 @@
    "cluster": 0,
    "cluster_label": "🌟 Élite",
    "cluster_color": "#e3b341",
-   "pca_x": 1.151,
-   "pca_y": 1.08,
-   "pca_variance": 46.6
+   "pca_x": 0.011,
+   "pca_y": 1.119,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1003",
@@ -1574,8 +1958,20 @@
    "xA_per90": 0.092,
    "goals_diff": 5.11,
    "league": "PD",
-   "score": 66.6,
+   "score": 56.7,
+   "score_crudo": 66.6,
+   "minutos_para_el_ajuste": 363,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 59.7,
+    "Goles/90": 70.1,
+    "xA/90": 35.9,
+    "Asistencias/90": 58.2,
+    "Pases clave/90": 44.8,
+    "Tiros/90": 68.6,
+    "xGChain/90": 64.1
+   },
+   "percentiles_crudos": {
     "npxG/90": 74.1,
     "Goles/90": 100.0,
     "xA/90": 14.8,
@@ -1597,9 +1993,9 @@
    "cluster": 0,
    "cluster_label": "🌟 Élite",
    "cluster_color": "#e3b341",
-   "pca_x": 1.504,
-   "pca_y": 0.393,
-   "pca_variance": 46.6
+   "pca_x": -0.495,
+   "pca_y": 1.067,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1023",
@@ -1622,8 +2018,20 @@
    "xA_per90": 0.462,
    "goals_diff": 1.11,
    "league": "PD",
-   "score": 60.0,
+   "score": 55.9,
+   "score_crudo": 60.0,
+   "minutos_para_el_ajuste": 776,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 62.0,
+    "Goles/90": 68.6,
+    "xA/90": 48.9,
+    "Asistencias/90": 66.4,
+    "Pases clave/90": 51.1,
+    "Tiros/90": 27.1,
+    "xGChain/90": 22.7
+   },
+   "percentiles_crudos": {
     "npxG/90": 70.4,
     "Goles/90": 81.5,
     "xA/90": 48.1,
@@ -1645,9 +2053,9 @@
    "cluster": 1,
    "cluster_label": "🔥 Alto rendimiento",
    "cluster_color": "#f0883e",
-   "pca_x": -1.268,
-   "pca_y": 1.495,
-   "pca_variance": 46.6
+   "pca_x": 2.154,
+   "pca_y": 0.173,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1011",
@@ -1670,8 +2078,20 @@
    "xA_per90": 0.6,
    "goals_diff": -3.37,
    "league": "PD",
-   "score": 58.6,
+   "score": 55.3,
+   "score_crudo": 58.6,
+   "minutos_para_el_ajuste": 863,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 73.9,
+    "Goles/90": 48.9,
+    "xA/90": 60.3,
+    "Asistencias/90": 55.7,
+    "Pases clave/90": 30.6,
+    "Tiros/90": 35.2,
+    "xGChain/90": 28.4
+   },
+   "percentiles_crudos": {
     "npxG/90": 88.9,
     "Goles/90": 48.1,
     "xA/90": 66.7,
@@ -1693,9 +2113,9 @@
    "cluster": 1,
    "cluster_label": "🔥 Alto rendimiento",
    "cluster_color": "#f0883e",
-   "pca_x": -1.018,
-   "pca_y": 1.793,
-   "pca_variance": 46.6
+   "pca_x": 2.408,
+   "pca_y": 0.485,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1013",
@@ -1718,8 +2138,20 @@
    "xA_per90": 0.267,
    "goals_diff": -1.57,
    "league": "PD",
-   "score": 55.0,
+   "score": 53.0,
+   "score_crudo": 55.0,
+   "minutos_para_el_ajuste": 827,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 66.8,
+    "Goles/90": 53.4,
+    "xA/90": 42.2,
+    "Asistencias/90": 57.8,
+    "Pases clave/90": 53.4,
+    "Tiros/90": 19.8,
+    "xGChain/90": 44.4
+   },
+   "percentiles_crudos": {
     "npxG/90": 77.8,
     "Goles/90": 55.6,
     "xA/90": 37.0,
@@ -1741,9 +2173,69 @@
    "cluster": 1,
    "cluster_label": "🔥 Alto rendimiento",
    "cluster_color": "#f0883e",
-   "pca_x": -1.413,
-   "pca_y": 0.678,
-   "pca_variance": 46.6
+   "pca_x": 1.548,
+   "pca_y": -0.799,
+   "pca_variance": 47.2
+  },
+  {
+   "player_id": "1007",
+   "name": "Jugador 07 Apellido07",
+   "team": "Equipo 0",
+   "position": "F S",
+   "games": 9,
+   "time": 800,
+   "goals": 0,
+   "xG": 9.15,
+   "assists": 1,
+   "xA": 4.61,
+   "shots": 28,
+   "key_passes": 36,
+   "npg": 0,
+   "npxG": 8.74,
+   "xGChain": 4.53,
+   "xGBuildup": 4.07,
+   "xG_per90": 1.029,
+   "xA_per90": 0.519,
+   "goals_diff": -9.15,
+   "league": "PD",
+   "score": 52.9,
+   "score_crudo": 54.9,
+   "minutos_para_el_ajuste": 800,
+   "k_minutos": 540,
+   "percentiles": {
+    "npxG/90": 77.6,
+    "Goles/90": 21.3,
+    "xA/90": 53.3,
+    "Asistencias/90": 33.4,
+    "Pases clave/90": 68.8,
+    "Tiros/90": 48.9,
+    "xGChain/90": 42.3
+   },
+   "percentiles_crudos": {
+    "npxG/90": 96.3,
+    "Goles/90": 1.9,
+    "xA/90": 55.6,
+    "Asistencias/90": 22.2,
+    "Pases clave/90": 81.5,
+    "Tiros/90": 48.1,
+    "xGChain/90": 37.0
+   },
+   "por_90": {
+    "npxG/90": 0.983,
+    "Goles/90": 0.0,
+    "xA/90": 0.519,
+    "Asistencias/90": 0.113,
+    "Pases clave/90": 4.05,
+    "Tiros/90": 3.15,
+    "xGChain/90": 0.51
+   },
+   "ajustado_por_edad": false,
+   "cluster": 1,
+   "cluster_label": "🔥 Alto rendimiento",
+   "cluster_color": "#f0883e",
+   "pca_x": 0.296,
+   "pca_y": -1.176,
+   "pca_variance": 47.2
   },
   {
    "player_id": "1009",
@@ -1766,8 +2258,20 @@
    "xA_per90": 0.027,
    "goals_diff": -2.45,
    "league": "PD",
-   "score": 53.3,
+   "score": 51.9,
+   "score_crudo": 53.3,
+   "minutos_para_el_ajuste": 756,
+   "k_minutos": 540,
    "percentiles": {
+    "npxG/90": 74.8,
+    "Goles/90": 51.1,
+    "xA/90": 20.8,
+    "Asistencias/90": 53.2,
+    "Pases clave/90": 61.9,
+    "Tiros/90": 42.4,
+    "xGChain/90": 20.8
+   },
+   "percentiles_crudos": {
     "npxG/90": 92.6,
     "Goles/90": 51.9,
     "xA/90": 0.0,
@@ -1789,57 +2293,9 @@
    "cluster": 1,
    "cluster_label": "🔥 Alto rendimiento",
    "cluster_color": "#f0883e",
-   "pca_x": -1.947,
-   "pca_y": 0.469,
-   "pca_variance": 46.6
-  },
-  {
-   "player_id": "1027",
-   "name": "Jugador 27 Apellido27",
-   "team": "Equipo 6",
-   "position": "F S",
-   "games": 4,
-   "time": 423,
-   "goals": 0,
-   "xG": 3.23,
-   "assists": 7,
-   "xA": 4.73,
-   "shots": 37,
-   "key_passes": 6,
-   "npg": 0,
-   "npxG": 2.93,
-   "xGChain": 3.68,
-   "xGBuildup": 6.22,
-   "xG_per90": 0.687,
-   "xA_per90": 1.006,
-   "goals_diff": -3.23,
-   "league": "PD",
-   "score": 52.5,
-   "percentiles": {
-    "npxG/90": 48.1,
-    "Goles/90": 1.9,
-    "xA/90": 88.9,
-    "Asistencias/90": 100.0,
-    "Pases clave/90": 25.9,
-    "Tiros/90": 92.6,
-    "xGChain/90": 51.9
-   },
-   "por_90": {
-    "npxG/90": 0.623,
-    "Goles/90": 0.0,
-    "xA/90": 1.006,
-    "Asistencias/90": 1.489,
-    "Pases clave/90": 1.277,
-    "Tiros/90": 7.872,
-    "xGChain/90": 0.783
-   },
-   "ajustado_por_edad": false,
-   "cluster": 0,
-   "cluster_label": "🌟 Élite",
-   "cluster_color": "#e3b341",
-   "pca_x": 0.724,
-   "pca_y": 1.4,
-   "pca_variance": 46.6
+   "pca_x": 1.493,
+   "pca_y": -1.556,
+   "pca_variance": 47.2
   }
  ],
  "avisos": [

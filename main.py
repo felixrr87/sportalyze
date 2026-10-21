@@ -878,6 +878,132 @@ async def get_player_injuries_route(
 
 
 # ════════════════════════════════════════════════════════
+# RUTAS — GOLES Y ASISTENCIAS DE LAS CINCO GRANDES
+# ════════════════════════════════════════════════════════
+#
+# Lo pidió Félix: "el ranking de los goles y asistencias de todos, de
+# las ligas quitando la Champions".
+#
+# Sin Champions a propósito, y no es un capricho: en la fase de liga
+# un equipo juega ocho partidos contra rivales de otro nivel. Meter
+# esos goles en la misma lista que los de LaLiga compara cosas que no
+# se parecen. Si algún día entra, entrará en su propia columna.
+#
+# Y con la diferencia respecto al xG y al xA al lado, que es lo que
+# esta lista tiene y las de los periódicos no: no sólo quién lleva más
+# goles, sino quién lleva más de los que le tocaban.
+
+
+ORDENES_GA = {
+    # cada orden, con la clave por la que se ordena y el desempate.
+    # Ordenar en el servidor no es un capricho: el recorte de `limit`
+    # tiene que caer DESPUÉS de ordenar. Si se recorta por G+A y luego
+    # la pantalla reordena por diferencia, el que lleva 2 de G+A con
+    # 0,3 de xG+xA —que es justo el hallazgo— se ha quedado fuera sin
+    # que nadie lo vea.
+    "ga": lambda x: (-x["ga"], -x["goles"], x["minutos"]),
+    "goles": lambda x: (-x["goles"], -x["asistencias"], x["minutos"]),
+    "asistencias": lambda x: (-x["asistencias"], -x["goles"], x["minutos"]),
+    "diferencia": lambda x: (-x["diferencia"], -x["ga"], x["minutos"]),
+    "ga_90": lambda x: (-x["ga_90"], -x["ga"], x["minutos"]),
+}
+
+
+@app.get("/api/goles-asistencias")
+async def goles_y_asistencias(
+    season: int = Query(None),
+    min_minutes: int = Query(270, ge=0),
+    limit: int = Query(120, ge=10, le=500),
+    liga: str = Query(None, description="PL | PD | BL1 | SA | FL1; vacío = las cinco"),
+    orden: str = Query("ga", description=" | ".join(ORDENES_GA)),
+):
+    """Goles + asistencias de las cinco grandes ligas, en una lista.
+
+    Se trae cada liga por separado y se juntan. Si alguna se cae, la
+    lista sale con las demás y se dice cuál falta: media respuesta
+    buena vale más que un error entero, siempre que se avise.
+    """
+    if orden not in ORDENES_GA:
+        raise HTTPException(status_code=400, detail={
+            "motivo": "orden_desconocido",
+            "detalle": f"'{orden}' no es un orden. Son: "
+                       f"{', '.join(ORDENES_GA)}"})
+
+    if liga and liga not in LIGAS_GRANDES:
+        raise HTTPException(status_code=400, detail={
+            "motivo": "liga_desconocida",
+            "detalle": f"'{liga}' no está en la lista. Son: "
+                       f"{', '.join(LIGAS_GRANDES)}"})
+
+    pedidas = [liga] if liga else list(LIGAS_GRANDES)
+
+    jugadores, caidas = [], []
+    for lg in pedidas:
+        try:
+            trozo = await get_league_players(lg, season)
+            for p in trozo:
+                p["league"] = lg
+            jugadores.extend(trozo)
+        except FuenteNoDisponible as e:
+            caidas.append(f"{lg}: {e}")
+
+    if not jugadores:
+        raise HTTPException(status_code=503, detail={
+            "motivo": "fuente_caida",
+            "detalle": " · ".join(caidas) or "Understat no ha contestado"})
+
+    jugadores = [p for p in jugadores if (p.get("time") or 0) >= min_minutes]
+
+    salida = []
+    for p in jugadores:
+        g = int(p.get("goals") or 0)
+        a = int(p.get("assists") or 0)
+        xg = float(p.get("xG") or 0)
+        xa = float(p.get("xA") or 0)
+        minutos = int(p.get("time") or 0)
+        salida.append({
+            "player_id": p.get("player_id"), "name": p.get("name"),
+            "team": p.get("team"), "league": p.get("league"),
+            "position": p.get("position"),
+            "minutos": minutos, "partidos": int(p.get("games") or 0),
+            "goles": g, "asistencias": a, "ga": g + a,
+            "xg": round(xg, 2), "xa": round(xa, 2),
+            "xga": round(xg + xa, 2),
+            # Lo que de verdad aporta esta lista: no quién lleva más,
+            # sino quién lleva más de los que le tocaban.
+            "diferencia": round((g + a) - (xg + xa), 2),
+            "ga_90": round((g + a) / minutos * 90, 3) if minutos else 0.0,
+            "xga_90": round((xg + xa) / minutos * 90, 3) if minutos else 0.0,
+        })
+
+    salida.sort(key=ORDENES_GA[orden])
+    cuantos_habia = len(salida)
+    salida = salida[:limit]
+
+    avisos = []
+    if caidas:
+        avisos.append(f"No he podido traer {' ni '.join(caidas)}. La lista "
+                      f"está hecha sin esa liga.")
+    if cuantos_habia > limit:
+        avisos.append(f"Con {min_minutes} minutos o más hay {cuantos_habia} "
+                      f"jugadores y aquí salen los {limit} primeros por "
+                      f"'{orden}'. El resto está cortado, no es que no exista.")
+
+    return {
+        "jugadores": salida,
+        "ligas": pedidas,
+        "sin_champions": True,
+        "season": season or temporada_actual(),
+        "temporada": nombre_temporada(season or temporada_actual()),
+        "minutos_minimos": min_minutes,
+        "orden": orden,
+        "cuantos_cumplen": cuantos_habia,
+        "limite": limit,
+        "avisos": avisos,
+    }
+
+
+# ════════════════════════════════════════════════════════
 # RUTAS — SCOUTING ML
 # ════════════════════════════════════════════════════════
 
