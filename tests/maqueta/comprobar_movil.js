@@ -79,6 +79,22 @@ w.addEventListener('load', () => {
   comprueba(/\.topbar\s*\{\s*display\s*:\s*none/.test(estilo),
     'y en pantalla ancha está escondida (si no, saldrían dos menús)');
 
+  // ── el fallo que rompió el escritorio ──
+  //
+  // La tapa es hija de .app, que es una rejilla de dos columnas. Sin
+  // sacarla del flujo FUERA del @media, en pantalla ancha ocupaba la
+  // primera casilla: la barra lateral se iba al centro y el contenido
+  // bajaba a otra fila. En móvil no se notaba, porque allí sí tenía
+  // position:fixed.
+  //
+  // Lo vio Félix a los diez minutos de dárselo. El comprobador miraba
+  // el móvil y no miraba qué le hacía al escritorio.
+  const reglaTapa = (estilo.match(/\.tapa-menu\s*\{([^}]*)\}/) || [])[1] || '';
+  comprueba(/display\s*:\s*none/.test(reglaTapa) ||
+            /position\s*:\s*fixed/.test(reglaTapa),
+    'la tapa del menú está fuera del flujo también en pantalla ancha',
+    'si no, ocupa una casilla de la rejilla y descoloca toda la página');
+
   console.log('\n── el cajón se abre y se cierra ──');
 
   comprueba(typeof w.menuMovil === 'function', 'menuMovil existe');

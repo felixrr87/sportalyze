@@ -51,6 +51,7 @@ from backend.scrapers.understat import (
     get_league_fixtures, get_match_roster, _normaliza,
 )
 from backend.ml import informe_liga as inf_liga
+from backend.ml import onoff
 from backend.ml.emparejar import emparejar_con_motivo
 from backend.ml.emparejar_jugadores import (
     MOTIVOS as MOTIVOS_JUGADOR, emparejar_jugador,
@@ -545,6 +546,99 @@ async def get_player_shot_map(
         "total_carrera": len(todos),
         "por_temporada": por_temporada,
     }
+
+
+# ════════════════════════════════════════════════════════
+# RUTAS — CON ÉL Y SIN ÉL
+# ════════════════════════════════════════════════════════
+#
+# La respuesta a "¿y los defensas?". Understat publica tiros, así que
+# de un central no hay entradas ni intercepciones y su ficha salía sin
+# nota. Las fuentes que sí lo publican son datos de Opta con licencia.
+#
+# Pero no hace falta ver lo que hace el defensa para medir algo real:
+# basta con saber cuándo estaba en el campo. Entonces se puede contar
+# cuánto xG encaja su equipo mientras él juega, y cuánto cuando no.
+#
+# backend/ml/minutos.py explica cómo se reconstruyen los tramos, y
+# backend/ml/onoff.py qué mide esto y qué no.
+
+
+@app.get("/api/con-el-sin-el/{competition_code}/{team_id}")
+async def con_el_sin_el(competition_code: str, team_id: int,
+                        season: int = Query(None)):
+    """Cuánto xG hace y encaja el equipo con cada jugador en el campo.
+
+    TARDA. Son dos consultas a Understat por partido jugado —los tiros
+    y la alineación—, así que la primera vez de cada equipo se va a
+    veinte o treinta segundos. Después está en la caché.
+    """
+    codigo = competition_code.upper()
+    try:
+        equipo = await football_client.get_team(team_id)
+    except LimiteAlcanzado as e:
+        raise HTTPException(status_code=429, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    nombre = equipo.get("name", "")
+    clave = _normaliza(nombre)
+
+    try:
+        calendario = await get_league_fixtures(codigo, season)
+    except FuenteNoDisponible as e:
+        raise HTTPException(status_code=503, detail={
+            "motivo": "fuente_caida", "detalle": str(e)})
+
+    suyos = [c for c in calendario if c.get("jugado") and
+             clave in (c.get("clave_local"), c.get("clave_visitante"))]
+
+    if not suyos:
+        raise HTTPException(status_code=404, detail={
+            "motivo": "sin_partidos",
+            "detalle": f"Understat no tiene partidos jugados de "
+                       f"{nombre} en esta liga. Puede que el equipo esté "
+                       f"escrito de otra forma en las dos fuentes."})
+
+    partidos, fallos = [], []
+    for c in suyos:
+        en_casa = c.get("clave_local") == clave
+        try:
+            tiros = await get_match_shots(c["match_id"])
+            roster = await get_match_roster(c["match_id"])
+        except FuenteNoDisponible as e:
+            fallos.append(f"{c['local']}–{c['visitante']}: {e}")
+            continue
+
+        lado = "local" if en_casa else "visitante"
+        otro = "visitante" if en_casa else "local"
+        crudos_f = tiros.get("home_shots" if en_casa else "away_shots", [])
+        crudos_c = tiros.get("away_shots" if en_casa else "home_shots", [])
+        partidos.append({
+            "etiqueta": f"{c['local']} {c['goles_local']}-"
+                        f"{c['goles_visitante']} {c['visitante']}",
+            "jugadores": roster.get(lado, []),
+            # minutos+xg es lo único que hace falta, y así no se
+            # arrastran las coordenadas de cada tiro para nada
+            "tiros_favor": [{"minuto": t.get("minute", 0),
+                             "xg": t.get("xG", 0)} for t in crudos_f],
+            "tiros_contra": [{"minuto": t.get("minute", 0),
+                              "xg": t.get("xG", 0)} for t in crudos_c],
+        })
+
+    if not partidos:
+        raise HTTPException(status_code=503, detail={
+            "motivo": "fuente_caida",
+            "detalle": " · ".join(fallos) or "No he podido traer ningún partido."})
+
+    salida = onoff.acumular(partidos)
+    salida["equipo_nombre"] = nombre
+    salida["competicion"] = codigo
+    salida["temporada"] = nombre_temporada(season or temporada_actual())
+    if fallos:
+        salida.setdefault("descartados", []).extend(
+            {"partido": f, "motivo": "fuente_caida", "detalle": ""} for f in fallos)
+    return salida
 
 
 # ════════════════════════════════════════════════════════
