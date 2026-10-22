@@ -10,7 +10,7 @@
    "nombre": "football-data.org",
    "da": "Calendario, resultados, clasificaciones, plantillas con edad y nacionalidad.",
    "no_da": "Nada de lo que pasa dentro del partido.",
-   "licencia": "Plan gratuito: 10 peticiones por minuto."
+   "licencia": "Plan gratuito: 10 peticiones por minuto. Sus condiciones piden atribución visible, y está abajo."
   },
   {
    "nombre": "StatsBomb Open Data",
@@ -111,7 +111,7 @@
  "como_se_prueba": {
   "regla": "Escribir la prueba, romper el código a propósito, confirmar que se pone roja, y restaurar. Una prueba que no puede fallar no protege nada.",
   "pruebas": {
-   "total": 370,
+   "total": 371,
    "por_fichero": {
     "test_emparejar.py": 20,
     "test_emparejar_jugadores.py": 16,
@@ -120,7 +120,7 @@
     "test_informe.py": 44,
     "test_informe_liga.py": 44,
     "test_maqueta.py": 8,
-    "test_metodo.py": 12,
+    "test_metodo.py": 13,
     "test_minutos.py": 31,
     "test_onoff.py": 20,
     "test_puntuar.py": 34,
@@ -132,5 +132,10 @@
   },
   "ademas": "Seis comprobadores cargan el index.html de verdad en un navegador de mentira y comprueban que lo PINTADO es el dato: no que el servidor calcule bien, sino que la pantalla no lo cambie por el camino."
  },
+ "atribucion": [
+  "Football data provided by the Football-Data.org API",
+  "Datos de tiro y xG: Understat",
+  "Eventos de partidos sueltos: StatsBomb Open Data"
+ ],
  "repositorio": "https://github.com/felixrr87/sportalyze"
 }

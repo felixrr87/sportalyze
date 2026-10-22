@@ -180,3 +180,17 @@ def test_si_understat_se_cae_se_dice_y_no_sale_una_lista_vacia(
     r = cliente.get("/api/hallazgos?liga=PD")
     assert r.status_code == 503
     assert r.json()["detail"]["motivo"] == "fuente_caida"
+
+
+def test_la_atribucion_obligatoria_esta_y_con_las_palabras_que_piden(cliente):
+    """El punto 7.1 de las condiciones de football-data.org pide esta
+    frase, con estas palabras, en un sitio visible. Estuvo sin poner
+    desde el principio.
+
+    Se comprueba la frase literal a propósito: «datos de
+    football-data» no cumple lo que piden, por muy parecido que
+    suene.
+    """
+    d = cliente.get("/api/metodo").json()
+    assert "Football data provided by the Football-Data.org API" in d["atribucion"]
+    assert any("Understat" in a for a in d["atribucion"])

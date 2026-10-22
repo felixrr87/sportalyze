@@ -229,6 +229,11 @@ w.addEventListener('load', async () => {
   comprueba(ficheros.every(f => texto.includes(f)),
             `salen los ${ficheros.length} ficheros de pruebas`);
 
+  // La atribución que piden las condiciones de football-data, con
+  // sus palabras exactas. Una parecida no cumple.
+  comprueba(/Football data provided by the Football-Data\.org API/.test(texto),
+            'la atribución obligatoria está, y literal');
+
   // Lo que hace que esta pantalla valga: que si cambia el código,
   // cambia ella. Se le sirve otro valor y tiene que pintarlo.
   const otro = JSON.parse(JSON.stringify(MT));

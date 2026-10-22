@@ -1473,7 +1473,9 @@ async def el_metodo():
              "da": "Calendario, resultados, clasificaciones, plantillas "
                    "con edad y nacionalidad.",
              "no_da": "Nada de lo que pasa dentro del partido.",
-             "licencia": "Plan gratuito: 10 peticiones por minuto."},
+             "licencia": "Plan gratuito: 10 peticiones por minuto. Sus "
+                         "condiciones piden atribución visible, y está "
+                         "abajo."},
             {"nombre": "StatsBomb Open Data",
              "da": "Eventos completos de los partidos que ellos abren.",
              "no_da": "Las ligas en curso.",
@@ -1572,6 +1574,18 @@ async def el_metodo():
                       "calcule bien, sino que la pantalla no lo cambie "
                       "por el camino.",
         },
+        # Atribución obligatoria, no un detalle de cortesía.
+        #
+        # El punto 7.1 de las condiciones de football-data.org pide esta
+        # frase exacta, visible, en el pie o en una sección «acerca
+        # de». Estaba sin poner. Si el proyecto va de usar los datos de
+        # otros con cuidado, empezar por cumplir su licencia no es
+        # opcional.
+        "atribucion": [
+            "Football data provided by the Football-Data.org API",
+            "Datos de tiro y xG: Understat",
+            "Eventos de partidos sueltos: StatsBomb Open Data",
+        ],
         "repositorio": "https://github.com/felixrr87/sportalyze",
     }
 
