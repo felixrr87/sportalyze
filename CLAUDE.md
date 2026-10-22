@@ -11,10 +11,13 @@ se puede comprobar.
    niega: lanza, devuelve 503 con el motivo escrito, o pinta «—».
    Nunca un cero, nunca una media inventada, nunca un dato por defecto.
    Un hueco explicado vale más que un número inventado.
-2. **La clave de football-data NO se sube.** Vive en
-   `~/Desktop/clave_football_data.txt`, fuera de todo repositorio.
-   `.env` está en `.gitignore`. (Sigue en el historial público de git de
-   antes: anularla en football-data.org es lo único que cierra eso.)
+2. **La clave de football-data NO se sube.** El código la lee de la
+   variable de entorno `FOOTBALL_API_KEY` (`backend/config.py`), y de
+   ningún otro sitio. En local la pone el lanzador, leyendo
+   `~/Desktop/sportalyze completo/clave_football_data.txt`; en Render
+   se escribe a mano en el panel (`sync: false` en `render.yaml`).
+   `.env` está en `.gitignore`. (La vieja sigue en el historial público
+   de git: anularla en football-data.org es lo único que cierra eso.)
 3. **Nada de datos de Opta.** Eso incluye FBref y WhoScored: mirarlos es
    gratis, reproducirlos en una página propia no. Las fuentes son
    **Understat** (tiros) y **football-data.org** (calendario, plantillas,
@@ -58,7 +61,7 @@ tests/maqueta/*.js      comprobadores jsdom: cargan el index.html de
 ## Comandos
 
 ```bash
-python3 -m pytest tests/ -q          # las 347, ~20 s
+python3 -m pytest tests/ -q          # las 389, ~22 s
 python3 -m pytest tests/test_maqueta.py -q   # sólo los comprobadores jsdom
 ```
 
