@@ -583,6 +583,10 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
       <svg fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M3 21h18"/><rect x="4" y="12" width="4" height="7"/><rect x="10" y="7" width="4" height="12"/><rect x="16" y="14" width="4" height="5"/></svg>
       Goles y asistencias
     </a>
+    <a class="ni" onclick="nav('hallazgos')">
+      <svg fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 5-7"/><circle cx="17" cy="7" r="2.2"/><path d="M3 21h18"/></svg>
+      Hallazgos del lunes
+    </a>
     <a class="ni" onclick="nav('scouting')">
       <svg fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
       Scouting ML
@@ -596,6 +600,10 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
       Comparador
     </a>
     <div class="nav-sec">Sistema</div>
+    <a class="ni" onclick="nav('metodo')">
+      <svg fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+      El Método
+    </a>
     <a class="ni" onclick="nav('config')">
       <svg fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
       Configuración
@@ -806,6 +814,38 @@ select:focus, input:focus { border-color:var(--electric); box-shadow:0 0 0 3px v
     </div>
     <div id="cOut"></div>
   </div>
+</div>
+
+<!-- HALLAZGOS -->
+<div class="page" id="page-hallazgos">
+  <div class="page-header">
+    <div class="header-row">
+      <div><div class="ptitle">Hallazgos del lunes</div><div class="psub">Quién no cuadra con su xG · corrigiendo por mirar a tantos a la vez</div></div>
+    </div>
+  </div>
+  <div class="cont">
+    <div class="card" style="margin-bottom:14px">
+      <div class="ch"><div class="ct">⚙️ Parámetros</div></div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Liga</label><select id="hzLg" onchange="renderHallazgos()"><option value="all">Las cinco grandes</option><option value="PL">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier</option><option value="PD">🇪🇸 La Liga</option><option value="BL1">🇩🇪 Bundesliga</option><option value="SA">🇮🇹 Serie A</option><option value="FL1">🇫🇷 Ligue 1</option></select></div>
+        <div class="fg"><label class="fl" title="De cada diez nombres publicados, cuántos se espera que sean casualidad">Falsos que acepto</label><select id="hzFdr" onchange="renderHallazgos()"><option value="0.05">1 de cada 20 (más duro)</option><option value="0.10" selected>1 de cada 10</option><option value="0.20">1 de cada 5 (más flojo)</option></select></div>
+        <div class="fg"><label class="fl">Tiros mín.</label><select id="hzTiros" onchange="renderHallazgos()"><option value="10">≥10</option><option value="15" selected>≥15</option><option value="25">≥25</option><option value="40">≥40</option></select></div>
+        <div style="align-self:flex-end"><button class="btn bg bs" onclick="expHZ()">⬇ CSV</button></div>
+      </div>
+    </div>
+    <div class="g4" id="hzKPIs" style="margin-bottom:14px"></div>
+    <div class="card"><div class="ch"><div class="ct">📋 Los que no cuadran</div><span class="st" id="hzCnt"></span></div><div class="tw" id="hzTbl"></div></div>
+  </div>
+</div>
+
+<!-- MÉTODO -->
+<div class="page" id="page-metodo">
+  <div class="page-header">
+    <div class="header-row">
+      <div><div class="ptitle">El Método</div><div class="psub">De dónde sale cada número, y cuándo esta página se niega a darte uno</div></div>
+    </div>
+  </div>
+  <div class="cont" id="mtCont"></div>
 </div>
 
 <!-- CONFIG -->
@@ -1354,6 +1394,7 @@ function nav(page) {
     dashboard: loadDash, standings: loadStandings,
     matches: loadMatches, scorers: loadScorers,
     players: renderGA, scouting: runScouting,
+    hallazgos: renderHallazgos, metodo: renderMetodo,
     compare: initCmp, config: renderCfg,
     relieve: loadRelieve, simulador: loadSimulador,
     informe: loadInforme
@@ -1386,6 +1427,7 @@ const TITULOS = {
   landing: 'Sportalyze', dashboard: 'Dashboard', standings: 'Clasificación',
   matches: 'Partidos', scorers: 'Goleadores', players: 'Goles y asistencias',
   scouting: 'Scouting', compare: 'Comparador',
+  hallazgos: 'Hallazgos del lunes', metodo: 'El Método',
   config: 'Configuración', relieve: 'El relieve', simulador: 'El Simulador',
   informe: 'Informe post-partido', team: 'Equipo',
 };
@@ -2645,6 +2687,52 @@ const EXPLICA = {
       'sirve de algo. Pincha en una fila y se abre la ficha.',
   },
 
+  hallazgos: {
+    fuente: 'Understat',
+    metodo:
+      'Para cada jugador se contrasta la hipótesis de que convierte sus ' +
+      'ocasiones al valor que les da el modelo de xG. Sus tiros son ' +
+      'monedas independientes: la referencia es una BINOMIAL con n = ' +
+      'sus tiros y p = npxG/tiros, que da la media exacta y la varianza ' +
+      'MÁXIMA posible para esa media, o sea la distribución más ancha y ' +
+      'la que menos hallazgos produce. El p es a dos colas, porque ' +
+      'elegir el lado después de ver el dato dobla los falsos. Se usan ' +
+      'goles y xG SIN PENALTIS. Y luego viene lo importante: mirar a ' +
+      'mil doscientos jugadores con p<0,05 da unos sesenta "hallazgos" ' +
+      'aunque no pase nada, que es el 5% de mil doscientos. Se corrige ' +
+      'con Benjamini-Hochberg, que controla la proporción de falsos ' +
+      'entre los publicados (FDR), no el error de cada prueba por ' +
+      'separado. En pantalla salen siempre los dos números: cuántos ' +
+      'habrían pasado sin corregir y cuántos pasan corrigiendo.',
+    cristiano:
+      'Si miras a suficiente gente, siempre encuentras a alguien raro ' +
+      'por pura casualidad. Tira mil veces una moneda y habrá rachas de ' +
+      'diez caras: no es que la moneda esté trucada. Esta pantalla ' +
+      'busca a los que meten muchos más goles de los que valen sus ' +
+      'ocasiones (o muchos menos), y descuenta a los que saldrían de ' +
+      'chiripa. Lo que NO dice es que un jugador remate mejor: dice que, ' +
+      'si el modelo de xG tuviera razón, lo suyo sería muy raro. Que es ' +
+      'otra cosa, y es la que se puede defender delante de alguien.',
+  },
+
+  metodo: {
+    fuente: 'El propio código',
+    metodo:
+      'Esta pantalla no tiene texto con las cifras copiadas: pide ' +
+      '/api/metodo, y esa ruta LEE las constantes de los módulos y ' +
+      'cuenta las funciones de prueba abriendo los ficheros de tests/. ' +
+      'Si alguien cambia K_MINUTOS de 540 a 600, aquí pone 600 sin que ' +
+      'nadie toque esta pantalla. Hay una prueba que cambia la ' +
+      'constante de verdad y comprueba que la respuesta cambia con ' +
+      'ella.',
+    cristiano:
+      'Todo el método en una página: de dónde salen los datos, qué NO ' +
+      'publica cada fuente, cada número que se puede discutir con el ' +
+      'fichero donde vive, y las cinco veces que la aplicación prefiere ' +
+      'decir "no lo sé" a darte una cifra. Si esto se quedara viejo ' +
+      'sería peor que no tenerlo, así que no está escrito a mano.',
+  },
+
   scouting: {
     fuente: 'Understat',
     metodo:
@@ -2939,6 +3027,270 @@ function abrirFichaDesdeGA(id) {
     xG: p.xg, xA: p.xa,
     percentiles: {}, por_90: {},
   });
+}
+
+
+// ══════════════════════════════════════════════════════════
+// HALLAZGOS DEL LUNES
+// ══════════════════════════════════════════════════════════
+//
+// Lo que hace distinta a esta pantalla de cualquier lista de «quién
+// está rindiendo por encima de su xG»: enseña el denominador.
+//
+// Si miras a 1.200 jugadores y te quedas con los que tienen p<0,05,
+// te salen unos 60 nombres AUNQUE NO PASE NADA. Esa cifra sale en
+// pantalla al lado de los hallazgos, siempre, aunque deje la lista en
+// ridículo. Sobre todo si deja la lista en ridículo.
+const HZ = { ultima: null, peticion: 0 };
+
+async function renderHallazgos() {
+  const liga = $('hzLg') ? $('hzLg').value : 'all';
+  const fdr = $('hzFdr') ? $('hzFdr').value : '0.10';
+  const tiros = $('hzTiros') ? $('hzTiros').value : '15';
+
+  const mio = ++HZ.peticion;
+  $('hzCnt').textContent = 'Pidiendo a Understat…';
+  $('hzKPIs').innerHTML = '';
+  $('hzTbl').innerHTML = '<div class="ld"><div class="sp"></div>Probando a todos los jugadores…</div>';
+
+  const q = new URLSearchParams({ fdr: fdr, min_tiros: tiros });
+  if (liga !== 'all') q.set('liga', liga);
+
+  let d = null, fallo = null;
+  try {
+    const r = await fetch(`${API}/api/hallazgos?${q}`);
+    if (!r.ok) fallo = `${r.status} — ${(await r.text()).slice(0, 240)}`;
+    else d = await r.json();
+  } catch (e) { fallo = e.message; }
+
+  if (mio !== HZ.peticion) return;
+
+  if (fallo) {
+    HZ.ultima = null;
+    $('hzCnt').textContent = 'No ha salido';
+    $('hzTbl').innerHTML = `<div class="al ale" style="margin:14px">
+      <strong>No he podido buscar.</strong><br>${esc(fallo)}</div>`;
+    return;
+  }
+
+  HZ.ultima = d;
+  recuerdaTemporada(d);
+  const h = d.hallazgos || [];
+
+  const kpi = (v, l, s2, color) => `<div class="kpi">
+    <div class="kl">${esc(l)}</div>
+    <div class="kv"${color ? ` style="color:${color}"` : ''}>${v}</div>
+    <div class="ks">${esc(s2)}</div></div>`;
+
+  $('hzKPIs').innerHTML =
+    kpi(d.cuantos_probados, 'Jugadores probados',
+        `de ${d.ligas.length} liga${d.ligas.length > 1 ? 's' : ''}`) +
+    kpi(d.esperados_por_puro_azar, 'Saldrían por azar',
+        'con p<0,05 y sin corregir', '#f43f5e') +
+    kpi(d.pasarian_sin_corregir, 'Pasarían sin corregir',
+        'haciéndolo mal', '#f43f5e') +
+    kpi(h.length, 'Hallazgos',
+        `~${d.falsos_esperados_entre_los_publicados} falsos esperados`,
+        'var(--green)');
+
+  $('hzCnt').textContent =
+    `${d.temporada} · sin penaltis · ${d.cuantos_descartados} descartados`;
+
+  const avisos = (d.avisos || []).map(a =>
+    `<div class="al alw" style="margin:0 0 10px">⚠ ${esc(a)}</div>`).join('');
+
+  // El aviso que va SIEMPRE, salgan los hallazgos que salgan. Es el
+  // método, no una nota al pie.
+  const elAviso = `<div class="al ali" style="margin:0 0 12px;line-height:1.6">
+    <strong>Lo que esto NO dice.</strong> Que estos jugadores rematen mejor.
+    Dice que, si el modelo de xG tuviera razón, lo suyo sería raro. Puede
+    que el modelo no vea algo de sus tiros. De ${d.cuantos_probados}
+    probados, con p&lt;0,05 y sin corregir saldrían
+    <strong>${d.esperados_por_puro_azar}</strong> nombres por pura
+    casualidad; corrigiendo con Benjamini-Hochberg a FDR ${d.fdr} salen
+    <strong>${h.length}</strong>, de los que se espera que
+    <strong>${d.falsos_esperados_entre_los_publicados}</strong> lo sean.</div>`;
+
+  if (!h.length) {
+    $('hzTbl').innerHTML = avisos + elAviso + `<div class="empty" style="padding:26px">
+      <h3>Esta semana no hay nada que contar</h3>
+      <p>Se han probado ${d.cuantos_probados} jugadores y ninguno
+      sobrevive a la corrección. Que no salga nadie es un resultado,
+      no un fallo: quiere decir que lo que parece raro cabe dentro
+      del azar.</p></div>`;
+    return;
+  }
+
+  const col = v => v > 0 ? 'var(--green)' : '#f43f5e';
+  const mas = v => (v > 0 ? '+' : '') + d2c(v);
+
+  $('hzTbl').innerHTML = avisos + elAviso + `
+  <table class="tbl">
+    <thead><tr>
+      <th style="width:38px">#</th><th>Jugador</th><th>Equipo</th><th>Liga</th>
+      <th title="Tiros, sin contar los penaltis en el xG">Tiros</th>
+      <th title="Goles sin penaltis">G</th>
+      <th title="Lo que valían sus ocasiones, sin penaltis">npxG</th>
+      <th title="Goles sin penalti menos npxG">Dif.</th>
+      <th title="Probabilidad de que una diferencia así salga por azar, si convirtiera al valor de su xG">p</th>
+      <th>Qué pasa</th>
+    </tr></thead>
+    <tbody>${h.map((p, i) => `
+      <tr onclick="abrirFichaDesdeHZ('${esc(String(p.player_id))}')"
+          style="cursor:pointer" title="Pincha para ver la ficha de ${esc(p.name)}">
+        <td style="color:var(--text3)">${i + 1}</td>
+        <td><strong>${esc(p.name)}</strong>
+            <div style="font-size:11px;color:var(--text3)">${esc(puestoLargo(p.position))} · ${p.minutos}′</div></td>
+        <td>${esc(p.team)}</td>
+        <td><span class="bge">${esc(p.league)}</span></td>
+        <td style="font-family:var(--fm);color:var(--text2)">${p.tiros}</td>
+        <td style="font-family:var(--fm);font-weight:700">${p.goles_sin_penalti}</td>
+        <td style="font-family:var(--fm);color:var(--text2)">${d2c(p.npxg)}</td>
+        <td style="font-family:var(--fm);font-weight:650;color:${col(p.diferencia)}">${mas(p.diferencia)}</td>
+        <td style="font-family:var(--fm);color:var(--text2)">${p.p < 0.0001 ? '&lt;0,0001' : d4c(p.p)}</td>
+        <td style="font-size:12px;color:${col(p.diferencia)}">${esc(p.direccion)}</td>
+      </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+// Cuatro decimales, para los p pequeños. Con dos, todos los hallazgos
+// de verdad saldrían «0,00» y no se distinguiría uno raro de uno
+// rarísimo.
+function d4c(v) {
+  if (v === null || v === undefined || v === '') return '—';
+  return (+v).toFixed(4).replace('.', ',');
+}
+
+function abrirFichaDesdeHZ(id) {
+  const f = (HZ.ultima && HZ.ultima.hallazgos) || [];
+  const p = f.find(x => String(x.player_id) === String(id));
+  if (!p) return;
+  abrirFicha({
+    name: p.name, team: p.team, league: p.league,
+    position: p.position, player_id: p.player_id,
+    time: p.minutos, goals: p.goles_sin_penalti,
+    shots: p.tiros, npxG: p.npxg,
+    percentiles: {}, por_90: {},
+  });
+}
+
+function expHZ() {
+  const f = (HZ.ultima && HZ.ultima.hallazgos) || [];
+  if (!f.length) { alert('Todavía no hay hallazgos que exportar.'); return; }
+  doExp(f.map(p => ({
+    Nombre: p.name, Equipo: p.team, Liga: p.league, Puesto: p.position,
+    Minutos: p.minutos, Tiros: p.tiros,
+    Goles_sin_penalti: p.goles_sin_penalti, npxG: p.npxg,
+    Diferencia: p.diferencia, xG_por_tiro: p.xg_por_tiro,
+    p: p.p, Umbral_BH: p.umbral_que_pasa, Direccion: p.direccion,
+  })), 'sportalyze_hallazgos.csv');
+}
+
+
+// ══════════════════════════════════════════════════════════
+// EL MÉTODO
+// ══════════════════════════════════════════════════════════
+//
+// Aquí no hay texto con las cifras copiadas. Lo que se pinta viene de
+// /api/metodo, y esa ruta lee las constantes de los módulos y cuenta
+// las pruebas abriendo los ficheros. Una página que explica el método
+// con números tecleados aparte se queda vieja el primer día, y
+// entonces miente sobre lo único que esta aplicación promete.
+async function renderMetodo() {
+  const c = $('mtCont');
+  c.innerHTML = '<div class="ld"><div class="sp"></div>Leyendo el método del propio código…</div>';
+
+  let d = null, fallo = null;
+  try {
+    const r = await fetch(`${API}/api/metodo`);
+    if (!r.ok) fallo = `${r.status} — ${(await r.text()).slice(0, 240)}`;
+    else d = await r.json();
+  } catch (e) { fallo = e.message; }
+
+  if (fallo) {
+    c.innerHTML = `<div class="al ale"><strong>No he podido leer el
+      método.</strong><br>${esc(fallo)}</div>`;
+    return;
+  }
+
+  const pr = d.como_se_prueba.pruebas;
+  const ficheros = Object.entries(pr.por_fichero || {})
+    .sort((a, b) => b[1] - a[1]);
+
+  c.innerHTML = `
+  <div class="card" style="margin-bottom:14px">
+    <div class="ch"><div class="ct">📚 De dónde salen los datos</div></div>
+    ${d.fuentes.map(f => `
+      <div style="padding:13px 0;border-bottom:1px solid var(--border)">
+        <div style="font-weight:700;font-size:15px">${esc(f.nombre)}</div>
+        <div style="margin-top:6px;font-size:13px;line-height:1.6">
+          <span style="color:var(--green)">Da:</span> ${esc(f.da)}</div>
+        <div style="margin-top:4px;font-size:13px;line-height:1.6">
+          <span style="color:#f43f5e">NO da:</span> ${esc(f.no_da)}</div>
+        <div style="margin-top:4px;font-size:12px;color:var(--text3)">
+          ${esc(f.licencia)}</div>
+      </div>`).join('')}
+    ${d.fuentes_descartadas.map(f => `
+      <div style="padding:13px 0">
+        <div style="font-weight:700;font-size:15px;color:var(--text2)">
+          ${esc(f.nombre)} <span style="font-size:11px;letter-spacing:1px;
+          text-transform:uppercase;color:#f43f5e">· descartada</span></div>
+        <div style="margin-top:6px;font-size:13px;line-height:1.6;
+          color:var(--text2)">${esc(f.por_que)}</div>
+      </div>`).join('')}
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div class="ch"><div class="ct">🔢 Los números que se pueden discutir</div>
+      <span class="st">leídos del código, no escritos aquí</span></div>
+    <div class="tw"><table class="tbl">
+      <thead><tr><th>Constante</th><th>Valor</th><th>Dónde vive</th><th>Qué hace</th></tr></thead>
+      <tbody>${d.numeros_que_se_pueden_discutir.map(n => `
+        <tr>
+          <td style="font-family:var(--fm);font-weight:650">${esc(n.nombre)}</td>
+          <td style="font-family:var(--fm);color:var(--electric);font-weight:700">${esc(String(n.valor))}</td>
+          <td style="font-family:var(--fm);font-size:12px;color:var(--text3)">${esc(n.donde)}</td>
+          <td style="font-size:12.5px;line-height:1.55">${esc(n.que_hace)}</td>
+        </tr>`).join('')}</tbody>
+    </table></div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div class="ch"><div class="ct">🚫 Cuándo esta página se niega</div></div>
+    <div class="al ali" style="margin-bottom:12px">Esto no son fallos
+      pendientes de arreglar. Son la razón de existir del proyecto: una
+      herramienta que nunca dice «no lo sé» es una que todavía no te ha
+      fallado delante de nadie.</div>
+    ${d.cuando_se_niega.map(n => `
+      <div style="padding:12px 0;border-bottom:1px solid var(--border)">
+        <div style="font-weight:700;font-size:14px">${esc(n.que)}</div>
+        <div style="margin-top:5px;font-size:13px;line-height:1.6;color:var(--text2)">
+          ${esc(n.por_que)}</div>
+        <div style="margin-top:5px;font-size:13px;line-height:1.6;color:var(--green)">
+          → ${esc(n.que_hace_en_su_lugar)}</div>
+      </div>`).join('')}
+  </div>
+
+  <div class="card">
+    <div class="ch"><div class="ct">🧪 Cómo se comprueba</div>
+      <span class="bge b-gold">${pr.total ?? '—'} pruebas</span></div>
+    <div style="font-size:13.5px;line-height:1.7;margin-bottom:14px">
+      ${esc(d.como_se_prueba.regla)}</div>
+    <div style="font-size:13px;line-height:1.7;color:var(--text2);margin-bottom:14px">
+      ${esc(d.como_se_prueba.ademas)}</div>
+    <div class="tw"><table class="tbl">
+      <thead><tr><th>Fichero</th><th>Pruebas</th></tr></thead>
+      <tbody>${ficheros.map(([f, n]) => `
+        <tr><td style="font-family:var(--fm);font-size:12.5px">${esc(f)}</td>
+            <td style="font-family:var(--fm)">${n}</td></tr>`).join('')}
+      </tbody>
+    </table></div>
+    <div style="margin-top:12px;font-size:12px;color:var(--text3)">
+      ${esc(pr.nota || '')}</div>
+    <div style="margin-top:14px">
+      <a class="btn bg bs" href="${esc(d.repositorio)}" target="_blank"
+         rel="noopener">Ver el repositorio y los commits →</a></div>
+  </div>`;
 }
 
 

@@ -1,0 +1,136 @@
+{
+ "fuentes": [
+  {
+   "nombre": "Understat",
+   "da": "Tiros: minuto, posición en el campo, xG del tiro, goles, asistencias, pases clave, xGChain, xGBuildup, minutos jugados y si salió de inicio.",
+   "no_da": "Entradas, intercepciones, despejes, duelos, paradas, pases totales, edad, nacionalidad y el minuto exacto de los cambios.",
+   "licencia": "Datos propios de Understat, de acceso libre."
+  },
+  {
+   "nombre": "football-data.org",
+   "da": "Calendario, resultados, clasificaciones, plantillas con edad y nacionalidad.",
+   "no_da": "Nada de lo que pasa dentro del partido.",
+   "licencia": "Plan gratuito: 10 peticiones por minuto."
+  },
+  {
+   "nombre": "StatsBomb Open Data",
+   "da": "Eventos completos de los partidos que ellos abren.",
+   "no_da": "Las ligas en curso.",
+   "licencia": "Abierta, con atribución."
+  }
+ ],
+ "fuentes_descartadas": [
+  {
+   "nombre": "FBref / WhoScored",
+   "por_que": "Sus datos son de Opta. Mirarlos es gratis; reproducirlos en una página propia, no. Y las acciones defensivas en bruto miden cuánto defender le toca a tu equipo, no lo bien que lo haces tú."
+  }
+ ],
+ "numeros_que_se_pueden_discutir": [
+  {
+   "nombre": "K_MINUTOS",
+   "valor": 540,
+   "donde": "backend/ml/puntuar.py",
+   "que_hace": "A esos minutos, el percentil de un jugador pesa la mitad él y la mitad el 50 de la media. Con menos, manda la media."
+  },
+  {
+   "nombre": "K_ENCOGIDO",
+   "valor": 450,
+   "donde": "backend/ml/onoff.py",
+   "que_hace": "Lo mismo para el «con él y sin él»: a esos minutos pesa mitad y mitad con su equipo."
+  },
+  {
+   "nombre": "MINIMO_PARA_ENSENAR",
+   "valor": 180,
+   "donde": "backend/ml/onoff.py",
+   "que_hace": "Por debajo de estos minutos no se enseña el «con él y sin él» de un jugador."
+  },
+  {
+   "nombre": "UMBRAL_DE_DUDA",
+   "valor": 0.1,
+   "donde": "backend/ml/minutos.py",
+   "que_hace": "Si dos maneras de colocar los cambios dan un xG que se diferencia en más de esto, no se elige: se dice que el partido es ambiguo."
+  },
+  {
+   "nombre": "MARGEN_POR_HUECO",
+   "valor": 1,
+   "donde": "backend/ml/minutos.py",
+   "que_hace": "Understat redondea los minutos, así que las cuentas se van de uno. Esto es ese uno."
+  },
+  {
+   "nombre": "PESO_CADENA",
+   "valor": 0.25,
+   "donde": "backend/ml/informe_liga.py",
+   "que_hace": "Cuánto cuenta participar en la jugada sin rematar ni asistir, al elegir al mejor del partido."
+  },
+  {
+   "nombre": "PARECIDO_MINIMO_POR_EQUIPO",
+   "valor": 0.6,
+   "donde": "backend/ml/emparejar.py",
+   "que_hace": "Lo que tienen que parecerse los nombres de CADA equipo para dar dos partidos por el mismo. Es lo que evita casar al Real Madrid con la Real Sociedad."
+  },
+  {
+   "nombre": "FDR",
+   "valor": 0.1,
+   "donde": "backend/ml/hallazgos.py",
+   "que_hace": "De cada diez hallazgos publicados, se espera que uno sea casualidad."
+  },
+  {
+   "nombre": "MINIMO_DE_TIROS",
+   "valor": 15,
+   "donde": "backend/ml/hallazgos.py",
+   "que_hace": "Con menos tiros no se prueba a nadie: todo cabe dentro del azar."
+  }
+ ],
+ "cuando_se_niega": [
+  {
+   "que": "Puntuar a un defensa o a un portero",
+   "por_que": "Understat publica tiros. De un central no hay entradas ni intercepciones; de un portero no hay paradas.",
+   "que_hace_en_su_lugar": "Devuelve 503 con el motivo escrito. Para defensas está el «con él y sin él»."
+  },
+  {
+   "que": "Enseñar el informe de un partido",
+   "por_que": "Cuando no puede casar el partido entre las dos fuentes con seguridad.",
+   "que_hace_en_su_lugar": "Enseña qué partidos SÍ había ese día, para que elijas tú."
+  },
+  {
+   "que": "Repartir el xG de un partido entre los jugadores",
+   "por_que": "Cuando los minutos admiten dos colocaciones de los cambios que no dan lo mismo.",
+   "que_hace_en_su_lugar": "Descarta ese partido y dice por qué. Del Barça salen 7 de 9."
+  },
+  {
+   "que": "Publicar un jugador con 0 de xG y goles",
+   "por_que": "Saldría con una probabilidad de cero, o sea el hallazgo del siglo. Lo que pasa es que el dato está mal.",
+   "que_hace_en_su_lugar": "Lo descarta y lo dice."
+  },
+  {
+   "que": "Ordenar en el navegador lo que recorta el servidor",
+   "por_que": "Si se recorta por una cosa y se ordena por otra, el que buscas se ha quedado fuera sin que lo veas.",
+   "que_hace_en_su_lugar": "El orden y el recorte van en el mismo paso, en el servidor."
+  }
+ ],
+ "como_se_prueba": {
+  "regla": "Escribir la prueba, romper el código a propósito, confirmar que se pone roja, y restaurar. Una prueba que no puede fallar no protege nada.",
+  "pruebas": {
+   "total": 370,
+   "por_fichero": {
+    "test_emparejar.py": 20,
+    "test_emparejar_jugadores.py": 16,
+    "test_fuentes.py": 40,
+    "test_hallazgos.py": 29,
+    "test_informe.py": 44,
+    "test_informe_liga.py": 44,
+    "test_maqueta.py": 8,
+    "test_metodo.py": 12,
+    "test_minutos.py": 31,
+    "test_onoff.py": 20,
+    "test_puntuar.py": 34,
+    "test_simulador.py": 47,
+    "test_temporada.py": 6,
+    "test_turnero.py": 19
+   },
+   "nota": "Contadas leyendo los ficheros, no escritas a mano."
+  },
+  "ademas": "Seis comprobadores cargan el index.html de verdad en un navegador de mentira y comprueban que lo PINTADO es el dato: no que el servidor calcule bien, sino que la pantalla no lo cambie por el camino."
+ },
+ "repositorio": "https://github.com/felixrr87/sportalyze"
+}

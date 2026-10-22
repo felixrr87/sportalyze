@@ -164,6 +164,29 @@ def test_el_ranking_pintado_es_el_dato():
 @pytest.mark.skipif(not _node(), reason="no hay node instalado")
 @pytest.mark.skipif(not _jsdom(),
                     reason="falta jsdom: cd tests/maqueta && npm install")
+def test_los_hallazgos_y_el_metodo_pintados_son_el_dato():
+    """Las dos pantallas nuevas, contra las rutas de verdad.
+
+    Lo que más busca en los hallazgos: que el DENOMINADOR esté en
+    pantalla. Una lista de «jugadores que superan su xG» sin decir a
+    cuántos se ha mirado, y cuántos saldrían por azar, no se puede
+    juzgar — y es como se publica casi siempre.
+
+    Y en el método: que cada constante salga con su fichero, y que si
+    el servidor manda otro valor la pantalla lo pinte. Si estuviera
+    escrito a mano, se quedaría viejo el primer día.
+    """
+    from tests.fabricar_fixture_hallazgos import main as fabricar
+    fabricar()
+    _correr("comprobar_hallazgos.js",
+            os.path.join(AQUI, "datos", "hallazgos_fixture.json"),
+            "Todo el método y los hallazgos pintados son el dato",
+            os.path.join(AQUI, "datos", "metodo_fixture.json"))
+
+
+@pytest.mark.skipif(not _node(), reason="no hay node instalado")
+@pytest.mark.skipif(not _jsdom(),
+                    reason="falta jsdom: cd tests/maqueta && npm install")
 def test_en_el_movil_se_puede_navegar():
     """El fallo que no se ve nunca desarrollando.
 

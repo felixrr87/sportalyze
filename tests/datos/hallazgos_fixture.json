@@ -1,0 +1,64 @@
+{
+ "hallazgos": [
+  {
+   "player_id": "arriba",
+   "name": "El Que Mete",
+   "team": "Alaves",
+   "league": "PD",
+   "position": "F",
+   "minutos": 1500,
+   "tiros": 55,
+   "goles_sin_penalti": 21,
+   "npxg": 6.8,
+   "diferencia": 14.2,
+   "xg_por_tiro": 0.1236,
+   "p": 2e-06,
+   "direccion": "mete de más",
+   "umbral_que_pasa": 0.000826
+  },
+  {
+   "player_id": "abajo",
+   "name": "El Que Falla",
+   "team": "Valencia",
+   "league": "PD",
+   "position": "F",
+   "minutos": 1700,
+   "tiros": 70,
+   "goles_sin_penalti": 1,
+   "npxg": 13.4,
+   "diferencia": -12.4,
+   "xg_por_tiro": 0.1914,
+   "p": 1.2e-05,
+   "direccion": "mete de menos",
+   "umbral_que_pasa": 0.000826
+  }
+ ],
+ "cuantos_probados": 242,
+ "cuantos_descartados": 2,
+ "fdr": 0.1,
+ "umbral_bh": 0.000826,
+ "pasarian_sin_corregir": 3,
+ "esperados_por_puro_azar": 12.1,
+ "falsos_esperados_entre_los_publicados": 0.2,
+ "minimo_de_tiros": 15,
+ "minimo_de_minutos": 450,
+ "sin_penaltis": true,
+ "ligas": [
+  "PD"
+ ],
+ "season": 2026,
+ "temporada": "2026/27",
+ "avisos": [],
+ "muestra_de_descartados": [
+  {
+   "name": "El Central",
+   "motivo": "pocos_tiros",
+   "detalle": "5 tiros, hacen falta 15"
+  },
+  {
+   "name": "El Recién Llegado",
+   "motivo": "pocos_minutos",
+   "detalle": "120 minutos, hacen falta 450"
+  }
+ ]
+}

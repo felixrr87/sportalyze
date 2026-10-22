@@ -50,8 +50,12 @@ from backend.scrapers.understat import (
     get_match_shots, get_league_teams_xg,
     get_league_fixtures, get_match_roster, _normaliza,
 )
+from backend.ml import hallazgos as hall
 from backend.ml import informe_liga as inf_liga
+from backend.ml import minutos as mins
 from backend.ml import onoff
+from backend.ml import puntuar as punt
+from backend.ml import emparejar as emp
 from backend.ml.emparejar import emparejar_con_motivo
 from backend.ml.emparejar_jugadores import (
     MOTIVOS as MOTIVOS_JUGADOR, emparejar_jugador,
@@ -1354,6 +1358,222 @@ async def ciclo_de_vida(app):
 
 
 app.router.lifespan_context = ciclo_de_vida
+
+
+# ════════════════════════════════════════════════════════
+# RUTAS — LA MÁQUINA DE HALLAZGOS
+# ════════════════════════════════════════════════════════
+
+@app.get("/api/hallazgos")
+async def hallazgos_de_la_semana(
+    season: int = Query(None),
+    fdr: float = Query(hall.FDR, gt=0.0, le=0.5),
+    min_tiros: int = Query(hall.MINIMO_DE_TIROS, ge=1),
+    min_minutos: int = Query(hall.MINIMO_DE_MINUTOS, ge=0),
+    liga: str = Query(None),
+):
+    """Quién no cuadra con su xG, corrigiendo por mirar a tanta gente.
+
+    La respuesta lleva siempre, además de los nombres, cuántos se han
+    probado y cuántos habrían salido sin corregir. Sin esas dos cifras
+    una lista de hallazgos no se puede juzgar.
+    """
+    if liga and liga not in LIGAS_GRANDES:
+        raise HTTPException(status_code=400, detail={
+            "motivo": "liga_desconocida",
+            "detalle": f"'{liga}' no está. Son: {', '.join(LIGAS_GRANDES)}"})
+
+    pedidas = [liga] if liga else list(LIGAS_GRANDES)
+    jugadores, caidas = [], []
+    for lg in pedidas:
+        try:
+            trozo = await get_league_players(lg, season)
+            for p in trozo:
+                p["league"] = lg
+            jugadores.extend(trozo)
+        except FuenteNoDisponible as e:
+            caidas.append(f"{lg}: {e}")
+
+    if not jugadores:
+        raise HTTPException(status_code=503, detail={
+            "motivo": "fuente_caida",
+            "detalle": " · ".join(caidas) or "Understat no ha contestado"})
+
+    d = hall.buscar(jugadores, fdr=fdr,
+                    minimo_tiros=min_tiros, minimo_minutos=min_minutos)
+    d["ligas"] = pedidas
+    d["season"] = season or temporada_actual()
+    d["temporada"] = nombre_temporada(season or temporada_actual())
+    d["avisos"] = ([f"No he podido traer {' ni '.join(caidas)}. La lista "
+                    f"está hecha sin esa liga."] if caidas else [])
+    # La lista de descartados puede ser de cientos; se dice cuántos y
+    # se mandan unos pocos de muestra, con su motivo.
+    d["muestra_de_descartados"] = d.pop("descartados")[:12]
+    return d
+
+
+# ════════════════════════════════════════════════════════
+# RUTAS — EL MÉTODO
+# ════════════════════════════════════════════════════════
+#
+# Esta ruta NO devuelve texto escrito a mano con los números copiados.
+# Lee las constantes de los módulos y cuenta las pruebas del disco. Si
+# alguien cambia K_MINUTOS de 540 a 600, la pantalla del método dice
+# 600 sin que nadie la toque.
+#
+# Una página que explica el método con cifras tecleadas aparte se
+# queda vieja el primer día, y entonces miente sobre lo único que esta
+# aplicación promete: que lo que dice es lo que hace.
+
+def _contar_pruebas() -> dict:
+    """Cuenta las funciones de prueba leyendo los ficheros de tests/."""
+    import ast
+    import os
+
+    aqui = os.path.dirname(os.path.abspath(__file__))
+    carpeta = os.path.join(aqui, "tests")
+    por_fichero, total = {}, 0
+    if not os.path.isdir(carpeta):
+        return {"total": None, "por_fichero": {},
+                "nota": "No encuentro la carpeta tests/ desde el servidor."}
+
+    for nombre in sorted(os.listdir(carpeta)):
+        if not (nombre.startswith("test_") and nombre.endswith(".py")):
+            continue
+        try:
+            with open(os.path.join(carpeta, nombre), encoding="utf-8") as fh:
+                arbol = ast.parse(fh.read())
+        except (OSError, SyntaxError):
+            continue
+        n = sum(1 for nodo in arbol.body
+                if isinstance(nodo, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and nodo.name.startswith("test_"))
+        if n:
+            por_fichero[nombre] = n
+            total += n
+
+    return {"total": total, "por_fichero": por_fichero,
+            "nota": "Contadas leyendo los ficheros, no escritas a mano."}
+
+
+@app.get("/api/metodo")
+async def el_metodo():
+    """Todo el método en un sitio, con las cifras leídas del código."""
+    return {
+        "fuentes": [
+            {"nombre": "Understat",
+             "da": "Tiros: minuto, posición en el campo, xG del tiro, "
+                   "goles, asistencias, pases clave, xGChain, xGBuildup, "
+                   "minutos jugados y si salió de inicio.",
+             "no_da": "Entradas, intercepciones, despejes, duelos, "
+                      "paradas, pases totales, edad, nacionalidad y el "
+                      "minuto exacto de los cambios.",
+             "licencia": "Datos propios de Understat, de acceso libre."},
+            {"nombre": "football-data.org",
+             "da": "Calendario, resultados, clasificaciones, plantillas "
+                   "con edad y nacionalidad.",
+             "no_da": "Nada de lo que pasa dentro del partido.",
+             "licencia": "Plan gratuito: 10 peticiones por minuto."},
+            {"nombre": "StatsBomb Open Data",
+             "da": "Eventos completos de los partidos que ellos abren.",
+             "no_da": "Las ligas en curso.",
+             "licencia": "Abierta, con atribución."},
+        ],
+        "fuentes_descartadas": [
+            {"nombre": "FBref / WhoScored",
+             "por_que": "Sus datos son de Opta. Mirarlos es gratis; "
+                        "reproducirlos en una página propia, no. Y las "
+                        "acciones defensivas en bruto miden cuánto "
+                        "defender le toca a tu equipo, no lo bien que "
+                        "lo haces tú."},
+        ],
+        "numeros_que_se_pueden_discutir": [
+            {"nombre": "K_MINUTOS", "valor": punt.K_MINUTOS,
+             "donde": "backend/ml/puntuar.py",
+             "que_hace": "A esos minutos, el percentil de un jugador "
+                         "pesa la mitad él y la mitad el 50 de la "
+                         "media. Con menos, manda la media."},
+            {"nombre": "K_ENCOGIDO", "valor": onoff.K_ENCOGIDO,
+             "donde": "backend/ml/onoff.py",
+             "que_hace": "Lo mismo para el «con él y sin él»: a esos "
+                         "minutos pesa mitad y mitad con su equipo."},
+            {"nombre": "MINIMO_PARA_ENSENAR", "valor": onoff.MINIMO_PARA_ENSENAR,
+             "donde": "backend/ml/onoff.py",
+             "que_hace": "Por debajo de estos minutos no se enseña el "
+                         "«con él y sin él» de un jugador."},
+            {"nombre": "UMBRAL_DE_DUDA", "valor": mins.UMBRAL_DE_DUDA,
+             "donde": "backend/ml/minutos.py",
+             "que_hace": "Si dos maneras de colocar los cambios dan un "
+                         "xG que se diferencia en más de esto, no se "
+                         "elige: se dice que el partido es ambiguo."},
+            {"nombre": "MARGEN_POR_HUECO", "valor": mins.MARGEN_POR_HUECO,
+             "donde": "backend/ml/minutos.py",
+             "que_hace": "Understat redondea los minutos, así que las "
+                         "cuentas se van de uno. Esto es ese uno."},
+            {"nombre": "PESO_CADENA", "valor": inf_liga.PESO_CADENA,
+             "donde": "backend/ml/informe_liga.py",
+             "que_hace": "Cuánto cuenta participar en la jugada sin "
+                         "rematar ni asistir, al elegir al mejor del "
+                         "partido."},
+            {"nombre": "PARECIDO_MINIMO_POR_EQUIPO",
+             "valor": emp.PARECIDO_MINIMO_POR_EQUIPO,
+             "donde": "backend/ml/emparejar.py",
+             "que_hace": "Lo que tienen que parecerse los nombres de "
+                         "CADA equipo para dar dos partidos por el "
+                         "mismo. Es lo que evita casar al Real Madrid "
+                         "con la Real Sociedad."},
+            {"nombre": "FDR", "valor": hall.FDR,
+             "donde": "backend/ml/hallazgos.py",
+             "que_hace": "De cada diez hallazgos publicados, se espera "
+                         "que uno sea casualidad."},
+            {"nombre": "MINIMO_DE_TIROS", "valor": hall.MINIMO_DE_TIROS,
+             "donde": "backend/ml/hallazgos.py",
+             "que_hace": "Con menos tiros no se prueba a nadie: todo "
+                         "cabe dentro del azar."},
+        ],
+        "cuando_se_niega": [
+            {"que": "Puntuar a un defensa o a un portero",
+             "por_que": "Understat publica tiros. De un central no hay "
+                        "entradas ni intercepciones; de un portero no "
+                        "hay paradas.",
+             "que_hace_en_su_lugar": "Devuelve 503 con el motivo "
+                                     "escrito. Para defensas está el "
+                                     "«con él y sin él»."},
+            {"que": "Enseñar el informe de un partido",
+             "por_que": "Cuando no puede casar el partido entre las dos "
+                        "fuentes con seguridad.",
+             "que_hace_en_su_lugar": "Enseña qué partidos SÍ había ese "
+                                     "día, para que elijas tú."},
+            {"que": "Repartir el xG de un partido entre los jugadores",
+             "por_que": "Cuando los minutos admiten dos colocaciones de "
+                        "los cambios que no dan lo mismo.",
+             "que_hace_en_su_lugar": "Descarta ese partido y dice por "
+                                     "qué. Del Barça salen 7 de 9."},
+            {"que": "Publicar un jugador con 0 de xG y goles",
+             "por_que": "Saldría con una probabilidad de cero, o sea el "
+                        "hallazgo del siglo. Lo que pasa es que el dato "
+                        "está mal.",
+             "que_hace_en_su_lugar": "Lo descarta y lo dice."},
+            {"que": "Ordenar en el navegador lo que recorta el servidor",
+             "por_que": "Si se recorta por una cosa y se ordena por "
+                        "otra, el que buscas se ha quedado fuera sin "
+                        "que lo veas.",
+             "que_hace_en_su_lugar": "El orden y el recorte van en el "
+                                     "mismo paso, en el servidor."},
+        ],
+        "como_se_prueba": {
+            "regla": "Escribir la prueba, romper el código a propósito, "
+                     "confirmar que se pone roja, y restaurar. Una "
+                     "prueba que no puede fallar no protege nada.",
+            "pruebas": _contar_pruebas(),
+            "ademas": "Seis comprobadores cargan el index.html de "
+                      "verdad en un navegador de mentira y comprueban "
+                      "que lo PINTADO es el dato: no que el servidor "
+                      "calcule bien, sino que la pantalla no lo cambie "
+                      "por el camino.",
+        },
+        "repositorio": "https://github.com/felixrr87/sportalyze",
+    }
 
 
 # ════════════════════════════════════════════════════════

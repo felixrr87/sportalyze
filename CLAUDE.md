@@ -47,8 +47,10 @@ backend/ml/
   emparejar_jugadores.py cruza plantilla football-data ↔ Understat
   informe_liga.py       informe post-partido
   simulador.py          simulación de liga
-frontend/index.html     4.400 líneas. TODA la interfaz, un solo fichero.
-tests/                  347 pruebas
+  hallazgos.py          quién no cuadra con su xG, con Benjamini-Hochberg
+                        (FDR = 0,10) para no publicar sesenta falsos
+frontend/index.html     4.700 líneas. TODA la interfaz, un solo fichero.
+tests/                  389 pruebas
 tests/maqueta/*.js      comprobadores jsdom: cargan el index.html de
                         verdad y comprueban que lo PINTADO es el dato
 ```
@@ -130,10 +132,16 @@ junior, creadores de contenido. No para un club con Opta en plantilla.
 Si una pantalla no le sirve a esa persona, sobra. (Así se fueron las
 Cartas FIFA y la Watchlist.)
 
+## La pantalla de Método se escribe sola, y tiene que seguir así
+
+`/api/metodo` **lee** las constantes de los módulos y cuenta las
+funciones de prueba abriendo `tests/*.py`. Nada de eso está tecleado.
+Al añadir una constante que se pueda discutir, se añade a esa ruta con
+su fichero y su explicación — no a la pantalla.
+
 ## Pendiente
 
 - Desplegar en Render (`render.yaml` listo; falta la cuenta de Félix)
 - Anular la clave de football-data del historial público
-- Pantalla de Método: el método entero en un sitio, no repartido
-- La máquina de hallazgos del lunes, con control de falsos positivos
 - Edad real cruzando Understat con football-data en toda la liga
+- Dejar los hallazgos en una tarea semanal que avise los lunes
