@@ -13,6 +13,7 @@
 
 import asyncio
 import logging
+import re
 import time
 from collections import deque
 from datetime import date
@@ -20,6 +21,7 @@ from datetime import date
 import httpx
 from cachetools import TTLCache
 from backend.config import FOOTBALL_API_KEY, FOOTBALL_API_BASE, CACHE_TTL, LEAGUES
+from backend.errors import ClaveInvalida, CompeticionNoIncluida
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +72,21 @@ def _caja(endpoint: str) -> TTLCache:
     if t not in _caches:
         _caches[t] = TTLCache(maxsize=500, ttl=t)
     return _caches[t]
+
+
+# ── ¿ha funcionado esta clave alguna vez? ────────────────────────
+#
+# Una sola variable, y es la que permite distinguir «clave rota» de
+# «competición fuera de tu plan», porque football-data contesta lo
+# mismo a las dos cosas. Se pone a True en cuanto una petición trae
+# datos, y ya no vuelve atrás en este arranque.
+_LA_CLAVE_HA_FUNCIONADO = False
+
+
+def _competicion_de(endpoint: str):
+    """«/competitions/PD/standings» -> «PD». Si no es de competición, None."""
+    m = re.match(r"^/competitions/([A-Z0-9]+)(/|$)", endpoint)
+    return m.group(1) if m else None
 
 
 class FaltaLaClave(Exception):
@@ -283,6 +300,10 @@ class FootballDataClient:
                 r = await client.get(url, headers=self.headers)
                 r.raise_for_status()
                 data = r.json()
+                # Esta clave ha traído datos al menos una vez. A partir
+                # de aquí, un 400 ya no puede ser "clave inválida".
+                global _LA_CLAVE_HA_FUNCIONADO
+                _LA_CLAVE_HA_FUNCIONADO = True
                 caja[endpoint] = data
                 return data
         except httpx.HTTPStatusError as e:
@@ -291,7 +312,30 @@ class FootballDataClient:
                     "El plan gratuito permite 10 consultas por minuto y se ha "
                     "llegado al tope. Espera un minuto y vuelve a intentarlo.")
             elif e.response.status_code == 403:
-                raise Exception("🔑 API key inválida. Verifica tu clave en football-data.org")
+                raise ClaveInvalida("football-data la ha rechazado con un 403")
+
+            # EL 400 QUE NO ES LO QUE DICE SER
+            #
+            # football-data contesta a una competición fuera de tu plan
+            # con 400 «Your API token is invalid». La clave es válida:
+            # en el mismo arranque, Premier y Ligue 1 dieron 200 y La
+            # Liga, Serie A y Bundesliga dieron ese 400, con siete
+            # segundos entre medias.
+            #
+            # No se mira el texto del mensaje a propósito: viene en el
+            # idioma de quien pregunta («Your API token is invalid» o
+            # «Su token de API no es válido»), así que una comprobación
+            # por texto se rompe el día que cambian de idioma o de
+            # redacción. Se mira un hecho: ¿ha funcionado esta clave
+            # alguna vez? Si sí, no está rota.
+            if e.response.status_code == 400:
+                comp = _competicion_de(endpoint)
+                if comp and _LA_CLAVE_HA_FUNCIONADO:
+                    raise CompeticionNoIncluida(comp)
+                raise ClaveInvalida(
+                    f"football-data contesta 400 y esta clave no ha traído "
+                    f"datos ni una vez en este arranque")
+
             raise Exception(f"Error API {e.response.status_code}: {e.response.text[:200]}")
         except httpx.TimeoutException:
             raise Exception("⏱️ Timeout — la API tardó demasiado en responder")

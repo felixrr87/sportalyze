@@ -111,7 +111,7 @@
  "como_se_prueba": {
   "regla": "Escribir la prueba, romper el código a propósito, confirmar que se pone roja, y restaurar. Una prueba que no puede fallar no protege nada.",
   "pruebas": {
-   "total": 371,
+   "total": 379,
    "por_fichero": {
     "test_emparejar.py": 20,
     "test_emparejar_jugadores.py": 16,
@@ -123,12 +123,13 @@
     "test_metodo.py": 13,
     "test_minutos.py": 31,
     "test_onoff.py": 20,
+    "test_plan_competiciones.py": 8,
     "test_puntuar.py": 34,
     "test_simulador.py": 47,
     "test_temporada.py": 6,
     "test_turnero.py": 19
    },
-   "nota": "Contadas leyendo los ficheros, no escritas a mano."
+   "nota": "FUNCIONES de prueba, contadas leyendo los ficheros con el árbol de sintaxis, no escritas a mano. Pytest ejecuta unas cuantas MÁS que éstas: las que llevan @parametrize se convierten en un caso por cada juego de datos. Las dos cifras son ciertas y miden cosas distintas — aquí se cuenta lo escrito, no lo ejecutado."
   },
   "ademas": "Seis comprobadores cargan el index.html de verdad en un navegador de mentira y comprueban que lo PINTADO es el dato: no que el servidor calcule bien, sino que la pantalla no lo cambie por el camino."
  },

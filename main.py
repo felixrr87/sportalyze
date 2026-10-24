@@ -67,6 +67,7 @@ from backend.ml.scouting import run_scouting_pipeline, find_similar_players
 from backend.ml import simulador as sim
 from backend.ml import informe as inf
 from backend.ml.puntuar import PuestoSinDatos
+from backend.errors import ClaveInvalida, CompeticionNoIncluida
 from backend.scrapers import statsbomb as sb
 from backend.ml.injury_prediction import build_player_risk_features, calculate_injury_risk
 
@@ -104,6 +105,31 @@ async def get_standings(competition_code: str):
     """
     try:
         standings = await football_client.get_standings(competition_code.upper())
+    except CompeticionNoIncluida as e:
+        # No es un fallo: es el plan. Y se dice cuál, con las que SÍ
+        # están, para que el visitante tenga adónde ir en vez de
+        # quedarse mirando un error que no puede arreglar.
+        nombre = LEAGUES.get(e.competicion, {}).get("name", e.competicion)
+        raise HTTPException(status_code=503, detail={
+            "motivo": "competicion_no_incluida",
+            "competicion": e.competicion,
+            "detalle": (
+                f"{nombre} no entra en el plan {e.plan} de football-data. "
+                f"No es que la clave esté mal: con la misma clave sí se "
+                f"traen otras competiciones. football-data contesta a esto "
+                f"con «tu token es inválido», que es engañoso."),
+            "que_si_hay": (
+                "Lo que viene de Understat funciona para las cinco grandes: "
+                "Scouting, fichas, Comparador, goles y asistencias y los "
+                "hallazgos. Lo que necesita football-data —clasificación, "
+                "partidos, plantillas y el Simulador— sólo en las "
+                "competiciones del plan."),
+        })
+    except ClaveInvalida as e:
+        raise HTTPException(status_code=503, detail={
+            "motivo": "clave_invalida",
+            "detalle": str(e),
+        })
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
 
@@ -1453,7 +1479,12 @@ def _contar_pruebas() -> dict:
             total += n
 
     return {"total": total, "por_fichero": por_fichero,
-            "nota": "Contadas leyendo los ficheros, no escritas a mano."}
+            "nota": "FUNCIONES de prueba, contadas leyendo los ficheros con "
+                    "el árbol de sintaxis, no escritas a mano. Pytest ejecuta "
+                    "unas cuantas MÁS que éstas: las que llevan "
+                    "@parametrize se convierten en un caso por cada juego de "
+                    "datos. Las dos cifras son ciertas y miden cosas "
+                    "distintas — aquí se cuenta lo escrito, no lo ejecutado."}
 
 
 @app.get("/api/metodo")
