@@ -21,7 +21,7 @@ from datetime import date
 import httpx
 from cachetools import TTLCache
 from backend.config import FOOTBALL_API_KEY, FOOTBALL_API_BASE, CACHE_TTL, LEAGUES
-from backend.errors import ClaveInvalida, CompeticionNoIncluida
+from backend.errors import ClaveInvalida, CuatrocientosSinExplicar
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +81,10 @@ def _caja(endpoint: str) -> TTLCache:
 # mismo a las dos cosas. Se pone a True en cuanto una petición trae
 # datos, y ya no vuelve atrás en este arranque.
 _LA_CLAVE_HA_FUNCIONADO = False
+# Competiciones que SÍ han traído datos en este arranque. Antes sólo
+# se guardaba «algo funcionó», y con eso no se podía ver que una liga
+# que dio 200 diera 400 después — que es justo lo que pasó.
+_COMPETICIONES_QUE_HAN_IDO = set()
 
 
 def _competicion_de(endpoint: str):
@@ -304,6 +308,13 @@ class FootballDataClient:
                 # de aquí, un 400 ya no puede ser "clave inválida".
                 global _LA_CLAVE_HA_FUNCIONADO
                 _LA_CLAVE_HA_FUNCIONADO = True
+                # Se apunta QUÉ competición ha funcionado, no sólo que
+                # algo funcionó. Sin esto no se puede detectar el caso
+                # que tumbó el diagnóstico anterior: la misma liga que
+                # dio 200 dando 400 un minuto después.
+                _c = _competicion_de(endpoint)
+                if _c:
+                    _COMPETICIONES_QUE_HAN_IDO.add(_c)
                 caja[endpoint] = data
                 return data
         except httpx.HTTPStatusError as e:
@@ -314,24 +325,31 @@ class FootballDataClient:
             elif e.response.status_code == 403:
                 raise ClaveInvalida("football-data la ha rechazado con un 403")
 
-            # EL 400 QUE NO ES LO QUE DICE SER
+            # EL 400 QUE NO SABEMOS QUÉ ES
             #
-            # football-data contesta a una competición fuera de tu plan
-            # con 400 «Your API token is invalid». La clave es válida:
-            # en el mismo arranque, Premier y Ligue 1 dieron 200 y La
-            # Liga, Serie A y Bundesliga dieron ese 400, con siete
-            # segundos entre medias.
+            # Aquí se afirmaba que este 400 significaba «esta
+            # competición no entra en tu plan gratuito». Se afirmaba
+            # porque el 24 de octubre, en un mismo arranque y con
+            # siete segundos entre llamadas, Premier y Ligue 1 dieron
+            # 200 y La Liga, Serie A y Bundesliga dieron 400.
             #
-            # No se mira el texto del mensaje a propósito: viene en el
-            # idioma de quien pregunta («Your API token is invalid» o
-            # «Su token de API no es válido»), así que una comprobación
-            # por texto se rompe el día que cambian de idioma o de
-            # redacción. Se mira un hecho: ¿ha funcionado esta clave
-            # alguna vez? Si sí, no está rota.
+            # El 25 de octubre, revisando la web desplegada, Premier
+            # devolvió la clasificación completa y minutos después
+            # esta misma aplicación contestaba que Premier no estaba
+            # en el plan. Ligue 1 hizo lo contrario. Un plan no
+            # cambia cada minuto: el diagnóstico estaba mal.
+            #
+            # Así que ahora se dice sólo lo comprobable: la clave no
+            # está rota (ha traído datos), esta competición funcionó
+            # antes o no, y el motivo del 400 no se sabe. El texto del
+            # mensaje se sigue sin mirar a propósito: llega en el
+            # idioma de quien pregunta, así que comprobarlo por texto
+            # se rompe el día que cambien la redacción.
             if e.response.status_code == 400:
                 comp = _competicion_de(endpoint)
                 if comp and _LA_CLAVE_HA_FUNCIONADO:
-                    raise CompeticionNoIncluida(comp)
+                    raise CuatrocientosSinExplicar(
+                        comp, comp in _COMPETICIONES_QUE_HAN_IDO)
                 raise ClaveInvalida(
                     f"football-data contesta 400 y esta clave no ha traído "
                     f"datos ni una vez en este arranque")

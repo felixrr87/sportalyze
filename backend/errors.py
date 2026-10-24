@@ -18,40 +18,60 @@
 # ============================================================
 
 
-class CompeticionNoIncluida(Exception):
-    """Esta competición no entra en el plan contratado de la fuente.
+class CuatrocientosSinExplicar(Exception):
+    """football-data ha contestado 400 y no sabemos por qué.
 
-    POR QUÉ ESTE ERROR EXISTE APARTE
-    --------------------------------
-    football-data contesta a una competición fuera de tu plan con:
+    QUÉ HABÍA AQUÍ ANTES, Y POR QUÉ SE FUE
+    --------------------------------------
+    Aquí vivía `CompeticionNoIncluida`, que afirmaba que ese 400
+    significaba «esta competición no entra en tu plan gratuito».
+    Esa clase se escribió el 24 de octubre de 2026 con esta prueba:
+    en un mismo arranque, con siete segundos entre llamadas, Premier
+    y Ligue 1 contestaron 200 y La Liga, Serie A y Bundesliga
+    contestaron 400 «Your API token is invalid». De ahí salió el
+    razonamiento: la clave funciona, así que el 400 tiene que ser
+    el plan.
 
-        400  {"message": "Your API token is invalid."}
+    EL 25 DE OCTUBRE ESO SE CAYÓ. Revisando la web desplegada:
 
-    Y eso es MENTIRA, o por lo menos es engañoso. La clave es
-    perfectamente válida: en el mismo arranque, con siete segundos de
-    diferencia, Premier y Ligue 1 contestaron 200 y La Liga, Serie A
-    y Bundesliga contestaron ese 400.
+        11:0x  PL   200  (tabla completa de la Premier)
+        11:0x  PD   200  (tabla completa de La Liga)
+        11:1x  PL   503  «no entra en el plan»
+        11:1x  FL1  503  «no entra en el plan»
 
-    Repetir ese mensaje al visitante es decirle que la aplicación
-    está rota cuando lo que pasa es que esa liga no está incluida.
-    Son dos cosas distintas y llevan a decisiones distintas: una se
-    arregla cambiando la clave, la otra pagando un plan o mirando
-    otra liga.
+    Premier devolvió la clasificación entera y minutos después la
+    propia aplicación decía que no estaba en el plan. Ligue 1 hizo
+    el camino contrario. Un plan contratado NO cambia cada minuto.
+    Lo que varía es qué llamadas llegaron a entrar en la caché.
 
-    CÓMO SE DISTINGUE, SIN MIRAR EL TEXTO
-    -------------------------------------
-    No por el mensaje, que viene en el idioma del que pregunta
-    («Your API token is invalid» / «Su token de API no es válido»),
-    sino por un hecho: si esa misma clave ya ha traído datos de otra
-    competición, la clave NO está rota.
+    O sea: el razonamiento de ayer era un segundo diagnóstico
+    equivocado encima del primero. Y publicado, que es peor.
+
+    QUÉ SE AFIRMA AHORA, Y QUÉ NO
+    -----------------------------
+    Sólo lo que está comprobado:
+
+      · la clave no está rota, si ha traído datos alguna vez
+      · esa competición sí funcionó antes, si está en el registro
+      · el motivo del 400: NO SE SABE, y se dice así
+
+    No se mira el texto del mensaje, igual que antes: llega en el
+    idioma de quien pregunta («Your API token is invalid» / «Su
+    token de API no es válido»), así que comprobarlo por texto se
+    rompe el día que cambien de idioma o de redacción.
+
+    Un hueco explicado vale más que un número inventado, y un «no
+    sé por qué» vale más que un motivo que se contradice solo.
     """
 
-    def __init__(self, competicion: str, plan: str = "gratuito"):
+    def __init__(self, competicion: str, habia_funcionado: bool = False):
         self.competicion = competicion
-        self.plan = plan
+        self.habia_funcionado = habia_funcionado
         super().__init__(
-            f"La competición {competicion} no entra en el plan {plan} "
-            f"de football-data"
+            f"football-data ha contestado 400 para {competicion} y no se "
+            f"sabe por qué"
+            + (" (esa misma competición sí funcionó antes en este arranque)"
+               if habia_funcionado else "")
         )
 
 

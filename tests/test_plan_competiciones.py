@@ -22,7 +22,7 @@ de quien pregunta y cambiaría la respuesta con sólo cambiar de idioma.
 import httpx
 import pytest
 
-from backend.errors import ClaveInvalida, CompeticionNoIncluida
+from backend.errors import ClaveInvalida, CuatrocientosSinExplicar
 from backend.scrapers import football_data as fd
 
 
@@ -60,6 +60,16 @@ def _limpio(monkeypatch):
     el resultado de la siguiente. Se descubrió al escribirlas.
     """
     monkeypatch.setattr(fd, "_LA_CLAVE_HA_FUNCIONADO", False)
+    monkeypatch.setattr(fd, "_COMPETICIONES_QUE_HAN_IDO", set())
+    # EL TURNERO TAMBIÉN SE VACÍA.
+    #
+    # No estaba, y no se notó hasta que una prueba nueva gastó dos
+    # turnos más: el limitador de 10 por minuto acumulaba las
+    # llamadas de TODAS las pruebas del archivo y la última moría con
+    # «habría que esperar 60 segundos» en vez de con lo que probaba.
+    # Un fallo así no señala a la prueba culpable, señala a la de
+    # después.
+    fd._turnero._salidas.clear()
     monkeypatch.setattr(fd, "FOOTBALL_API_KEY", "una-clave-de-pega")
     monkeypatch.setattr(fd.football_client, "headers",
                         {"X-Auth-Token": "una-clave-de-pega"})
@@ -116,12 +126,16 @@ async def test_el_400_antes_de_que_nada_funcione_es_clave_invalida(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_el_mismo_400_despues_de_una_buena_es_la_competicion(monkeypatch):
-    """LA PRUEBA QUE JUSTIFICA TODO EL ARREGLO.
-
-    Primero una liga contesta bien; después otra contesta ese 400.
+async def test_el_mismo_400_despues_de_una_buena_no_es_la_clave(monkeypatch):
+    """Primero una liga contesta bien; después otra contesta ese 400.
     Es la secuencia exacta del arranque del 24 de octubre: PL bien,
     PD mal. La segunda NO puede ser «clave inválida».
+
+    ESTA PRUEBA AFIRMABA MÁS DE LO QUE SABÍA. Comprobaba que la
+    segunda salía como «esa competición no está en tu plan». Eso
+    resultó ser falso (ver test_una_liga_que_fue_bien_y_luego_falla),
+    así que ahora sólo comprueba lo que la secuencia demuestra: que
+    la clave no está rota.
     """
     falso = _ClienteFalso([
         _respuesta(200, {"standings": [{"table": []}]}),
@@ -132,10 +146,45 @@ async def test_el_mismo_400_despues_de_una_buena_es_la_competicion(monkeypatch):
 
     await fd.football_client.get_standings("PL")        # ésta va bien
 
-    with pytest.raises(CompeticionNoIncluida) as e:
+    with pytest.raises(CuatrocientosSinExplicar) as e:
         await fd.football_client.get_standings("PD")
     assert e.value.competicion == "PD"
-    assert "plan" in str(e.value)
+    # PD no había funcionado nunca, así que no se afirma que sí
+    assert e.value.habia_funcionado is False
+    # y sobre todo: NO se inventa un motivo
+    assert "plan" not in str(e.value).lower()
+
+
+@pytest.mark.asyncio
+async def test_una_liga_que_fue_bien_y_luego_falla(monkeypatch):
+    """LA PRUEBA QUE TUMBÓ EL DIAGNÓSTICO ANTERIOR.
+
+    El 25 de octubre, en la web desplegada, la Premier devolvió la
+    clasificación completa y minutos después esta aplicación decía
+    que la Premier no entraba en el plan gratuito. Ligue 1 hizo el
+    camino inverso. Un plan contratado no cambia cada minuto.
+
+    Aquí se reproduce: la MISMA competición, 200 y luego 400. Si
+    alguien vuelve a escribir «no está en tu plan», esta prueba se
+    pone roja — porque una liga que acaba de traer datos está en el
+    plan por definición.
+    """
+    falso = _ClienteFalso([
+        _respuesta(200, {"standings": [{"table": []}]}),
+        _respuesta(400, {"message": "Your API token is invalid.",
+                         "errorCode": 400}),
+    ])
+    monkeypatch.setattr(fd.httpx, "AsyncClient", falso)
+
+    await fd.football_client.get_standings("PL")          # 200
+    fd._caches.clear() if hasattr(fd, "_caches") else None
+
+    with pytest.raises(CuatrocientosSinExplicar) as e:
+        await fd.football_client.get_standings("PL")      # 400
+    assert e.value.competicion == "PL"
+    # se sabe que esta liga SÍ funcionó, y se dice
+    assert e.value.habia_funcionado is True
+    assert "plan" not in str(e.value).lower()
 
 
 @pytest.mark.asyncio
@@ -158,7 +207,7 @@ async def test_no_se_mira_el_texto_del_mensaje(monkeypatch):
 
     await fd.football_client.get_standings("FL1")
 
-    with pytest.raises(CompeticionNoIncluida):
+    with pytest.raises(CuatrocientosSinExplicar):
         await fd.football_client.get_standings("SA")
 
 
@@ -198,14 +247,14 @@ async def test_el_403_sigue_siendo_clave_invalida(monkeypatch):
 # ══════════════════════════════════════════════════════════
 
 @pytest.mark.asyncio
-async def test_la_ruta_explica_el_plan_y_dice_que_SI_hay(monkeypatch):
+async def test_la_ruta_admite_que_no_sabe_y_dice_que_SI_hay(monkeypatch):
     """Un error que no dice qué puedes hacer en su lugar deja al
     visitante mirando una pared."""
     from fastapi.testclient import TestClient
     import main
 
     async def falso_standings(codigo):
-        raise CompeticionNoIncluida("PD")
+        raise CuatrocientosSinExplicar("PD", habia_funcionado=True)
     monkeypatch.setattr(main.football_client, "get_standings", falso_standings)
 
     cliente = TestClient(main.app, raise_server_exceptions=False)
@@ -213,12 +262,16 @@ async def test_la_ruta_explica_el_plan_y_dice_que_SI_hay(monkeypatch):
 
     assert r.status_code == 503
     d = r.json()["detail"]
-    assert d["motivo"] == "competicion_no_incluida"
+    assert d["motivo"] == "cuatrocientos_sin_explicar"
     assert d["competicion"] == "PD"
     # el nombre de verdad de la liga, no su código
     assert "La Liga" in d["detalle"]
-    # y lo que importa: que diga que la clave NO está mal
-    assert "no es que la clave esté mal" in d["detalle"].lower()
+    # que diga que la clave NO está mal
+    assert "la clave funciona" in d["detalle"].lower()
+    # Y LO QUE IMPIDE VOLVER A MENTIR: ni una palabra sobre el plan,
+    # porque el plan nunca fue el motivo comprobado.
+    assert "plan" not in d["detalle"].lower()
+    assert "no sabemos por qué" in d["detalle"].lower()
     # y adónde ir
     assert "Understat" in d["que_si_hay"]
 

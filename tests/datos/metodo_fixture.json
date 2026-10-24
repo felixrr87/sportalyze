@@ -111,7 +111,7 @@
  "como_se_prueba": {
   "regla": "Escribir la prueba, romper el código a propósito, confirmar que se pone roja, y restaurar. Una prueba que no puede fallar no protege nada.",
   "pruebas": {
-   "total": 379,
+   "total": 380,
    "por_fichero": {
     "test_emparejar.py": 20,
     "test_emparejar_jugadores.py": 16,
@@ -123,7 +123,7 @@
     "test_metodo.py": 13,
     "test_minutos.py": 31,
     "test_onoff.py": 20,
-    "test_plan_competiciones.py": 8,
+    "test_plan_competiciones.py": 9,
     "test_puntuar.py": 34,
     "test_simulador.py": 47,
     "test_temporada.py": 6,

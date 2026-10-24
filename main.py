@@ -67,7 +67,7 @@ from backend.ml.scouting import run_scouting_pipeline, find_similar_players
 from backend.ml import simulador as sim
 from backend.ml import informe as inf
 from backend.ml.puntuar import PuestoSinDatos
-from backend.errors import ClaveInvalida, CompeticionNoIncluida
+from backend.errors import ClaveInvalida, CuatrocientosSinExplicar
 from backend.scrapers import statsbomb as sb
 from backend.ml.injury_prediction import build_player_risk_features, calculate_injury_risk
 
@@ -105,25 +105,35 @@ async def get_standings(competition_code: str):
     """
     try:
         standings = await football_client.get_standings(competition_code.upper())
-    except CompeticionNoIncluida as e:
-        # No es un fallo: es el plan. Y se dice cuál, con las que SÍ
-        # están, para que el visitante tenga adónde ir en vez de
-        # quedarse mirando un error que no puede arreglar.
+    except CuatrocientosSinExplicar as e:
+        # Aquí se contestaba «esta competición no entra en tu plan
+        # gratuito». Se quitó el 25 de octubre: la Premier devolvió la
+        # clasificación completa y minutos después esta misma ruta
+        # decía que la Premier no estaba en el plan. Un plan no cambia
+        # cada minuto, así que ese motivo era falso — y era un
+        # diagnóstico equivocado publicado al visitante, que es
+        # exactamente lo que este proyecto existe para no hacer.
+        #
+        # Ahora se dice lo comprobable y se admite lo que no se sabe.
         nombre = LEAGUES.get(e.competicion, {}).get("name", e.competicion)
         raise HTTPException(status_code=503, detail={
-            "motivo": "competicion_no_incluida",
+            "motivo": "cuatrocientos_sin_explicar",
             "competicion": e.competicion,
+            "funciono_antes": e.habia_funcionado,
             "detalle": (
-                f"{nombre} no entra en el plan {e.plan} de football-data. "
-                f"No es que la clave esté mal: con la misma clave sí se "
-                f"traen otras competiciones. football-data contesta a esto "
-                f"con «tu token es inválido», que es engañoso."),
+                f"football-data ha rechazado la petición de {nombre} con un "
+                f"400 y el mensaje «tu token es inválido». Ese mensaje es "
+                f"falso: la clave funciona, porque con ella se han traído "
+                f"otras competiciones en este mismo arranque"
+                + (f", y {nombre} entre ellas" if e.habia_funcionado else "")
+                + ". No sabemos por qué lo rechaza, así que no te vamos a "
+                  "dar un motivo inventado. Vuelve a intentarlo en un minuto."),
             "que_si_hay": (
-                "Lo que viene de Understat funciona para las cinco grandes: "
-                "Scouting, fichas, Comparador, goles y asistencias y los "
-                "hallazgos. Lo que necesita football-data —clasificación, "
-                "partidos, plantillas y el Simulador— sólo en las "
-                "competiciones del plan."),
+                "Lo que viene de Understat no depende de esto y funciona para "
+                "las cinco grandes: Scouting, fichas, Comparador, goles y "
+                "asistencias y los hallazgos. Lo que necesita football-data "
+                "—clasificación, partidos, plantillas y el Simulador— puede "
+                "fallar así de forma intermitente."),
         })
     except ClaveInvalida as e:
         raise HTTPException(status_code=503, detail={
