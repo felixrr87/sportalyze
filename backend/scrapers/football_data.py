@@ -15,7 +15,6 @@ import asyncio
 import logging
 import re
 import time
-from collections import deque
 from datetime import date
 
 import httpx
@@ -157,52 +156,55 @@ VENTANA = 60.0
 ESPERA_MAXIMA = 20.0
 
 
-class Turnero:
-    """Reparte turnos para no pasarse del límite del plan."""
+# ── DE DÓNDE SALE AHORA EL TURNERO ──────────────────────────────
+#
+# Lo que había aquí eran cuarenta líneas escritas a mano: una ventana
+# deslizante con su cerrojo, y debajo un diccionario `_en_vuelo` con
+# la agrupación de peticiones idénticas metida a pelo dentro de _get.
+# Funcionaba, y se fue el 2 de noviembre de 2026.
+#
+# No se fue por estar mal. Se fue porque ese mismo código salió de
+# aquí, se publicó como paquete —`pip install turnero`— y tener dos
+# copias del mismo mecanismo es tener una que se arregla y otra que no.
+# El README del paquete dice que sale de un servicio en producción; si
+# el servicio no lo usa, eso es una frase bonita y nada más.
+#
+# Lo que NO cambia: el mensaje. El paquete lanza `HayCola` con los
+# números pelados, que es lo correcto para una librería que no sabe
+# dónde vive. Aquí sí se sabe, y a un visitante hay que decirle qué
+# puede mirar mientras tanto. Por eso esta clase existe: para traducir
+# `HayCola` a `LimiteAlcanzado` con el texto de esta casa.
+from turnero import Turnero as _TurneroDelPaquete, UnViaje
+from turnero.errores import HayCola
 
-    def __init__(self, cuantas=PETICIONES_POR_MINUTO, ventana=VENTANA):
-        self.cuantas = cuantas
-        self.ventana = ventana
-        self._salidas = deque()          # cuándo salió cada petición
-        self._cerrojo = asyncio.Lock()
 
-    def _limpiar(self, ahora):
-        while self._salidas and ahora - self._salidas[0] >= self.ventana:
-            self._salidas.popleft()
+class Turnero(_TurneroDelPaquete):
+    """El turnero del paquete, con el aviso que da esta aplicación."""
 
-    def espera_estimada(self) -> float:
-        """Cuánto habría que esperar ahora mismo. Sin pedir turno."""
-        ahora = time.monotonic()
-        self._limpiar(ahora)
-        if len(self._salidas) < self.cuantas:
-            return 0.0
-        return max(0.0, self.ventana - (ahora - self._salidas[0]))
+    def __init__(self, cuantas=PETICIONES_POR_MINUTO, ventana=VENTANA,
+                 espera_maxima=ESPERA_MAXIMA):
+        super().__init__(cuantas=cuantas, ventana=ventana,
+                         espera_maxima=espera_maxima)
 
     async def turno(self):
-        """Espera a que toque. Revienta si la cola es absurda."""
-        while True:
-            async with self._cerrojo:
-                ahora = time.monotonic()
-                self._limpiar(ahora)
-                if len(self._salidas) < self.cuantas:
-                    self._salidas.append(ahora)
-                    return
-                falta = self.ventana - (ahora - self._salidas[0]) + 0.05
-            if falta > ESPERA_MAXIMA:
-                raise LimiteAlcanzado(
-                    f"ahora mismo hay cola: habría que esperar "
-                    f"{falta:.0f} segundos. El plan gratuito de "
-                    f"football-data son {self.cuantas + 1} consultas por "
-                    f"minuto para todo el mundo a la vez. Vuelve en un "
-                    f"minuto, o mira el informe post-partido y el "
-                    f"relieve, que no gastan de aquí.")
-            await asyncio.sleep(min(falta, 1.0))
+        try:
+            await super().turno()
+        except HayCola as e:
+            raise LimiteAlcanzado(
+                f"ahora mismo hay cola: habría que esperar "
+                f"{e.espera:.0f} segundos. El plan gratuito de "
+                f"football-data son {self.cuantas + 1} consultas por "
+                f"minuto para todo el mundo a la vez. Vuelve en un "
+                f"minuto, o mira el informe post-partido y el "
+                f"relieve, que no gastan de aquí.") from e
 
 
 _turnero = Turnero()
 
 # Peticiones que están saliendo ahora mismo, para no repetirlas.
-_en_vuelo = {}
+# Antes era un diccionario suelto y la lógica vivía dentro de _get.
+# Ahora es la pieza del paquete, con sus propias seis pruebas.
+_viaje = UnViaje()
 
 
 def edad(nacimiento: str, hoy: date = None) -> int:
@@ -273,17 +275,9 @@ class FootballDataClient:
             return caja[endpoint]
 
         # Si ya hay alguien pidiendo esto, se espera a su respuesta en
-        # vez de gastar otro turno en lo mismo.
-        if endpoint in _en_vuelo:
-            logger.debug("Me cuelgo de una petición en curso: %s", endpoint)
-            return await asyncio.shield(_en_vuelo[endpoint])
-
-        tarea = asyncio.ensure_future(self._traer(endpoint, caja))
-        _en_vuelo[endpoint] = tarea
-        try:
-            return await asyncio.shield(tarea)
-        finally:
-            _en_vuelo.pop(endpoint, None)
+        # vez de gastar otro turno en lo mismo. Las doce líneas que
+        # hacían esto a mano están ahora en turnero.UnViaje.
+        return await _viaje.haz(endpoint, lambda: self._traer(endpoint, caja))
 
     async def _traer(self, endpoint: str, caja) -> dict:
         """El viaje de verdad. Sale uno solo por endpoint a la vez."""

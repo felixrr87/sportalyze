@@ -151,7 +151,7 @@ def limpio(monkeypatch):
     turno, no la clave.
     """
     fd._caches.clear()
-    fd._en_vuelo.clear()
+    fd._viaje._en_vuelo.clear()
     fd._turnero = fd.Turnero()
     _ClienteFalso.viajes = []
     monkeypatch.setattr(fd, "FOOTBALL_API_KEY", "clave-de-pega")
@@ -225,7 +225,7 @@ async def test_si_una_peticion_falla_no_se_queda_atascada(limpio, monkeypatch):
     monkeypatch.setattr(fd.httpx, "AsyncClient", Rota)
     with pytest.raises(Exception):
         await limpio._get("/competitions/PD/standings")
-    assert "/competitions/PD/standings" not in fd._en_vuelo
+    assert fd._viaje.en_vuelo == 0
 
     monkeypatch.setattr(fd.httpx, "AsyncClient", _ClienteFalso)
     r = await limpio._get("/competitions/PD/standings")

@@ -27,6 +27,13 @@ matplotlib>=3.7.0,<3.9.0
 mplsoccer>=1.3.0
 Pillow>=10.0.0
 
+# Reparto de turnos de la clave de football-data.
+# Salió de este mismo proyecto: eran cuarenta líneas dentro de
+# backend/scrapers/football_data.py. Se publicó aparte para no tener
+# dos copias del mismo mecanismo, una arreglada y otra no.
+# https://pypi.org/project/turnero/
+turnero>=0.1.0,<0.2
+
 # Cache y DB
 cachetools>=5.3.0
 aiosqlite>=0.20.0

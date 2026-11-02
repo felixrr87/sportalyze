@@ -86,7 +86,7 @@ def _limpio(monkeypatch):
     # que lo hace.
     for caja in fd._caches.values():
         caja.clear()
-    fd._en_vuelo.clear()
+    fd._viaje._en_vuelo.clear()
     yield
 
 
