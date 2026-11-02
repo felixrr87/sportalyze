@@ -69,6 +69,10 @@ from backend.ml import informe as inf
 from backend.ml.puntuar import PuestoSinDatos
 from backend.errors import ClaveInvalida, CuatrocientosSinExplicar
 from backend.scrapers import statsbomb as sb
+# Para que la pantalla de Método pueda LEER las constantes del turnero
+# en vez de llevarlas tecleadas, igual que hace con las de los módulos
+# de backend/ml.
+from backend.scrapers import football_data as fd
 from backend.ml.injury_prediction import build_player_risk_features, calculate_injury_risk
 
 
@@ -1573,6 +1577,37 @@ async def el_metodo():
              "donde": "backend/ml/hallazgos.py",
              "que_hace": "Con menos tiros no se prueba a nadie: todo "
                          "cabe dentro del azar."},
+
+            # LAS TRES DEL TURNERO FALTABAN, Y ERAN DE LAS MÁS
+            # DISCUTIBLES DE TODAS.
+            #
+            # La regla de esta casa es que toda constante que se pueda
+            # discutir sale aquí con su fichero. Estas tres llevaban
+            # meses sin salir, y nueve-de-diez es justo la decisión que
+            # más preguntas trae. Se descubrió el 2 de noviembre, al
+            # mirar esta misma pantalla buscándolas.
+            #
+            # Y ahora importan más que antes: desde ese día el turnero
+            # ya no vive aquí dentro, viene de un paquete instalado.
+            # Un número que llega de fuera es el que más falta hace
+            # publicar, no el que menos.
+            {"nombre": "PETICIONES_POR_MINUTO", "valor": fd.PETICIONES_POR_MINUTO,
+             "donde": "backend/scrapers/football_data.py",
+             "que_hace": "Nueve, no diez. El contador de football-data "
+                         "va por su reloj y no por el nuestro: dos "
+                         "peticiones separadas por un cuarto de segundo "
+                         "pueden caer en el mismo minuto suyo sin caer "
+                         "en el nuestro. Ese turno de margen es lo que "
+                         "evita el error."},
+            {"nombre": "VENTANA", "valor": fd.VENTANA,
+             "donde": "backend/scrapers/football_data.py",
+             "que_hace": "Los segundos que dura la ventana del límite. "
+                         "Son los sesenta del plan gratuito."},
+            {"nombre": "ESPERA_MAXIMA", "valor": fd.ESPERA_MAXIMA,
+             "donde": "backend/scrapers/football_data.py",
+             "que_hace": "Más de esto esperando y se prefiere avisar de "
+                         "que hay cola. Veinte segundos es mucho para "
+                         "una web y poco para perder la petición."},
         ],
         "cuando_se_niega": [
             {"que": "Puntuar a un defensa o a un portero",

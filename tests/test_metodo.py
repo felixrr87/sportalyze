@@ -17,6 +17,7 @@ import main
 from backend.ml import hallazgos as hall
 from backend.ml import onoff
 from backend.ml import puntuar as punt
+from backend.scrapers import football_data as fd
 
 
 @pytest.fixture
@@ -69,6 +70,31 @@ def test_las_cifras_salen_del_codigo_y_no_estan_tecleadas(monkeypatch, cliente):
     d = cliente.get("/api/metodo").json()
     assert _constante(d, "K_MINUTOS")["valor"] == 999
     assert _constante(d, "K_ENCOGIDO")["valor"] == 777
+
+
+def test_el_limite_de_la_fuente_tambien_sale_en_el_metodo(cliente):
+    """Las tres del turnero faltaban, y eran de las más discutibles.
+
+    Nueve-de-diez es la decisión que más preguntas trae de todo el
+    proyecto, y la pantalla que promete enseñar los números que se
+    pueden discutir no la enseñaba. Se descubrió el 2 de noviembre
+    mirando la pantalla en vivo.
+
+    Y desde ese día importa más: el turnero ya no vive dentro de este
+    repositorio, viene de un paquete instalado. Un número que llega de
+    fuera es el que más falta hace publicar, no el que menos.
+    """
+    d = cliente.get("/api/metodo").json()
+    assert _constante(d, "PETICIONES_POR_MINUTO")["valor"] == fd.PETICIONES_POR_MINUTO
+    assert _constante(d, "VENTANA")["valor"] == fd.VENTANA
+    assert _constante(d, "ESPERA_MAXIMA")["valor"] == fd.ESPERA_MAXIMA
+
+
+def test_el_limite_de_la_fuente_tampoco_esta_tecleado(monkeypatch, cliente):
+    """El mismo sabotaje que con K_MINUTOS, por si acaso."""
+    monkeypatch.setattr(fd, "PETICIONES_POR_MINUTO", 3)
+    d = cliente.get("/api/metodo").json()
+    assert _constante(d, "PETICIONES_POR_MINUTO")["valor"] == 3
 
 
 def test_las_pruebas_se_cuentan_leyendo_el_disco(cliente):

@@ -79,6 +79,24 @@
    "valor": 15,
    "donde": "backend/ml/hallazgos.py",
    "que_hace": "Con menos tiros no se prueba a nadie: todo cabe dentro del azar."
+  },
+  {
+   "nombre": "PETICIONES_POR_MINUTO",
+   "valor": 9,
+   "donde": "backend/scrapers/football_data.py",
+   "que_hace": "Nueve, no diez. El contador de football-data va por su reloj y no por el nuestro: dos peticiones separadas por un cuarto de segundo pueden caer en el mismo minuto suyo sin caer en el nuestro. Ese turno de margen es lo que evita el error."
+  },
+  {
+   "nombre": "VENTANA",
+   "valor": 60.0,
+   "donde": "backend/scrapers/football_data.py",
+   "que_hace": "Los segundos que dura la ventana del límite. Son los sesenta del plan gratuito."
+  },
+  {
+   "nombre": "ESPERA_MAXIMA",
+   "valor": 20.0,
+   "donde": "backend/scrapers/football_data.py",
+   "que_hace": "Más de esto esperando y se prefiere avisar de que hay cola. Veinte segundos es mucho para una web y poco para perder la petición."
   }
  ],
  "cuando_se_niega": [
@@ -111,7 +129,7 @@
  "como_se_prueba": {
   "regla": "Escribir la prueba, romper el código a propósito, confirmar que se pone roja, y restaurar. Una prueba que no puede fallar no protege nada.",
   "pruebas": {
-   "total": 380,
+   "total": 382,
    "por_fichero": {
     "test_emparejar.py": 20,
     "test_emparejar_jugadores.py": 16,
@@ -120,7 +138,7 @@
     "test_informe.py": 44,
     "test_informe_liga.py": 44,
     "test_maqueta.py": 8,
-    "test_metodo.py": 13,
+    "test_metodo.py": 15,
     "test_minutos.py": 31,
     "test_onoff.py": 20,
     "test_plan_competiciones.py": 9,
