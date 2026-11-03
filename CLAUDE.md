@@ -48,12 +48,17 @@ backend/ml/
   onoff.py              xG encajado con él / sin él (K_ENCOGIDO = 450)
   emparejar.py          cruza partidos entre fuentes; se niega si duda
   emparejar_jugadores.py cruza plantilla football-data ↔ Understat
+  edades.py             la fecha de nacimiento que Understat no da.
+                        Se BAJA aparte (herramientas/descargar_edades.py)
+                        porque en vivo serían 98 peticiones
   informe_liga.py       informe post-partido
   simulador.py          simulación de liga
   hallazgos.py          quién no cuadra con su xG, con Benjamini-Hochberg
                         (FDR = 0,10) para no publicar sesenta falsos
 frontend/index.html     4.700 líneas. TODA la interfaz, un solo fichero.
-tests/                  389 pruebas
+backend/datos/          los ficheros de edades bajados. DATOS, no código
+herramientas/           lo que se ejecuta a mano, nunca desde la web
+tests/                  430 pruebas
 tests/maqueta/*.js      comprobadores jsdom: cargan el index.html de
                         verdad y comprueban que lo PINTADO es el dato
 ```
@@ -144,7 +149,21 @@ su fichero y su explicación — no a la pantalla.
 
 ## Pendiente
 
-- Desplegar en Render (`render.yaml` listo; falta la cuenta de Félix)
-- Anular la clave de football-data del historial público
-- Edad real cruzando Understat con football-data en toda la liga
-- Dejar los hallazgos en una tarea semanal que avise los lunes
+- **Anular la clave de football-data del historial público.** Sigue ahí,
+  comprobado el 2 de noviembre de 2026: un `# Tu API key: ...` en un
+  commit viejo. Borrarla del fichero no la borró del historial, y el
+  repositorio es público. Lo único que cierra esto es revocarla en
+  football-data.org y sacar otra. Es lo primero de esta lista.
+- Dejar los hallazgos en una tarea semanal que avise los lunes. A
+  medias: existe el agente `felix-agente-lunes`, que los corre y monta
+  el post, pero hay que pedírselo — nadie avisa solo.
+- Bajar las edades de las otras cuatro ligas
+  (`BAJAR_LAS_EDADES.command`) y volver a pasarlo después del mercado
+  de invierno.
+
+### Hecho, por si la lista parecía otra cosa
+- Desplegado en Render, y la web responde.
+- Edad real cruzando Understat con football-data: `backend/ml/edades.py`
+  y `herramientas/descargar_edades.py`. El filtro de `/api/players`
+  llevaba desde el principio en la firma SIN FILTRAR NADA.
+- El turnero ya no vive aquí: `pip install turnero`.

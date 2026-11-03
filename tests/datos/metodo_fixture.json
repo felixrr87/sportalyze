@@ -97,6 +97,12 @@
    "valor": 20.0,
    "donde": "backend/scrapers/football_data.py",
    "que_hace": "Más de esto esperando y se prefiere avisar de que hay cola. Veinte segundos es mucho para una web y poco para perder la petición."
+  },
+  {
+   "nombre": "DIAS_PARA_AVISAR",
+   "valor": 45,
+   "donde": "backend/ml/edades.py",
+   "que_hace": "Pasados estos días desde que se bajaron las fechas de nacimiento, se avisa de que la lista puede no tener los últimos fichajes. Las edades siguen bien: se calculan hoy, no se guardan. Lo que envejece es la plantilla."
   }
  ],
  "cuando_se_niega": [
@@ -129,8 +135,9 @@
  "como_se_prueba": {
   "regla": "Escribir la prueba, romper el código a propósito, confirmar que se pone roja, y restaurar. Una prueba que no puede fallar no protege nada.",
   "pruebas": {
-   "total": 382,
+   "total": 402,
    "por_fichero": {
+    "test_edades.py": 19,
     "test_emparejar.py": 20,
     "test_emparejar_jugadores.py": 16,
     "test_fuentes.py": 40,
@@ -138,7 +145,7 @@
     "test_informe.py": 44,
     "test_informe_liga.py": 44,
     "test_maqueta.py": 8,
-    "test_metodo.py": 15,
+    "test_metodo.py": 16,
     "test_minutos.py": 31,
     "test_onoff.py": 20,
     "test_plan_competiciones.py": 9,

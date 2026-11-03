@@ -220,3 +220,12 @@ def test_la_atribucion_obligatoria_esta_y_con_las_palabras_que_piden(cliente):
     d = cliente.get("/api/metodo").json()
     assert "Football data provided by the Football-Data.org API" in d["atribucion"]
     assert any("Understat" in a for a in d["atribucion"])
+
+
+def test_el_aviso_de_edades_viejas_tambien_sale_en_el_metodo(cliente):
+    """DIAS_PARA_AVISAR decide cuándo se dice que la lista de fechas
+    de nacimiento puede no tener los últimos fichajes. Cuarenta y cinco
+    días es una elección, no una ley: sale."""
+    from backend.ml import edades
+    d = cliente.get("/api/metodo").json()
+    assert _constante(d, "DIAS_PARA_AVISAR")["valor"] == edades.DIAS_PARA_AVISAR

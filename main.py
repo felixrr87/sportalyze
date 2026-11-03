@@ -73,6 +73,7 @@ from backend.scrapers import statsbomb as sb
 # en vez de llevarlas tecleadas, igual que hace con las de los módulos
 # de backend/ml.
 from backend.scrapers import football_data as fd
+from backend.ml import edades
 from backend.ml.injury_prediction import build_player_risk_features, calculate_injury_risk
 
 
@@ -468,6 +469,35 @@ async def get_league_players_stats(
         players = [p for p in players if p.get("position", "").upper() == position.upper()]
     players = [p for p in players if p.get("time", 0) >= min_minutes]
 
+    # ── LA EDAD ─────────────────────────────────────────────────
+    #
+    # `max_age` llevaba aquí desde el principio, en la firma y en la
+    # documentación de la ruta («Filtros: posición, minutos mínimos,
+    # edad máxima»), y NO FILTRABA NADA. Ni filtraba ni avisaba: la
+    # llamada devolvía lo mismo con 18 que con 50.
+    #
+    # Pasaba porque Understat no publica fechas de nacimiento, así que
+    # no había nada con lo que filtrar. Pero un filtro que no filtra y
+    # se calla es peor que no tenerlo: quien pide «menores de 23» se
+    # lleva una lista creíble con gente de treinta dentro.
+    #
+    # Ahora las fechas salen del fichero de edades (football-data,
+    # bajado con herramientas/descargar_edades.py) y, lo que falte, se
+    # dice. Ver backend/ml/edades.py.
+    from backend.ml import edades as _ed
+
+    antes_de_la_edad = len(players)
+    con_edad, avisos_edad = _ed.poner_edades(
+        players, _ed.cargar(competition_code.upper(), season))
+    cobertura = _ed.aviso_de_cobertura(con_edad, antes_de_la_edad, max_age)
+    if cobertura:
+        avisos_edad.append(cobertura)
+    if con_edad:
+        # Sin edad NO se descarta: no haber podido emparejar a alguien
+        # no es motivo para darlo por viejo.
+        players = [p for p in players
+                   if p.get("age") is None or p["age"] <= max_age]
+
     # ── Puntuación ──
     #
     # Antes aquí se llamaba a score_player(p, pos[:2]) con la cadena de
@@ -486,7 +516,7 @@ async def get_league_players_stats(
     for p in players:
         por_puesto.setdefault(puesto_de(p.get("position", "")), []).append(p)
 
-    avisos, sin_nota = [], {}
+    avisos, sin_nota = list(avisos_edad), {}
     for pst, grupo in por_puesto.items():
         try:
             ficha = puntuar(grupo, pst)
@@ -1087,12 +1117,24 @@ async def run_scouting(
     codigo = competition_code.upper()
     ligas = list(LIGAS_GRANDES) if codigo in ("ALL", "TODAS") else [codigo]
 
-    players, caidas = [], []
+    # Las edades se pegan POR LIGA, no al montón: cada fichero es de
+    # una liga y de una temporada. Juntarlo todo y buscar luego haría
+    # que un identificador repetido entre ligas —que no debería pasar,
+    # pero no lo garantiza nadie— pegara la fecha equivocada.
+    from backend.ml import edades as _ed
+
+    players, caidas, avisos_edad = [], [], []
+    con_edad_total = 0
     for lg in ligas:
         try:
             trozo = await get_league_players(lg, season)
             for p in trozo:
                 p["league"] = lg          # para saber de dónde sale cada uno
+            cuantos, avisa = _ed.poner_edades(
+                trozo, _ed.cargar(lg, season or temporada_actual()))
+            con_edad_total += cuantos
+            for a in avisa:
+                avisos_edad.append(f"{lg}: {a}")
             players.extend(trozo)
         except FuenteNoDisponible as e:
             caidas.append(f"{lg}: {e}")
@@ -1112,6 +1154,9 @@ async def run_scouting(
             min_minutes=min_minutes,
         )
         salida["ligas"] = ligas
+        salida["con_edad"] = con_edad_total
+        if avisos_edad:
+            salida.setdefault("avisos", []).extend(avisos_edad)
         # El año suelto, además del "2026/27": la ficha de jugador lo
         # necesita para pedir los tiros DE ESTA TEMPORADA y no los de
         # toda la carrera. Que lo saque recortando la cadena es pedir
@@ -1608,6 +1653,13 @@ async def el_metodo():
              "que_hace": "Más de esto esperando y se prefiere avisar de "
                          "que hay cola. Veinte segundos es mucho para "
                          "una web y poco para perder la petición."},
+            {"nombre": "DIAS_PARA_AVISAR", "valor": edades.DIAS_PARA_AVISAR,
+             "donde": "backend/ml/edades.py",
+             "que_hace": "Pasados estos días desde que se bajaron las "
+                         "fechas de nacimiento, se avisa de que la "
+                         "lista puede no tener los últimos fichajes. "
+                         "Las edades siguen bien: se calculan hoy, no "
+                         "se guardan. Lo que envejece es la plantilla."},
         ],
         "cuando_se_niega": [
             {"que": "Puntuar a un defensa o a un portero",

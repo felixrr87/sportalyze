@@ -1,0 +1,13 @@
+Aquí viven los ficheros de fechas de nacimiento que baja
+herramientas/descargar_edades.py (o BAJAR_LAS_EDADES.command, en el
+escritorio).
+
+Son DATOS, no código, y por eso están fuera de backend/ml.
+
+Se guarda la FECHA de nacimiento, nunca la edad: la edad se calcula al
+preguntar, así que los cumpleaños no la estropean. Lo que envejece es
+la plantilla, y por eso cada fichero lleva el día en que se bajó.
+
+Si no hay fichero de una liga, el filtro de edad no se aplica y la
+pantalla lo dice. Eso es lo correcto: mejor un filtro que se declara
+inútil que uno que se calla.
