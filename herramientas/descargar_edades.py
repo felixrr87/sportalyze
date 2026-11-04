@@ -50,6 +50,7 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.dirname(AQUI)
 sys.path.insert(0, RAIZ)
 
+from backend.errors import FuenteNoDisponible              # noqa: E402
 from backend.ml import edades as ed                        # noqa: E402
 from backend.ml.emparejar_jugadores import emparejar_jugador  # noqa: E402
 from backend.scrapers.football_data import football_client   # noqa: E402
@@ -60,18 +61,68 @@ from backend.temporada import temporada_actual              # noqa: E402
 LIGAS = ("PD", "PL", "SA", "BL1", "FL1")
 
 
+class SeCayoUnaFuente(Exception):
+    """Una fuente no ha contestado, dicho en cristiano.
+
+    Existe para que el que ejecuta esto lea una frase y no una traza.
+    `causa` se guarda por si hace falta mirarla, pero sólo se enseña
+    si se pide con --detalle: cuarenta líneas de Python no ayudan a
+    nadie a decidir qué hacer.
+    """
+
+    def __init__(self, fuente, que_hacer, causa=None):
+        self.fuente = fuente
+        self.que_hacer = que_hacer
+        self.causa = causa
+        super().__init__(f"{fuente} no ha contestado")
+
+
 async def una_liga(codigo: str, season: int) -> dict:
     codigo = codigo.upper()
     print(f"\n=== {codigo} {season}/{str(season + 1)[-2:]} "
           f"{'=' * 30}")
 
+    # LO QUE PASÓ EL 3 DE NOVIEMBRE DE 2026, Y POR QUÉ ESTO ESTÁ AQUÍ.
+    #
+    # Understat se cayó —la web contestaba «We will come back soon»— y
+    # esta herramienta vomitó cuarenta líneas de traza de Python
+    # acabadas en «JSONDecodeError: Expecting value: line 1 column 1».
+    # Eso significa «he pedido datos y me han devuelto una página de
+    # aviso», pero para saberlo hay que leer requests por dentro.
+    #
+    # Una herramienta de este proyecto no puede contestar con una
+    # traza. La regla es decir qué pasa y qué hacer. Y encima murió
+    # entera en la primera liga: si se cae Understat a mitad, las que
+    # ya estaban bajadas se perderían.
     print("  Understat...", end=" ", flush=True)
-    de_understat = await get_league_players(codigo, season)
+    try:
+        de_understat = await get_league_players(codigo, season)
+    except FuenteNoDisponible as e:
+        print("NO CONTESTA")
+        raise SeCayoUnaFuente(
+            "Understat",
+            "Entra en understat.com a ver qué dice. Si pone «We will "
+            "come back soon», está caído y no hay nada que arreglar "
+            "aquí: vuelve a pasar esto más tarde.", e) from e
     print(f"{len(de_understat)} jugadores")
+
+    if not de_understat:
+        raise SeCayoUnaFuente(
+            "Understat",
+            f"Ha contestado, pero no tiene ningún jugador de {codigo} en "
+            f"la temporada {season}. Si la temporada acaba de empezar, "
+            f"puede que todavía no haya datos.", None)
 
     print("  Clasificación (para saber qué equipos hay)...",
           end=" ", flush=True)
-    tabla = (await football_client.get_standings(codigo)).get("table", [])
+    try:
+        tabla = (await football_client.get_standings(codigo)).get("table", [])
+    except Exception as e:
+        print("NO CONTESTA")
+        raise SeCayoUnaFuente(
+            "football-data",
+            "Mira que la clave sea buena y que no te hayas pasado de "
+            "las diez peticiones por minuto.", e) from e
     print(f"{len(tabla)} equipos")
 
     jugadores, sin_emparejar, motivos = {}, [], {}
@@ -139,16 +190,42 @@ async def main():
     season = temporada_actual()
     os.makedirs(ed.CARPETA, exist_ok=True)
 
-    resumen = []
+    # UNA LIGA CAÍDA NO SE LLEVA A LAS DEMÁS POR DELANTE.
+    #
+    # Antes esto no estaba y la primera liga que fallara mataba el
+    # programa entero. Con cinco ligas y once minutos de bajada, eso
+    # es tirar todo lo que ya había funcionado.
+    resumen, caidas = [], []
     for codigo in codigos:
-        datos = await una_liga(codigo, season)
+        try:
+            datos = await una_liga(codigo, season)
+        except SeCayoUnaFuente as e:
+            print(f"\n  ✗ {codigo}: {e.fuente} no ha contestado.")
+            print(f"    {e.que_hacer}")
+            if "--detalle" in sys.argv and e.causa:
+                print(f"    [{type(e.causa).__name__}] {e.causa}")
+            caidas.append((codigo, e))
+            continue
         destino = ed.ruta(codigo, season)
         with open(destino, "w", encoding="utf-8") as fh:
             json.dump(datos, fh, indent=2, ensure_ascii=False)
         resumen.append((codigo, datos))
         print(f"  -> {os.path.relpath(destino, RAIZ)}")
 
+    if not resumen:
+        print(f"\n{'=' * 46}")
+        print("NO SE HA BAJADO NADA. No hay ningún fichero nuevo.")
+        print(f"{'=' * 46}")
+        for codigo, e in caidas:
+            print(f"  {codigo}: {e.fuente}")
+        print("\nLas edades que ya hubiera bajadas de antes siguen donde")
+        print("estaban y la web las sigue usando. No se ha roto nada:")
+        print("simplemente hoy no se ha podido añadir ninguna.\n")
+        return 1
+
     print(f"\n{'=' * 46}\nRESUMEN\n{'=' * 46}")
+    for codigo, e in caidas:
+        print(f"  {codigo:<5} NO BAJADA — {e.fuente} no contestó")
     for codigo, d in resumen:
         n, total = d["emparejados"], d["jugadores_en_understat"]
         pct = (100 * n / total) if total else 0
